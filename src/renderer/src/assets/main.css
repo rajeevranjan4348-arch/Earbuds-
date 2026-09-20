@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.scrollbar-small {
+  scrollbar-color: #9b9b9b transparent;
+  scrollbar-width: auto;
+}

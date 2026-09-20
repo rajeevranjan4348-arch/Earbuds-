@@ -1,0 +1,62 @@
+{
+  "name": "iris-ai",
+  "version": "1.7.0",
+  "description": "IRIS is not another chatbot you type at. It is an intelligent Voice-First Operating Layer that gives you complete, hands-free authority over your digital environment. It lives on your desktop, watches your workflow, and executes your intent instantly.",
+  "author": "Harsh Pandey",
+  "homepage": "https://irisxhq.vercel.app",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "lint": "eslint --cache .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@google/genai": "^2.23.0",
+    "@gsap/react": "^2.1.2",
+    "@react-three/fiber": "^8.17.14",
+    "chalk": "^4.1.2",
+    "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.9",
+    "framer-motion": "^12.40.0",
+    "glob": "^13.0.6",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.17.0",
+    "mem0ai": "^3.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.6.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.17.0",
+    "react-tooltip": "^6.0.7",
+    "remark-gfm": "^4.0.1",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config-prettier": "^3.0.0",
+    "@electron-toolkit/eslint-config-ts": "^3.1.0",
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^30.5.1",
+    "electron-builder": "^25.1.7",
+    "electron-rebuild": "^3.2.9",
+    "electron-vite": "^5.0.0",
+    "eslint": "^9.5.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "prettier": "^3.1.1",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.3.3",
+    "vite": "^7.3.5"
+  },
+  "allowScripts": {
+    "koffi@2.16.2": true,
+    "vosk-koffi@1.1.1": true
+  }
+}

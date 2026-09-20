@@ -1,0 +1,68 @@
+appId: com.irisx.irisai.test
+productName: IRIS AI
+directories:
+  buildResources: build
+
+asar: true
+compression: maximum
+
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,credentials.json}'
+  - '!models/**/*'
+  - '!vectordb/**/*'
+  - '!lancedb/**/*'
+  - '!userData/**/*'
+
+asarUnpack:
+  - resources/**
+
+win:
+  executableName: iris-ai
+  icon: build/icon.png
+  target:
+    - target: nsis
+
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  runAfterFinish: true
+
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  extendInfo:
+    - NSCameraUsageDescription: Application requests access to the device's camera.
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+
+dmg:
+  artifactName: ${name}-${version}.${ext}
+
+linux:
+  target:
+    - AppImage
+    - snap
+    - deb
+  maintainer: Harsh Pandey
+  category: Utility
+
+appImage:
+  artifactName: ${name}-${version}.${ext}
+
+npmRebuild: false
+publish:
+  provider: github
+  owner: 201Harsh
+  repo: IRIS-AI

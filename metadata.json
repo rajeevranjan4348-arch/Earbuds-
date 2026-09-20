@@ -1,0 +1,11 @@
+{
+  "name": "IRIS AI",
+  "description": "Voice-first operating layer and desktop AI assistant with interactive 3D particle core, real-time telemetry, camera optics, notes, gallery, and settings.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

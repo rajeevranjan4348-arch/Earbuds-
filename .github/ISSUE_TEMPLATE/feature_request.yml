@@ -1,0 +1,93 @@
+name: Feature Request
+description: Propose a new capability, module, or tool for the IRIS Desktop Assistant.
+title: '[Feature]: '
+labels:
+  - enhancement
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 💡 Feature Proposal
+        Thank you for helping expand the IRIS ecosystem. To help us properly evaluate and prioritize this request, please provide concrete use cases, architectural tradeoffs, and technical execution details.
+
+  - type: dropdown
+    id: access_tier
+    attributes:
+      label: Current Access Tier
+      description: Are you currently a sponsor? (This helps us determine if you have access to the backend tools to potentially submit a PR for this feature).
+      options:
+        - Free Tier (Public UI Shell Only)
+        - IRIS Insider ($15/mo - Local Execution)
+        - IRIS Builder / Alpha ($30-$50/mo)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A concise, one-line statement of the requested capability.
+      placeholder: 'Example: Add local Llama 3 support via Ollama for offline voice command fallback.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to Solve
+      description: Explain the user pain point this solves and why the current behavior or toolset is insufficient.
+      placeholder: 'Example: Currently, IRIS relies entirely on cloud APIs (Gemini/Groq) for inference. If the user loses internet connection, the voice execution engine halts.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the desired behavior, IPC bridge modifications, or UI/UX updates with as much technical specificity as possible.
+      placeholder: 'Example: Integrate Ollama into the Electron main process via a new IPC bridge channel, allowing the React frontend to toggle between Cloud and Local inference engines seamlessly.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Detail other approaches you considered and why they are less optimal.
+      placeholder: 'Example: Using LM Studio API was considered, but Ollama is more lightweight for headless background execution on desktop environments.'
+    validations:
+      required: false
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact & Reach
+      description: |
+        Explain who is affected, the urgency, and the practical consequences of implementing this feature.
+        Include:
+        - Affected users/systems (e.g., Windows users, Developers, Content Creators)
+        - Value Add (Major workflow improvement, nice-to-have, edge case)
+      placeholder: |
+        Affected: Users with strict local-only privacy requirements.
+        Value Add: High (Removes cloud dependency and reduces API costs for heavy users).
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence & Examples
+      description: Provide prior art, links to similar implementations in other tools, or UI mockups.
+      placeholder: 'Example: Link to the Ollama Node.js documentation, or a Figma mockup of the proposed Settings tab integration.'
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_information
+    attributes:
+      label: Additional Information
+      description: Add any extra context, OS-specific constraints (Windows/Mac/Linux), or dependencies not covered above.
+      placeholder: 'This would require adding the `ollama` package to the backend dependencies and updating the electron-builder configuration to exclude it from ASAR unpacking if necessary.'
+    validations:
+      required: false

@@ -1,0 +1,127 @@
+name: Bug Report
+description: Report system crashes, execution failures, or UI defects in the IRIS Desktop Assistant.
+title: '[Bug]: '
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Submit a Bug Report
+        Thank you for taking the time to report an issue. To help our engineering team resolve this efficiently, please provide concise, reproducible steps and include terminal logs or Electron console outputs where applicable.
+
+  - type: dropdown
+    id: access_tier
+    attributes:
+      label: Access Tier
+      description: Which version of IRIS are you currently running? (Crucial for isolating backend vs. frontend issues).
+      options:
+        - Free Tier (Public UI Shell Only)
+        - IRIS Insider ($15/mo - Local Execution)
+        - IRIS Builder / Alpha ($30-$50/mo)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: bug_type
+    attributes:
+      label: Bug Category
+      description: Select the category that best matches this issue.
+      options:
+        - Application Crash (App unexpectedly exits, hangs, or white-screens)
+        - Execution Failure (Voice command triggers, but native action fails)
+        - Voice/Audio Processing (Mic routing, transcription, or TTS issues)
+        - User Interface (Visual glitches, layout breaks, state issues)
+        - Regression (Worked in a previous build, but now fails)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How deeply does this impact your workflow?
+      options:
+        - Low (Minor visual bug or annoyance, core functions work)
+        - Medium (A specific tool or command fails, but the app is usable)
+        - High (Core voice engine or major automation sequences are broken)
+        - Critical (Application refuses to boot or completely freezes the host OS)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Issue Summary
+      description: A clear and concise description of what is broken.
+      placeholder: 'Example: After upgrading to 1.2.0, the voice command for opening VS Code fails and returns an IPC timeout error in the console.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: Provide the exact sequence of actions required to trigger the bug.
+      placeholder: |
+        1. Launch the IRIS packaged .exe on Windows 11.
+        2. Click the microphone icon to activate the listening state.
+        3. Speak the command: "Open Spotify".
+        4. Observe the widget hanging on 'Executing...', followed by a timeout error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should the system have done under normal operating conditions?
+      placeholder: 'The application should have parsed the voice intent and successfully launched the local Spotify executable.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: Describe what actually happened, including any user-visible error messages.
+      placeholder: "The action fails silently in the UI. Checking the developer tools reveals: `Uncaught Error: spawn ENOENT`."
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: IRIS Version
+      description: The exact application version or build number (Check package.json or the Settings panel).
+      placeholder: '1.2.0'
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: Your specific OS and version (Crucial for hardware/desktop automation bugs).
+      placeholder: 'Windows 11 (23H2) / macOS 14.4 (Apple Silicon) / Ubuntu 24.04'
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, Screenshots, and Evidence
+      description: Paste relevant Electron main process logs, React console errors, or attach screenshots. **CRITICAL: Ensure all API Keys are redacted before posting.**
+      render: shell
+      placeholder: |
+        Paste logs here...
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any remaining context. If this is a regression, please specify the last known good version.
+      placeholder: 'Last known good version was 1.1.0. The bug seems to trigger more frequently when multiple monitors are connected.'
+    validations:
+      required: false
