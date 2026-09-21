@@ -1,8 +1,9 @@
-import { db } from '../db'
+import { db, isDatabaseConfigured } from '../db'
 import { users, workspaceItems, mapMarkers } from '../db/schema'
 import { eq, desc } from 'drizzle-orm'
 
 export async function upsertUser(uid: string, email: string, displayName?: string) {
+  if (!isDatabaseConfigured()) return null
   try {
     const existing = await db.select().from(users).where(eq(users.uid, uid)).limit(1)
     if (existing.length > 0) {
@@ -24,6 +25,7 @@ export async function upsertUser(uid: string, email: string, displayName?: strin
 }
 
 export async function getMarkersForUser(uid?: string) {
+  if (!isDatabaseConfigured()) return []
   try {
     if (!uid) {
       return await db.select().from(mapMarkers).orderBy(desc(mapMarkers.createdAt)).limit(50)
@@ -51,6 +53,7 @@ export async function addMarker(markerData: {
   category?: string
   notes?: string
 }) {
+  if (!isDatabaseConfigured()) return null
   try {
     const u = await upsertUser(markerData.uid, `${markerData.uid}@user.com`)
     if (!u) throw new Error('Could not resolve user in Cloud SQL')
@@ -74,6 +77,7 @@ export async function addMarker(markerData: {
 }
 
 export async function getWorkspaceItems(uid?: string) {
+  if (!isDatabaseConfigured()) return []
   try {
     if (!uid) {
       return await db
@@ -110,6 +114,7 @@ export async function saveWorkspaceItem(item: {
   snippet?: string
   metadata?: string
 }) {
+  if (!isDatabaseConfigured()) return null
   try {
     const u = await upsertUser(item.uid, `${item.uid}@user.com`)
     if (!u) throw new Error('Could not resolve user in Cloud SQL')

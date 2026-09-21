@@ -319,26 +319,14 @@ const electronShim = {
         }
 
         case 'adb-get-notifications': {
-          return [
-            {
-              id: '1',
-              title: 'IRIS Voice Sync',
-              text: 'Telemetry linked via ADB port 5555',
-              app: 'IRIS Mobile'
-            },
-            {
-              id: '2',
-              title: 'Security Enclave',
-              text: 'Biometric authorization active',
-              app: 'Vault'
-            },
-            {
-              id: '3',
-              title: 'Task Orchestrator',
-              text: '3 background routines completed',
-              app: 'System'
-            }
-          ]
+          return {
+            success: true,
+            data: [
+              'IRIS Voice Sync: Telemetry linked via ADB port 5555',
+              'Security Enclave: Biometric authorization active',
+              'Task Orchestrator: 3 background routines completed'
+            ]
+          }
         }
 
         case 'adb-quick-action': {
@@ -377,25 +365,31 @@ const electronShim = {
 
         case 'adb-telemetry': {
           return {
-            model: 'Pixel 9 Pro (Simulated)',
-            os: 'Android 15 (AP2A)',
-            battery: {
-              level: 94,
-              isCharging: true,
-              temp: '31.5'
-            },
-            storage: {
-              used: '62.4 GB',
-              total: '256 GB TOTAL',
-              percent: 24
+            success: true,
+            data: {
+              model: 'Pixel 9 Pro (Simulated)',
+              os: 'Android 15 (AP2A)',
+              battery: {
+                level: 94,
+                isCharging: true,
+                temp: '31.5'
+              },
+              storage: {
+                used: '62.4 GB',
+                total: '256 GB TOTAL',
+                percent: 24
+              }
             }
           }
         }
 
         case 'adb-screenshot': {
+          const fallback =
+            'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=600&q=80'
           return {
             success: true,
-            url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=600&q=80'
+            image: fallback,
+            url: fallback
           }
         }
 
@@ -427,6 +421,13 @@ const electronShim = {
         case 'secure-save-keys': {
           const keys = args[0] || {}
           localStorage.setItem('iris_api_keys', JSON.stringify(keys))
+          // Mirror credentials into the server runtime (browser mode has no
+          // OS keychain, so the backend store is the secure sink).
+          fetch('/api/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(keys)
+          }).catch(() => {})
           return { success: true }
         }
 

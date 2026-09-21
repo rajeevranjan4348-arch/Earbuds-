@@ -102,13 +102,15 @@ export class TopicValidator {
     }
 
     // 5. Overall Decision Logic
+    // Widened to string: additional asset checks below can raise MODERATE risk.
+    const copyrightRiskLevel: string = copyrightRisk
     let status: 'APPROVED' | 'NEEDS_HUMAN_REVIEW' | 'REJECTED' = 'APPROVED'
     let valid = true
 
-    if (policyReasons.length > 0 || copyrightRisk === 'HIGH' || topic.safetyPolicyRisk === 'HIGH') {
+    if (policyReasons.length > 0 || copyrightRiskLevel === 'HIGH' || topic.safetyPolicyRisk === 'HIGH') {
       status = 'REJECTED'
       valid = false
-    } else if (isDuplicate || topic.requiresHumanReview || copyrightRisk === 'MODERATE' || claims.some((c) => c.status === 'UNCONFIRMED_REPORT')) {
+    } else if (isDuplicate || topic.requiresHumanReview || copyrightRiskLevel === 'MODERATE' || claims.some((c) => c.status === 'UNCONFIRMED_REPORT')) {
       status = 'NEEDS_HUMAN_REVIEW'
       valid = true
     }

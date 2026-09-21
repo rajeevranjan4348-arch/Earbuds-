@@ -77,7 +77,7 @@ export class BrowserUseAgent {
           session.status = 'completed'
 
           return {
-            success: page.success,
+            success: Boolean(page && (page.content || page.title)),
             action: 'navigate',
             url: action.url,
             title: page.title,

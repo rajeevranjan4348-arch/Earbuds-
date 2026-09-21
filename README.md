@@ -527,24 +527,53 @@ npm install
 Create `.env` file (copy from `.env.example`):
 
 ```env
-VITE_GEMINI_API_KEY=your_gemini_key
-VITE_GROQ_API_KEY=your_groq_key
-VITE_TAVILY_API_KEY=your_tavily_key
+GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
+TAVILY_API_KEY=your_tavily_key
+MEM0_API_KEY=your_mem0_key
 ```
+
+Secrets stay server-side — they are read by the Node API layer and are never
+bundled into the client. You can also paste keys at runtime in
+**Settings → API Keys**; they are stored in the encrypted local vault
+(Electron: OS keychain, Web: `.iris-keys.json` with `0600` permissions).
 
 ### 4. Run Development Server
 
+Web app (browser) — Vite dev server with the backend API mounted on the same
+origin:
+
 ```bash
-npm run dev
+npm run dev          # http://localhost:3000
+```
+
+Desktop app (Electron) — full OS integration (window controls, app launcher,
+gallery on disk, ADB bridge):
+
+```bash
+npm run dev:electron
 ```
 
 ### 5. Build Production
 
+Web build + standalone Node server (single process, single port):
+
 ```bash
-npm run build:win    # Windows
-npm run build:mac    # macOS
-npm run build:linux  # Linux
+npm run build         # dist/          (front-end bundle)
+npm run build:server  # dist-server/   (Node API + static host)
+npm start             # serves dist/ + /api on :3000
 ```
+
+Desktop installers:
+
+```bash
+npm run dist:win      # Windows (NSIS)
+npm run dist:mac      # macOS (DMG)
+npm run dist:linux    # Linux (AppImage / deb / snap)
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the packaging matrix and
+[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for first-run setup.
 
 ---
 

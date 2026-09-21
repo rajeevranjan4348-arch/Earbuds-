@@ -35,10 +35,16 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Compile & Build
+      - name: Type Check
+        run: npm run typecheck
+
+      - name: Compile Web Front-End
         run: npm run build
+
+      - name: Compile Node Server
+        run: npm run build:server
 
       # Security: Ensure ASAR and Bytecode build correctly without errors
       - name: Verify Build Output
-        run: ls -la out/ || ls out/
+        run: ls -la dist/ dist-server/
         shell: bash

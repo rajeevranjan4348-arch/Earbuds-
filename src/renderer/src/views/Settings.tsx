@@ -111,7 +111,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
     setIsAddingMemory(true)
     try {
       await memoryService.addMemory(newMemoryText.trim(), currentUser.uid, {
-        source: 'settings_ui'
+        source: 'explicit'
       })
       setNewMemoryText('')
       await loadMemories(currentUser.uid)
@@ -598,11 +598,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                                 {m.memory}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(m.created_at).toLocaleDateString()}</span>
-                                {m.categories && m.categories.length > 0 && (
-                                  <span className="text-emerald-400/80">
-                                    • {m.categories.join(', ')}
-                                  </span>
+                                <span>{new Date(m.createdAt).toLocaleDateString()}</span>
+                                {m.category && (
+                                  <span className="text-emerald-400/80">• {m.category}</span>
                                 )}
                               </div>
                             </div>

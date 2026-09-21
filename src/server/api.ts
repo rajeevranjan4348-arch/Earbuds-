@@ -652,7 +652,10 @@ export async function handleApiRequest(
         const prompt = body.prompt || body.query || ''
         const userId = body.userId || 'usr_primary'
         const activeCtx = workspaceContextMemory.getActiveFile(userId)
-        const intent = workspaceIntentRouter.parse(prompt, activeCtx)
+        const intent = workspaceIntentRouter.parse(prompt, {
+          activeFileName: activeCtx?.fileName,
+          activeFileId: activeCtx?.fileId
+        })
         return { success: true, intent, activeContext: activeCtx }
       })
     }
@@ -978,7 +981,10 @@ export async function handleApiRequest(
       const client = getMem0()
       if (client) {
         try {
-          const results = await client.search(query, { userId: uid, topK: limit })
+          const results = await client.search(query, {
+            topK: limit,
+            filters: { user_id: uid }
+          } as any)
           return sendJson(res, 200, { results, source: 'mem0_cloud' })
         } catch (err) {
           console.warn('[Server] Mem0 cloud search fallback to local store:', err)
@@ -1011,7 +1017,9 @@ export async function handleApiRequest(
       const client = getMem0()
       if (client) {
         try {
-          const results = await client.getAll({ userId: uid })
+          const results = await client.getAll({
+            filters: { user_id: uid }
+          } as any)
           return sendJson(res, 200, { results, source: 'mem0_cloud' })
         } catch (err) {
           console.warn('[Server] Mem0 cloud getAll fallback:', err)
@@ -1250,7 +1258,8 @@ export async function handleApiRequest(
           'Content-Length': item.buffer.length,
           'Cache-Control': 'public, max-age=86400, immutable'
         })
-        return res.end(item.buffer)
+        res.end(item.buffer)
+        return
       }
       return sendJson(res, 404, { error: 'Image not found' })
     }
@@ -1283,7 +1292,8 @@ export async function handleApiRequest(
           'Content-Length': buffer.length,
           'Cache-Control': 'public, max-age=86400, immutable'
         })
-        return res.end(buffer)
+        res.end(buffer)
+        return
       } catch (err: any) {
         return sendJson(res, 502, { error: err?.message || 'Image proxy error' })
       }

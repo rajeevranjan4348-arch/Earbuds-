@@ -48,6 +48,8 @@ export class TrendDiscoveryEngine {
       // Generate objective selection reasoning
       const selectionReason = this.generateSelectionReason(seed, opportunityScore, dupCheck.isDuplicate)
 
+      // Widened so live feeds (not just the curated seeds below) can raise risk.
+      const seedRisk: string = seed.safetyPolicyRisk
       const topic: TrendTopic = {
         id: `topic_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         title: seed.title,
@@ -66,7 +68,7 @@ export class TrendDiscoveryEngine {
         selectionReason,
         factualClaims: seed.factualClaims,
         copyrightRisk: seed.copyrightRisk,
-        requiresHumanReview: seed.requiresHumanReview || dupCheck.isDuplicate || seed.safetyPolicyRisk === 'HIGH',
+        requiresHumanReview: seed.requiresHumanReview || dupCheck.isDuplicate || seedRisk === 'HIGH',
         isDuplicate: dupCheck.isDuplicate,
         duplicateMatchId: dupCheck.matchTitle
       }

@@ -3,6 +3,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
 
+// Populate process.env from .env / .env.local so the Node-side API middleware
+// (mounted below) sees the same secrets as the standalone production server.
+import { loadEnv as loadIrisEnv } from './src/server/env'
+import { hydrateRuntimeKeys } from './src/server/keyStore'
+
+loadIrisEnv()
+hydrateRuntimeKeys()
+
 export default defineConfig({
   plugins: [
     react(),

@@ -74,8 +74,12 @@ export class EmbeddingsEngine {
               contents: cleanText
             })
 
-            if (resp && resp.embedding && resp.embedding.values) {
-              results[globalIdx] = resp.embedding.values
+            // The GenAI SDK returns an `embeddings[]` array (one entry per
+            // embedded content part).
+            const vector =
+              resp?.embeddings?.[0]?.values ?? (resp as any)?.embedding?.values
+            if (vector) {
+              results[globalIdx] = vector
             } else {
               results[globalIdx] = this.fallbackTfIdfVector(text)
             }

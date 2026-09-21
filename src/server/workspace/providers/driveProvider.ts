@@ -12,6 +12,7 @@ import {
   WorkspaceSearchResult
 } from '../types'
 import { workspaceDocumentParser } from '../parser'
+import { extractPdfText } from '../../lib/pdf'
 
 export class GoogleDriveProvider extends WorkspaceProvider {
   public readonly service: WorkspaceServiceType = 'drive'
@@ -221,8 +222,7 @@ export class GoogleDriveProvider extends WorkspaceProvider {
         const buffer = Buffer.from(arrayBuffer)
         try {
           // Attempt text extraction
-          const pdfParse = (await import('pdf-parse')).default
-          const pdfData = await pdfParse(buffer)
+          const pdfData = await extractPdfText(buffer)
           rawText = pdfData.text || ''
 
           if (!rawText.trim()) {
