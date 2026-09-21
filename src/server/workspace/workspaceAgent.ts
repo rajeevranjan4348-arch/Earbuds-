@@ -47,7 +47,10 @@ export class WorkspaceAgent {
     const activeCtx = workspaceContextMemory.getActiveFile(userId)
 
     // 1. Parse natural language intent
-    const intent = workspaceIntentRouter.parse(prompt, activeCtx)
+    const intent = workspaceIntentRouter.parse(prompt, {
+      activeFileName: activeCtx?.fileName,
+      activeFileId: activeCtx?.fileId
+    })
     workspaceContextMemory.recordQuery(userId, prompt)
 
     // 2. Check for destructive action requiring confirmation

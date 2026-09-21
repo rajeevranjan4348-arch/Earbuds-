@@ -5,6 +5,50 @@ Format: `[version] — [codename] — [date]`
 
 ---
 
+## [v1.7.1] — The Runtime Completion Update
+
+> _September 2026_
+
+### ✨ New Features
+
+- **Standalone production server** (`src/server/http.ts`, `src/server/standalone.ts`):
+  one Node process now serves the built front-end **and** the entire `/api/*`
+  backend (`npm run build` → `npm run build:server` → `npm start`).
+- **Embedded backend for Electron**: the desktop app boots the same server on a
+  loopback port and loads the renderer from it, so `/api/*`, `localStorage`,
+  microphone and camera work identically to the web build.
+- **Complete main-process IPC layer** (`src/main/ipc.ts`): window controls,
+  system telemetry drives, native app launch/close, on-disk notes & gallery,
+  ADB bridge, accessibility dispatch and the OS-keychain API vault.
+- **Secure key vault** (`src/main/lib/keys.ts`): Settings → API Keys are encrypted
+  with `safeStorage` (Keychain / DPAPI / libsecret) and hot-swapped into the
+  backend environment; the web build mirrors them to `.iris-keys.json` (0600).
+- **`iris-media://` protocol** streams locally captured media into the renderer
+  without `file://` workarounds.
+- **Runtime key endpoint** `POST /api/keys` + `GET /api/keys` (status only).
+- **Tooling**: `dev:electron`, `build:server`, `build:electron`, `build:all`,
+  `start`, `serve`, `dist:win|mac|linux`, `typecheck` scripts; CI now type checks
+  and compiles both the client and the Node server.
+
+### 🐛 Bug Fixes
+
+- **PDF ingestion** rewritten on the `pdf-parse` v2 class API (`PDFParse`),
+  restoring RAG document indexing and Drive PDF import.
+- **Gemini embeddings** now read `embeddings[0].values` (v2 SDK response shape).
+- Fixed workspace intent routing (active-file context was passed in the wrong
+  shape) and Mem0 search/getAll user scoping.
+- Fixed `MemoryItem` field usage in Settings (`createdAt` / `category`), the
+  `source` enum, and an optional-iterator crash in the voice service.
+- Cloud SQL is now optional: without `SQL_DB_NAME` the map/workspace stores fall
+  back to memory instead of timing out per request.
+
+### 📚 Documentation
+
+- Rewrote `docs/GETTING_STARTED.md` and `docs/DEPLOYMENT.md` with the real
+  commands, environment variables and web-vs-desktop capability matrix.
+
+---
+
 ## [v1.7.0] — The Apex Update
 
 > _July 2026_

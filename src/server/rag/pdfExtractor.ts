@@ -7,7 +7,7 @@
  */
 
 import crypto from 'crypto'
-import pdfParse from 'pdf-parse'
+import { extractPdfText } from '../lib/pdf'
 import { ExtractedPage } from './types'
 import { GoogleGenAI } from '@google/genai'
 
@@ -43,38 +43,22 @@ export class PDFExtractor {
     const pages: ExtractedPage[] = []
 
     try {
-      // 1. Parse with pdf-parse with custom page render hook
-      const pageTexts: string[] = []
-      const customOptions = {
-        pagerender: function (pageData: any) {
-          return pageData.getTextContent().then((textContent: any) => {
-            let lastY: number | null = null
-            let text = ''
-            for (const item of textContent.items) {
-              if (lastY == null || Math.abs(lastY - item.transform[5]) > 4) {
-                text += '\n' + item.str
-              } else {
-                text += ' ' + item.str
-              }
-              lastY = item.transform[5]
-            }
-            return text
-          })
-        }
-      }
+      // 1. Parse the PDF (pdf-parse v2 class API via the compatibility layer)
+      const parsed = await extractPdfText(buffer)
+      const rawText = parsed.text || ''
+      const numPages = parsed.numpages || parsed.pages.length || 1
 
-      const pdfData = await pdfParse(buffer, customOptions)
-      const rawText = pdfData.text || ''
-      const numPages = pdfData.numpages || 1
-
-      // Split rawText into per-page segments if page marker available, or synthesize
-      const rawPageSplits = rawText.split(/\n(?=Page\s+\d+|[\f])/i)
+      // Prefer the parser's own page segmentation, fall back to marker splitting
+      const pageSegments: string[] =
+        parsed.pages.length === numPages
+          ? parsed.pages.map((page) => page.text || '')
+          : rawText.split(/\n(?=Page\s+\d+|[\f])/i)
 
       let currentSection = 'Introduction'
       let totalExtractedLength = 0
 
       for (let i = 1; i <= numPages; i++) {
-        let pageText = rawPageSplits[i - 1] || ''
+        let pageText = pageSegments[i - 1] || ''
         if (!pageText.trim() && numPages === 1) {
           pageText = rawText
         }

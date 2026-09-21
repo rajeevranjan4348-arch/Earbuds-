@@ -78,7 +78,13 @@ class VoiceService {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.isRunning && this.isRecognitionActive) {
         this.stopRecognition()
-      } else if (!document.hidden && this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
+      } else if (
+        !document.hidden &&
+        this.isRunning &&
+        !this.isMuted &&
+        !this.isSpeaking &&
+        !this.isProcessing
+      ) {
         this.startRecognition()
       }
     })
@@ -462,8 +468,10 @@ class VoiceService {
     }
     this.processedRequestIds.add(requestId)
     if (this.processedRequestIds.size > 200) {
-      const iter = this.processedRequestIds.values()
-      this.processedRequestIds.delete(iter.next().value)
+      const oldest = this.processedRequestIds.values().next()
+      if (typeof oldest.value === 'string') {
+        this.processedRequestIds.delete(oldest.value)
+      }
     }
 
     this.isProcessing = true
