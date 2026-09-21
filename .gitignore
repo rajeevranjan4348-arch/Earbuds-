@@ -24,3 +24,6 @@ gmail_token.json
 # Local runtime secrets written by the Settings UI
 .iris-keys.json
 iris-vault.enc
+
+# Local smoke-test captures
+screenshots/
