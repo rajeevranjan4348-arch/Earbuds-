@@ -10,14 +10,18 @@ import {
   RiSave3Line,
   RiCloseLine,
   RiEditLine,
-  RiArrowLeftLine
+  RiArrowLeftLine,
+  RiCloudLine
 } from 'react-icons/ri'
+import { auth, firestore } from '../lib/firebase'
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'
 
 interface Note {
+  id: string
   filename: string
   title: string
   content: string
-  createdAt: Date
+  createdAt: Date | string
 }
 
 const MarkdownComponents = {
@@ -37,33 +41,86 @@ const MarkdownComponents = {
   }
 }
 
+const LOCAL_STORAGE_KEY = 'iris_persisted_notes'
+
 const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
   const [notes, setNotes] = useState<Note[]>([])
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
-
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
-  const [editOriginalFilename, setEditOriginalFilename] = useState<string | null>(null)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [isCloudSynced, setIsCloudSynced] = useState(false)
 
-  const fetchNotes = async () => {
+  // Listen to Firestore if authenticated, or localStorage
+  useEffect(() => {
+    const unsubAuth = auth.onAuthStateChanged((user) => {
+      if (user) {
+        const notesRef = collection(firestore, 'users', user.uid, 'notes')
+        const q = query(notesRef, orderBy('createdAt', 'desc'))
+        const unsubFirestore = onSnapshot(
+          q,
+          (snapshot) => {
+            const loaded: Note[] = []
+            snapshot.forEach((d) => {
+              const data = d.data()
+              loaded.push({
+                id: d.id,
+                filename: d.id,
+                title: data.title || 'Untitled Note',
+                content: data.content || '',
+                createdAt: data.createdAt?.toDate
+                  ? data.createdAt.toDate()
+                  : data.createdAt || new Date()
+              })
+            })
+            setNotes(loaded)
+            setIsCloudSynced(true)
+          },
+          (err) => {
+            console.warn('Firestore snapshot notice:', err.message)
+            loadLocalNotes()
+          }
+        )
+        return () => unsubFirestore()
+      } else {
+        loadLocalNotes()
+        return undefined
+      }
+    })
+
+    return () => unsubAuth()
+  }, [])
+
+  const loadLocalNotes = () => {
     try {
-      const data = await window.electron.ipcRenderer.invoke('get-notes')
-      setNotes(data)
-    } catch (e) {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setNotes(parsed)
+      } else {
+        // Initial welcome note
+        const initial: Note[] = [
+          {
+            id: 'note_intro_01',
+            filename: 'note_intro_01',
+            title: 'IRIS NEURAL MEMORY ARCHITECTURE',
+            content:
+              '# Welcome to IRIS Memory Bank\n\n- **Cloud Storage**: Firebase Firestore & Cloud SQL PostgreSQL (asia-southeast1)\n- **Live Workspace**: Bidirectional link with Google Drive, Gmail, Docs, Sheets, Calendar & Tasks\n- **Spatial Engine**: Google Maps GIS telemetry with custom waypoints\n\nAll notes and transcripts persist securely across sessions.',
+            createdAt: new Date()
+          }
+        ]
+        setNotes(initial)
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initial))
+      }
+    } catch {
+      // Fallback
     }
   }
 
-  useEffect(() => {
-    fetchNotes()
-    const interval = setInterval(fetchNotes, 3000) 
-    return () => clearInterval(interval)
-  }, [])
-
-
   const startCreating = () => {
     setSelectedNote(null)
-    setEditOriginalFilename(null)
+    setEditId(null)
     setNewTitle('')
     setNewContent('')
     setIsEditorOpen(true)
@@ -71,49 +128,75 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
 
   const startEditing = () => {
     if (!selectedNote) return
-
-    setEditOriginalFilename(selectedNote.filename)
+    setEditId(selectedNote.id)
     setNewTitle(selectedNote.title)
-
-    const cleanContent = selectedNote.content.replace(/^# .+\n\n/, '')
-    setNewContent(cleanContent)
-
+    setNewContent(selectedNote.content)
     setIsEditorOpen(true)
   }
 
   const cancelEditor = () => {
     setIsEditorOpen(false)
-    setEditOriginalFilename(null)
+    setEditId(null)
   }
 
   const saveManualNote = async () => {
     if (!newTitle.trim() || !newContent.trim()) return
 
+    const user = auth.currentUser
+    const id = editId || `note_${Date.now()}`
+    const noteObj: Note = {
+      id,
+      filename: id,
+      title: newTitle.trim(),
+      content: newContent.trim(),
+      createdAt: new Date().toISOString()
+    }
 
-    await window.electron.ipcRenderer.invoke('save-note', {
-      title: newTitle,
-      content: newContent
+    if (user) {
+      try {
+        await setDoc(doc(firestore, 'users', user.uid, 'notes', id), {
+          id,
+          userId: user.uid,
+          title: newTitle.trim(),
+          content: newContent.trim(),
+          createdAt: new Date()
+        })
+      } catch (err) {
+        console.warn('Firestore write fallback to local:', err)
+      }
+    }
+
+    // Always update local state & localStorage
+    setNotes((prev) => {
+      const filtered = prev.filter((n) => n.id !== id)
+      const nextList = [noteObj, ...filtered]
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextList))
+      return nextList
     })
 
     setIsEditorOpen(false)
-    setEditOriginalFilename(null)
-    fetchNotes()
-
-    setTimeout(() => {
-      window.electron.ipcRenderer.invoke('get-notes').then((data: Note[]) => {
-        const created = data.find((n) =>
-          n.title.toLowerCase().includes(newTitle.toLowerCase().replace(/ /g, '_'))
-        )
-        if (created) setSelectedNote(created)
-      })
-    }, 500)
+    setEditId(null)
+    setSelectedNote(noteObj)
   }
 
-  const deleteNote = async (filename: string, e: React.MouseEvent) => {
+  const deleteNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    await window.electron.ipcRenderer.invoke('delete-note', filename)
-    fetchNotes()
-    if (selectedNote?.filename === filename) setSelectedNote(null)
+    const user = auth.currentUser
+    if (user) {
+      try {
+        await deleteDoc(doc(firestore, 'users', user.uid, 'notes', id))
+      } catch (err) {
+        console.warn('Firestore delete error:', err)
+      }
+    }
+
+    setNotes((prev) => {
+      const nextList = prev.filter((n) => n.id !== id)
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(nextList))
+      return nextList
+    })
+
+    if (selectedNote?.id === id) setSelectedNote(null)
   }
 
   return (
@@ -131,7 +214,14 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-zinc-500 font-mono mr-2">{notes.length} ITEMS</span>
+            {isCloudSynced ? (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                <RiCloudLine size={12} />
+                <span>FIRESTORE</span>
+              </span>
+            ) : (
+              <span className="text-[10px] text-zinc-500 font-mono mr-2">{notes.length} ITEMS</span>
+            )}
             <button
               onClick={startCreating}
               className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg hover:bg-emerald-500 hover:text-black transition-all cursor-pointer"
@@ -151,20 +241,24 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
           ) : (
             notes.map((note) => (
               <div
-                key={note.filename}
+                key={note.id}
                 onClick={() => {
                   setIsEditorOpen(false)
                   setSelectedNote(note)
                 }}
                 className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                  selectedNote?.filename === note.filename && !isEditorOpen
+                  selectedNote?.id === note.id && !isEditorOpen
                     ? 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]'
                     : 'bg-zinc-900/40 border-white/5 hover:bg-white/5 hover:border-white/10'
                 }`}
               >
                 <div className="overflow-hidden">
                   <h3
-                    className={`text-xs font-bold truncate ${selectedNote?.filename === note.filename && !isEditorOpen ? 'text-emerald-100' : 'text-zinc-200'}`}
+                    className={`text-xs font-bold truncate ${
+                      selectedNote?.id === note.id && !isEditorOpen
+                        ? 'text-emerald-100'
+                        : 'text-zinc-200'
+                    }`}
                   >
                     {note.title.toUpperCase()}
                   </h3>
@@ -174,7 +268,7 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
                 </div>
 
                 <button
-                  onClick={(e) => deleteNote(note.filename, e)}
+                  onClick={(e) => deleteNote(note.id, e)}
                   className="opacity-60 md:opacity-0 md:group-hover:opacity-100 p-2 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                 >
                   <RiDeleteBinLine size={14} />
@@ -232,7 +326,7 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
                 disabled={!newTitle || !newContent}
                 className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-emerald-500 text-black font-bold text-xs rounded-lg hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                <RiSave3Line /> {editOriginalFilename ? 'UPDATE MEMORY' : 'SAVE TO MEMORY'}
+                <RiSave3Line /> {editId ? 'UPDATE MEMORY' : 'SAVE TO MEMORY'}
               </button>
             </div>
           </div>
@@ -248,7 +342,9 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
                   <RiArrowLeftLine size={18} />
                 </button>
                 <RiMarkdownLine size={18} className="opacity-50 shrink-0" />
-                <span className="text-xs font-bold tracking-wider truncate">{selectedNote.title}</span>
+                <span className="text-xs font-bold tracking-wider truncate">
+                  {selectedNote.title}
+                </span>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 <span className="text-[9px] font-mono text-zinc-400 bg-black/20 px-2 py-1 rounded">

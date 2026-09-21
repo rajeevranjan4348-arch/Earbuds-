@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
   Send,
   Plus,
@@ -8,24 +11,13 @@ import {
   MessageSquare,
   X,
   Search,
-  Sparkles
+  Sparkles,
+  Mic
 } from 'lucide-react'
+import { chatHistoryService, Message, ChatSession } from '../../services/chatHistoryService'
+import MicrophoneInputButton from './MicrophoneInputButton'
 
-export interface Message {
-  id: string
-  requestId?: string
-  role: 'user' | 'model' | 'system'
-  text: string
-  timestamp?: number
-}
-
-export interface ChatSession {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messages: Message[]
-}
+export type { Message, ChatSession }
 
 interface RightPanelProps {
   interimTranscript?: string
@@ -33,16 +25,13 @@ interface RightPanelProps {
   onSendPrompt?: (text: string) => void
 }
 
-const SESSIONS_STORAGE_KEY = 'iris_chat_sessions_v2'
-const ACTIVE_SESSION_STORAGE_KEY = 'iris_active_session_id'
-
 function formatSessionTime(timestamp: number): string {
   const now = Date.now()
   const diffMs = now - timestamp
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
   const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
+  const diffDay = Math.floor(diffDayCalc(diffHour))
 
   if (diffSec < 60) return 'Just now'
   if (diffMin < 60) return `${diffMin}m ago`
@@ -56,21 +45,8 @@ function formatSessionTime(timestamp: number): string {
   })
 }
 
-function loadStoredSessions(): ChatSession[] {
-  try {
-    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch (_e) {
-    return []
-  }
-}
-
-function saveStoredSessions(sessions: ChatSession[]) {
-  try {
-    localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions))
-  } catch (_e) {}
+function diffDayCalc(hours: number): number {
+  return Math.floor(hours / 24)
 }
 
 /**
@@ -116,15 +92,11 @@ export default function RightPanel({
   isListening = false,
   onSendPrompt
 }: RightPanelProps) {
-  // Session State
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadStoredSessions())
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-    const saved = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
-    if (saved) return saved
-    const newId = `session_${Date.now()}`
-    localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, newId)
-    return newId
-  })
+  // Session State backed by chatHistoryService
+  const [sessions, setSessions] = useState<ChatSession[]>(() => chatHistoryService.getSessions())
+  const [activeSessionId, setActiveSessionId] = useState<string>(() =>
+    chatHistoryService.getActiveSessionId()
+  )
 
   const [chatHistory, setChatHistory] = useState<Message[]>([])
   const [showHistory, setShowHistory] = useState(false)
@@ -140,13 +112,18 @@ export default function RightPanel({
   const seenChunksPerRequestRef = useRef<Map<string, Set<number>>>(new Map())
   const lastChunkRecordRef = useRef<Map<string, { text: string; time: number }>>(new Map())
   const lastSubmissionRef = useRef<{ text: string; time: number }>({ text: '', time: 0 })
+  const lastSavedHashRef = useRef<string>('')
 
   // 1. Initial hydration of chat history from active session or memory
   useEffect(() => {
     let isMounted = true
 
-    const currentSavedSession = sessions.find((s) => s.id === activeSessionId)
+    const allSessions = chatHistoryService.getSessions()
+    const currentSavedSession = allSessions.find((s) => s.id === activeSessionId)
     if (currentSavedSession && currentSavedSession.messages.length > 0) {
+      lastSavedHashRef.current = `${activeSessionId}_${currentSavedSession.messages.length}_${
+        currentSavedSession.messages[currentSavedSession.messages.length - 1]?.text || ''
+      }`
       setChatHistory(currentSavedSession.messages)
       for (const m of currentSavedSession.messages) {
         seenMessageIdsRef.current.add(m.id)
@@ -164,7 +141,8 @@ export default function RightPanel({
           const map = new Map<string, Message>()
           for (let i = 0; i < pastMemories.length; i++) {
             const m = pastMemories[i]
-            const id = m.id || `hist_${m.role || 'sys'}_${i}_${m.text?.slice(0, 16).replace(/\s+/g, '')}`
+            const id =
+              m.id || `hist_${m.role || 'sys'}_${i}_${m.text?.slice(0, 16).replace(/\s+/g, '')}`
             map.set(id, {
               id,
               requestId: m.requestId,
@@ -218,10 +196,23 @@ export default function RightPanel({
         const cleanUserText = normalizeDuplicateTokens(data.text)
 
         setChatHistory((prev) => {
-          if (prev.some((m) => m.id === userMsgId || (m.requestId === reqId && m.role === 'user'))) {
+          if (
+            prev.some((m) => m.id === userMsgId || (m.requestId === reqId && m.role === 'user'))
+          ) {
             return prev
           }
-          return [...prev, { id: userMsgId, requestId: reqId, role: 'user', text: cleanUserText }].slice(-50)
+          const userMsg: Message = {
+            id: userMsgId,
+            messageId: userMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'user',
+            text: cleanUserText,
+            content: cleanUserText,
+            timestamp: (data as any).timestamp || Date.now(),
+            inputType: (data as any).inputType || 'voice'
+          }
+          return [...prev, userMsg].slice(-50)
         })
       } else if (role === 'model') {
         const assistantMsgId = data.id || `msg_model_${reqId}`
@@ -289,16 +280,21 @@ export default function RightPanel({
             const updated = [...prev]
             updated[existingIdx] = {
               ...current,
-              text: nextText
+              text: nextText,
+              content: nextText
             }
             return updated
           } else {
             const newAssistantMsg: Message = {
               id: assistantMsgId,
+              messageId: assistantMsgId,
+              conversationId: activeSessionId,
               requestId: reqId,
               role: 'model',
               text: data.text,
-              timestamp: now
+              content: data.text,
+              timestamp: now,
+              inputType: (data as any).inputType || 'voice'
             }
             return [...prev, newAssistantMsg].slice(-50)
           }
@@ -311,6 +307,7 @@ export default function RightPanel({
       requestId?: string
       role?: string
       text?: string
+      status?: 'success' | 'failed'
     }) => {
       if (!isMounted) return
 
@@ -329,9 +326,13 @@ export default function RightPanel({
           if (idx >= 0) {
             const raw = data?.text || prev[idx].text
             const cleaned = normalizeDuplicateTokens(raw.trim())
-            if (cleaned === prev[idx].text) return prev
             const updated = [...prev]
-            updated[idx] = { ...updated[idx], text: cleaned }
+            updated[idx] = {
+              ...updated[idx],
+              text: cleaned,
+              content: cleaned,
+              status: data?.status || 'success'
+            }
             return updated
           }
           return prev
@@ -370,14 +371,23 @@ export default function RightPanel({
   useEffect(() => {
     if (chatHistory.length === 0) return
 
-    setSessions((prevSessions) => {
-      const userFirstMsg = chatHistory.find((m) => m.role === 'user')
-      const titleSnippet = userFirstMsg ? userFirstMsg.text.slice(0, 36) : 'Conversation'
+    const currentHash = `${activeSessionId}_${chatHistory.length}_${
+      chatHistory[chatHistory.length - 1]?.text || ''
+    }`
+    if (currentHash === lastSavedHashRef.current) return
+    lastSavedHashRef.current = currentHash
 
+    const userFirstMsg = chatHistory.find((m) => m.role === 'user')
+    const titleSnippet = userFirstMsg ? userFirstMsg.text.slice(0, 36) : 'Conversation'
+
+    setSessions((prevSessions) => {
       const existingIdx = prevSessions.findIndex((s) => s.id === activeSessionId)
       let nextSessions: ChatSession[]
 
       if (existingIdx >= 0) {
+        if (prevSessions[existingIdx].messages === chatHistory) {
+          return prevSessions
+        }
         nextSessions = [...prevSessions]
         nextSessions[existingIdx] = {
           ...nextSessions[existingIdx],
@@ -399,7 +409,7 @@ export default function RightPanel({
         nextSessions = [newSession, ...prevSessions]
       }
 
-      saveStoredSessions(nextSessions)
+      chatHistoryService.saveSessions(nextSessions)
       return nextSessions
     })
   }, [chatHistory, activeSessionId])
@@ -413,9 +423,8 @@ export default function RightPanel({
 
   // New Chat Handler
   const handleNewChat = () => {
-    const newId = `session_${Date.now()}`
+    const newId = chatHistoryService.createNewSession()
     setActiveSessionId(newId)
-    localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, newId)
 
     setChatHistory([])
     setActiveStreamingId(null)
@@ -433,10 +442,63 @@ export default function RightPanel({
     }
   }
 
+  // External sync listeners (from IRISRoot sidebar or history actions)
+  useEffect(() => {
+    const handleExtNewChat = (e: any) => {
+      const newId = e.detail || chatHistoryService.createNewSession()
+      setActiveSessionId(newId)
+      setChatHistory([])
+      setActiveStreamingId(null)
+      activeRequestIdRef.current = null
+      seenMessageIdsRef.current.clear()
+      seenChunksPerRequestRef.current.clear()
+      lastChunkRecordRef.current.clear()
+      setShowHistory(false)
+    }
+    const handleExtLoadSession = (e: any) => {
+      if (e.detail) {
+        handleSelectSession(e.detail)
+      }
+    }
+    const handleExtToggleHistory = () => {
+      setShowHistory((prev) => !prev)
+    }
+    const handleExtSessionsUpdated = (e: any) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        const updated = e.detail as ChatSession[]
+        setSessions((prev) => {
+          if (prev.length === updated.length && prev[0]?.updatedAt === updated[0]?.updatedAt) {
+            return prev
+          }
+          return updated
+        })
+      }
+    }
+    const handleExtActiveSessionChanged = (e: any) => {
+      if (e.detail && typeof e.detail === 'string') {
+        setActiveSessionId(e.detail)
+      }
+    }
+
+    window.addEventListener('iris:new-chat', handleExtNewChat)
+    window.addEventListener('iris:load-session', handleExtLoadSession)
+    window.addEventListener('iris:toggle-history', handleExtToggleHistory)
+    window.addEventListener('iris:sessions-updated', handleExtSessionsUpdated)
+    window.addEventListener('iris:active-session-changed', handleExtActiveSessionChanged)
+
+    return () => {
+      window.removeEventListener('iris:new-chat', handleExtNewChat)
+      window.removeEventListener('iris:load-session', handleExtLoadSession)
+      window.removeEventListener('iris:toggle-history', handleExtToggleHistory)
+      window.removeEventListener('iris:sessions-updated', handleExtSessionsUpdated)
+      window.removeEventListener('iris:active-session-changed', handleExtActiveSessionChanged)
+    }
+  }, [])
+
   // Restore past session
   const handleSelectSession = (session: ChatSession) => {
+    chatHistoryService.setActiveSessionId(session.id)
     setActiveSessionId(session.id)
-    localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, session.id)
 
     setChatHistory(session.messages)
     seenMessageIdsRef.current.clear()
@@ -452,9 +514,8 @@ export default function RightPanel({
   // Delete specific session
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const updated = sessions.filter((s) => s.id !== sessionId)
+    const updated = chatHistoryService.deleteSession(sessionId)
     setSessions(updated)
-    saveStoredSessions(updated)
 
     if (sessionId === activeSessionId) {
       handleNewChat()
@@ -464,8 +525,8 @@ export default function RightPanel({
   // Clear all history
   const handleClearAllSessions = () => {
     if (window.confirm('Clear all conversation history?')) {
+      chatHistoryService.clearAllSessions()
       setSessions([])
-      saveStoredSessions([])
       handleNewChat()
     }
   }
@@ -519,32 +580,32 @@ export default function RightPanel({
           </div>
         </div>
 
-        {/* Buttons in place of the live area */}
+        {/* Buttons in place of the live area - icon buttons only without names */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={handleNewChat}
             title="Start New Chat"
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg transition-all cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
+            aria-label="New Chat"
+            className="flex items-center justify-center p-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg transition-all cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
           >
-            <Plus size={13} strokeWidth={2.5} />
-            <span className="font-sans">New Chat</span>
+            <Plus size={14} strokeWidth={2.5} />
           </button>
 
           <button
             type="button"
             onClick={() => setShowHistory(!showHistory)}
             title={showHistory ? 'Return to conversation' : 'View chat history'}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer active:scale-95 ${
+            aria-label="History"
+            className={`flex items-center justify-center gap-1 p-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer active:scale-95 ${
               showHistory
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                 : 'bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 border-white/10'
             }`}
           >
-            <History size={13} />
-            <span className="font-sans">History</span>
+            <History size={14} />
             {sessions.length > 0 && (
-              <span className="ml-0.5 px-1.5 py-0.2 bg-white/10 text-emerald-400 rounded-full text-[10px] font-mono">
+              <span className="px-1.5 py-0.2 bg-white/10 text-emerald-400 rounded-full text-[10px] font-mono leading-none">
                 {sessions.length}
               </span>
             )}
@@ -577,7 +638,10 @@ export default function RightPanel({
           {/* Search Box */}
           {sessions.length > 0 && (
             <div className="mt-3 relative shrink-0">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500"
+              />
               <input
                 type="text"
                 value={historySearch}
@@ -653,7 +717,9 @@ export default function RightPanel({
 
                     <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-0.5">
                       <span>{session.messages.length} messages</span>
-                      {isActive && <span className="text-emerald-400 font-mono font-medium">Active</span>}
+                      {isActive && (
+                        <span className="text-emerald-400 font-mono font-medium">Active</span>
+                      )}
                     </div>
                   </div>
                 )
@@ -711,50 +777,113 @@ export default function RightPanel({
               <div className="flex flex-col gap-1.5 w-full max-w-xs pt-2">
                 {[
                   'What is IRIS and what can you do?',
-                  'Search codebase for AICoreSphere',
-                  'System telemetry status'
+                  'Search uploaded PDF documents for key insights',
+                  'Search the web for latest AI breakthroughs',
+                  'Generate an image of cybernetic neural core',
+                  'Create architecture diagram of microservices',
+                  'Scientific research on quantum entanglement',
+                  'Search codebase for AICoreSphere'
                 ].map((prompt, idx) => (
-                  <button
+                  <motion.button
                     key={idx}
+                    whileHover={{ x: 3, scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setInputVal(prompt)
                     }}
-                    className="w-full text-left px-3 py-2 text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-all cursor-pointer truncate"
+                    className="w-full text-left px-3 py-2 text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"
                   >
                     &gt; {prompt}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
           )}
 
-          {chatHistory.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[90%] sm:max-w-[80%] p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg break-words overflow-wrap-anywhere ${
-                  msg.role === 'user'
-                    ? 'bg-emerald-600/20 text-emerald-100 border border-emerald-500/25 rounded-br-md shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                    : 'bg-white/5 text-gray-200 border border-white/5 rounded-bl-md'
-                }`}
+          <AnimatePresence initial={false}>
+            {chatHistory.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.text}
-                {msg.id === activeStreamingId && (
-                  <span className="inline-block w-1.5 h-4 ml-1 bg-emerald-400 rounded-full animate-pulse align-middle"></span>
-                )}
-              </div>
-            </div>
-          ))}
+                <div
+                  className={`max-w-[90%] sm:max-w-[85%] p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg break-words overflow-wrap-anywhere ${
+                    msg.role === 'user'
+                      ? 'bg-emerald-600/20 text-emerald-100 border border-emerald-500/25 rounded-br-md shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+                      : 'bg-white/5 text-gray-200 border border-white/5 rounded-bl-md'
+                  }`}
+                >
+                  {msg.role === 'user' ? (
+                    <span>{msg.text}</span>
+                  ) : (
+                    <div className="text-xs sm:text-sm leading-relaxed space-y-2">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          img: ({ node, ...props }) => (
+                            <img
+                              {...props}
+                              className="rounded-xl max-h-72 w-auto object-cover border border-white/10 my-2 shadow-lg"
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                            />
+                          ),
+                          a: ({ node, ...props }) => (
+                            <a
+                              {...props}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 break-all"
+                            />
+                          ),
+                          code: ({ node, inline, className, children, ...props }: any) => {
+                            return (
+                              <code
+                                className={`${className || ''} bg-black/40 px-1.5 py-0.5 rounded text-[11px] font-mono text-emerald-300 border border-white/5`}
+                                {...props}
+                              >
+                                {children}
+                              </code>
+                            )
+                          },
+                          pre: ({ node, children, ...props }: any) => {
+                            return (
+                              <pre
+                                className="bg-black/60 p-2.5 rounded-xl border border-white/10 my-2 overflow-x-auto text-[11px] font-mono text-zinc-200"
+                                {...props}
+                              >
+                                {children}
+                              </pre>
+                            )
+                          }
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                  {msg.id === activeStreamingId && (
+                    <span className="inline-block w-1.5 h-4 ml-1 bg-emerald-400 rounded-full animate-pulse align-middle"></span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {interimTranscript && (
-            <div className="flex justify-end">
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-end"
+            >
               <div className="max-w-[90%] sm:max-w-[85%] p-2.5 sm:p-3 rounded-2xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-br-md text-xs leading-relaxed shadow-lg flex items-center gap-2 break-words">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
                 <span className="italic font-mono truncate">Listening: "{interimTranscript}"</span>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       )}
@@ -762,18 +891,37 @@ export default function RightPanel({
       {/* Input Form at bottom */}
       <form
         onSubmit={handleSubmit}
-        className="p-2 sm:p-2.5 border-t border-white/5 bg-zinc-950/90 flex items-center gap-2 shrink-0 z-10"
+        className="p-2 sm:p-2.5 border-t border-white/5 bg-zinc-950/90 flex items-center gap-1.5 sm:gap-2 shrink-0 z-10"
       >
         <div className="relative flex-1 flex items-center">
           <input
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            placeholder={isListening ? 'Speak or type command...' : 'Type voice command or query...'}
+            placeholder={
+              isListening ? 'Speak or type command...' : 'Type voice command or query...'
+            }
             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm sm:text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
           />
         </div>
-        <button
+
+        {/* Dedicated Microphone Input Handler (Web Speech API & Gemini AI fallback) */}
+        <MicrophoneInputButton
+          size="md"
+          autoExecute={true}
+          onInterimText={(text) => {
+            // Display live voice interim text if desired
+          }}
+          onCommandTriggered={(cmd) => {
+            if (onSendPrompt) {
+              onSendPrompt(cmd)
+            }
+          }}
+        />
+
+        <motion.button
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.92 }}
           type="submit"
           disabled={!inputVal.trim() || isSubmitting}
           className={`p-2.5 sm:p-2 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
@@ -784,7 +932,7 @@ export default function RightPanel({
           title="Send query"
         >
           <Send size={15} />
-        </button>
+        </motion.button>
       </form>
     </div>
   )

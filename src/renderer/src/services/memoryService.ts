@@ -3,7 +3,7 @@
  * Implements ChatGPT-style long-term user memory, short-term conversational context,
  * semantic memory search, automatic memory extraction, explicit memory controls,
  * and strict user-specific memory isolation scoped to the authenticated Firebase user.
- * 
+ *
  * Complies with the official Mem0 API (https://github.com/mem0ai/mem0.git).
  */
 
@@ -43,22 +43,49 @@ const PREFERENCE_CATEGORIES: Array<{
   {
     category: 'framework',
     keywords: ['react', 'vue', 'angular', 'svelte', 'nextjs', 'solid', 'nuxt'],
-    conflictPattern: /(?:use|prefer|switched to|work with|migrated to)\s+(react|vue|angular|svelte|next\.?js|solid|nuxt)/i
+    conflictPattern:
+      /(?:use|prefer|switched to|work with|migrated to)\s+(react|vue|angular|svelte|next\.?js|solid|nuxt)/i
   },
   {
     category: 'language',
-    keywords: ['typescript', 'javascript', 'python', 'rust', 'go', 'golang', 'java', 'c#', 'c++', 'ruby', 'kotlin', 'swift'],
-    conflictPattern: /(?:use|prefer|code in|write in|switched to)\s+(typescript|javascript|python|rust|go|golang|java|c#|c\+\+|ruby|kotlin|swift)/i
+    keywords: [
+      'typescript',
+      'javascript',
+      'python',
+      'rust',
+      'go',
+      'golang',
+      'java',
+      'c#',
+      'c++',
+      'ruby',
+      'kotlin',
+      'swift'
+    ],
+    conflictPattern:
+      /(?:use|prefer|code in|write in|switched to)\s+(typescript|javascript|python|rust|go|golang|java|c#|c\+\+|ruby|kotlin|swift)/i
   },
   {
     category: 'database',
-    keywords: ['firebase', 'firestore', 'supabase', 'postgres', 'postgresql', 'mysql', 'mongodb', 'sqlite', 'redis'],
-    conflictPattern: /(?:use|database is|backed by|store in)\s+(firebase|firestore|supabase|postgres(?:ql)?|mysql|mongodb|sqlite|redis)/i
+    keywords: [
+      'firebase',
+      'firestore',
+      'supabase',
+      'postgres',
+      'postgresql',
+      'mysql',
+      'mongodb',
+      'sqlite',
+      'redis'
+    ],
+    conflictPattern:
+      /(?:use|database is|backed by|store in)\s+(firebase|firestore|supabase|postgres(?:ql)?|mysql|mongodb|sqlite|redis)/i
   },
   {
     category: 'styling',
     keywords: ['tailwind', 'css', 'styled-components', 'sass', 'bootstrap', 'vanilla css'],
-    conflictPattern: /(?:use|style with|prefer)\s+(tailwind(?:css)?|css modules|styled-components|sass|bootstrap)/i
+    conflictPattern:
+      /(?:use|style with|prefer)\s+(tailwind(?:css)?|css modules|styled-components|sass|bootstrap)/i
   },
   {
     category: 'theme',
@@ -149,7 +176,9 @@ class MemoryService {
 
     if (detectedCategory) {
       const conflictingIdx = existing.findIndex(
-        (m) => m.category === detectedCategory && this.isContradictory(m.memory, cleanText, detectedCategory)
+        (m) =>
+          m.category === detectedCategory &&
+          this.isContradictory(m.memory, cleanText, detectedCategory)
       )
 
       if (conflictingIdx >= 0) {
@@ -181,9 +210,7 @@ class MemoryService {
     }
 
     // 2. Prevent exact duplicate memories
-    const duplicate = existing.find(
-      (m) => m.memory.toLowerCase() === cleanText.toLowerCase()
-    )
+    const duplicate = existing.find((m) => m.memory.toLowerCase() === cleanText.toLowerCase())
     if (duplicate) {
       return duplicate
     }
@@ -260,11 +287,7 @@ class MemoryService {
   /**
    * 4. UPDATE MEMORY
    */
-  public async updateMemory(
-    memoryId: string,
-    text: string,
-    userId?: string
-  ): Promise<boolean> {
+  public async updateMemory(memoryId: string, text: string, userId?: string): Promise<boolean> {
     const activeUid = this.getActiveUserId(userId)
     const list = this.loadLocalMemories(activeUid)
     const idx = list.findIndex((m) => m.id === memoryId && m.userId === activeUid)
@@ -392,8 +415,29 @@ class MemoryService {
 
   private tokenize(str: string): string[] {
     const stopWords = new Set([
-      'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'to', 'in', 'of',
-      'for', 'with', 'about', 'by', 'do', 'i', 'my', 'you', 'your', 'what', 'who'
+      'the',
+      'is',
+      'at',
+      'which',
+      'on',
+      'a',
+      'an',
+      'and',
+      'or',
+      'to',
+      'in',
+      'of',
+      'for',
+      'with',
+      'about',
+      'by',
+      'do',
+      'i',
+      'my',
+      'you',
+      'your',
+      'what',
+      'who'
     ])
     return str
       .toLowerCase()
@@ -418,7 +462,11 @@ class MemoryService {
     }
   }
 
-  private async fetchServerSearch(query: string, userId: string, limit: number): Promise<MemoryItem[] | null> {
+  private async fetchServerSearch(
+    query: string,
+    userId: string,
+    limit: number
+  ): Promise<MemoryItem[] | null> {
     if (typeof window === 'undefined' || !window.fetch) return null
     try {
       const res = await fetch('/api/memory/search', {
@@ -475,7 +523,13 @@ class MemoryService {
       lower.includes('forget my preference') ||
       lower.includes('forget my previous preference')
     ) {
-      let target = trimmed.replace(/^forget\s+/i, '').replace(/^(that|my previous preference|my preference about|my preference regarding)\s*/i, '').trim()
+      let target = trimmed
+        .replace(/^forget\s+/i, '')
+        .replace(
+          /^(that|my previous preference|my preference about|my preference regarding)\s*/i,
+          ''
+        )
+        .trim()
       return { type: 'FORGET', target: target || undefined }
     }
 

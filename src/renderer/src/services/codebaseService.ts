@@ -192,7 +192,9 @@ class ClientCodebaseService {
     depth = 3
   ): Promise<ClientProjectStructure | null> {
     try {
-      const res = await fetch(`/api/codebase/structure?projectId=${encodeURIComponent(projectId)}&depth=${depth}`)
+      const res = await fetch(
+        `/api/codebase/structure?projectId=${encodeURIComponent(projectId)}&depth=${depth}`
+      )
       if (!res.ok) return null
       const data = await res.json()
       return data.structure || null

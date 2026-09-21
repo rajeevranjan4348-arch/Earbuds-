@@ -10,9 +10,16 @@ import { detectLaunchAppIntent, launch_app } from './launcher'
 import { memoryService, MemoryItem } from './memoryService'
 import { firebaseAuthService } from './firebaseAuth'
 import { clientCodebaseService } from './codebaseService'
+import { agentLoop, execute_agent_task, confirm_pending_action } from './androidControl'
+import { webSearchService } from './webSearchService'
+import { locationService } from './locationService'
+import { agentClientService } from './agentClientService'
 
 export type VoiceCommandIntent =
+  | 'PLAN_EXECUTION_AGENT'
   | 'launch_app'
+  | 'android_control'
+  | 'SECURITY_CONFIRMATION'
   | 'NAVIGATE'
   | 'VISION_MODE'
   | 'CAPTURE_SNAPSHOT'
@@ -28,6 +35,7 @@ export type VoiceCommandIntent =
   | 'ADB_SCREENSHOT'
   | 'ADB_REBOOT'
   | 'SYSTEM_TELEMETRY'
+  | 'LIVE_LOCATION'
   | 'APP_LAUNCH'
   | 'AUDIO_CONTROL'
   | 'CALCULATION'
@@ -47,7 +55,13 @@ export type VoiceCommandIntent =
   | 'CODEBASE_STRUCTURE'
   | 'CODEBASE_EXPLAIN'
   | 'CODEBASE_SYMBOL'
-
+  | 'WEB_SEARCH'
+  | 'WEB_BROWSE'
+  | 'DEEP_RESEARCH'
+  | 'WEB_SEARCH_QA'
+  | 'IMAGE_GENERATION'
+  | 'DIAGRAM_GENERATION'
+  | 'SCIENTIFIC_RESEARCH'
 
 export interface CommandProcessResult {
   handled: boolean
@@ -59,11 +73,14 @@ export interface CommandProcessResult {
 }
 
 export interface CommandProcessorContext {
-  navigate?: (tab: 'DASHBOARD' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS') => void
+  navigate?: (
+    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
+  ) => void
   setVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
   setMuted?: (muted: boolean) => void
   stopSpeaking?: () => void
   setStatusMessage?: (msg: string) => void
+  setKnowledgeOpen?: (open: boolean) => void
 }
 
 /**
@@ -148,6 +165,18 @@ class VoiceCommandProcessor {
       }
     }
 
+    // 0. Pending Security Confirmation Check (OpenDroid / Android Agent Safety Protocol)
+    const confirmationResult = await this.checkPendingConfirmation(cleaned, originalText)
+    if (confirmationResult) return confirmationResult
+
+    // 0.02 Smart Listening + Multi-Step Plan Execution Agent
+    const planAgentResult = await this.checkPlanExecutionAgent(cleaned, originalText, context)
+    if (planAgentResult) return planAgentResult
+
+    // 0.05 Autonomous Android Control & Multi-Step Agent Tasks (OpenDroid & Android Agent Loop)
+    const androidControlResult = await this.checkAndroidControl(cleaned, originalText, context)
+    if (androidControlResult) return androidControlResult
+
     // 0. Mem0 Explicit Memory Commands ("Remember that...", "What do you remember about me?", "Forget that", "Clear memories")
     const memoryCmdResult = await this.checkExplicitMemoryCommands(originalText, cleaned)
     if (memoryCmdResult) return memoryCmdResult
@@ -160,6 +189,13 @@ class VoiceCommandProcessor {
     const codebaseCmdResult = await this.checkCodebaseCommands(originalText, cleaned)
     if (codebaseCmdResult) return codebaseCmdResult
 
+    // 0.3 Web Search & Browsing Commands (SearXNG / DuckDuckGo / Tavily / Reader)
+    const webSearchResult = await this.checkWebSearchCommands(originalText, cleaned)
+    if (webSearchResult) return webSearchResult
+
+    // 0.4 Specialized Agency Commands (FLUX #20, Diagram Design #05, Scientific Agent Skills #04)
+    const specializedResult = await this.checkSpecializedAgencyCommands(originalText, cleaned)
+    if (specializedResult) return specializedResult
 
     // 1. Navigation Core
     const navResult = this.checkNavigation(cleaned, context)
@@ -184,6 +220,10 @@ class VoiceCommandProcessor {
     // 6. System Telemetry & Hardware Health
     const telemetryResult = await this.checkSystemTelemetry(cleaned, context)
     if (telemetryResult) return telemetryResult
+
+    // 6.5. Live Location & Spatial Telemetry Access
+    const locationResult = await this.checkLiveLocation(cleaned, context)
+    if (locationResult) return locationResult
 
     // 8. Voice & Audio Interface Controls
     const audioResult = this.checkAudioControls(cleaned, context)
@@ -210,6 +250,55 @@ class VoiceCommandProcessor {
     return qaResult
   }
 
+  // ==========================================
+  // 0.02 SMART LISTENING + PLAN EXECUTION AGENT
+  // ==========================================
+  private async checkPlanExecutionAgent(
+    cleaned: string,
+    originalText: string,
+    _context: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    const lower = cleaned.toLowerCase()
+
+    // Trigger patterns for multi-step goals, plan orchestration, or YouTube autonomous pipelines
+    const isExplicitPlan =
+      lower.startsWith('plan ') ||
+      lower.startsWith('execute plan ') ||
+      lower.startsWith('agent execute ') ||
+      lower.startsWith('run pipeline ') ||
+      lower.startsWith('autonomous ')
+
+    const isMultiStepGoal =
+      (lower.includes(' and then ') ||
+        lower.includes(' after that ') ||
+        (lower.includes('trend') && (lower.includes('video') || lower.includes('script') || lower.includes('produce'))) ||
+        (lower.includes('pdf') && (lower.includes('diagram') || lower.includes('flowchart'))) ||
+        (lower.includes('search') && (lower.includes('image') || lower.includes('diagram')))) &&
+      lower.length > 22
+
+    if (!isExplicitPlan && !isMultiStepGoal) {
+      return null
+    }
+
+    try {
+      const execResult = await agentClientService.executeListeningPlan(originalText, 'voice')
+      return {
+        handled: true,
+        intent: 'PLAN_EXECUTION_AGENT',
+        actionExecuted: 'EXECUTE_PLAN',
+        spokenResponse: execResult.spokenResponse,
+        displayText: execResult.displayText,
+        metadata: {
+          task: execResult.task,
+          completedSteps: execResult.task.finalResponse?.completedSteps,
+          totalSteps: execResult.task.finalResponse?.totalSteps
+        }
+      }
+    } catch (err: any) {
+      console.warn('[VoiceCommandProcessor] Plan Execution Agent fallback:', err)
+      return null
+    }
+  }
 
   // ==========================================
   // 1. NAVIGATION CORE
@@ -284,6 +373,97 @@ class VoiceCommandProcessor {
         intent: 'NAVIGATE',
         actionExecuted: 'NAVIGATE_SETTINGS',
         spokenResponse: 'Switching to IRIS system settings and configuration.'
+      }
+    }
+
+    if (
+      cleaned.includes('open workspace') ||
+      cleaned.includes('show workspace') ||
+      cleaned.includes('google workspace') ||
+      cleaned.includes('workspace hub') ||
+      cleaned.includes('google drive') ||
+      cleaned.includes('open drive') ||
+      cleaned.includes('show drive') ||
+      cleaned.includes('open gmail') ||
+      cleaned.includes('check email') ||
+      cleaned.includes('show email') ||
+      cleaned.includes('open calendar') ||
+      cleaned.includes('show calendar') ||
+      cleaned.includes('my calendar') ||
+      cleaned === 'workspace'
+    ) {
+      context.navigate?.('WORKSPACE')
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_WORKSPACE',
+        spokenResponse: 'Opening Google Workspace Gateway.'
+      }
+    }
+
+    if (
+      cleaned.includes('open map') ||
+      cleaned.includes('show map') ||
+      cleaned.includes('google map') ||
+      cleaned.includes('live map') ||
+      cleaned.includes('location map') ||
+      cleaned.includes('street view') ||
+      cleaned === 'maps' ||
+      cleaned === 'map'
+    ) {
+      context.navigate?.('MAPS')
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_MAPS',
+        spokenResponse: 'Switching to Google Maps interactive satellite view.'
+      }
+    }
+
+    if (
+      cleaned.includes('open youtube') ||
+      cleaned.includes('show youtube') ||
+      cleaned.includes('youtube player') ||
+      cleaned.includes('watch video') ||
+      cleaned === 'youtube'
+    ) {
+      context.navigate?.('YOUTUBE')
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_YOUTUBE',
+        spokenResponse: 'Opening YouTube media terminal.'
+      }
+    }
+
+    if (
+      cleaned.includes('open document') ||
+      cleaned.includes('open knowledge') ||
+      cleaned.includes('pdf knowledge') ||
+      cleaned.includes('rag document') ||
+      cleaned.includes('show documents') ||
+      cleaned.includes('upload pdf')
+    ) {
+      context.setKnowledgeOpen?.(true)
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'OPEN_KNOWLEDGE_DOCUMENTS',
+        spokenResponse: 'Opening PDF and Multimodal Knowledge Ingestion overlay.'
+      }
+    }
+
+    if (
+      cleaned.includes('close document') ||
+      cleaned.includes('close knowledge') ||
+      cleaned.includes('hide documents')
+    ) {
+      context.setKnowledgeOpen?.(false)
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'CLOSE_KNOWLEDGE_DOCUMENTS',
+        spokenResponse: 'Closing Knowledge Ingestion overlay.'
       }
     }
 
@@ -778,6 +958,77 @@ class VoiceCommandProcessor {
   }
 
   // ==========================================
+  // 6.5. LIVE LOCATION & SPATIAL TELEMETRY
+  // ==========================================
+  private async checkLiveLocation(
+    cleaned: string,
+    _context: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    const isLocationQuery =
+      cleaned.includes('where am i') ||
+      cleaned.includes('what is my location') ||
+      cleaned.includes("what's my location") ||
+      cleaned.includes('my location') ||
+      cleaned.includes('current location') ||
+      cleaned.includes('live location') ||
+      cleaned.includes('where are we') ||
+      cleaned.includes('my coordinates') ||
+      cleaned.includes('current coordinates') ||
+      cleaned.includes('track my location') ||
+      cleaned.includes('track location') ||
+      cleaned.includes('start tracking') ||
+      cleaned.includes('what city am i in') ||
+      cleaned.includes('where am i right now') ||
+      cleaned.includes('get my location') ||
+      cleaned.includes('gps coordinates') ||
+      cleaned.includes('find my position') ||
+      cleaned.includes('show location')
+
+    if (!isLocationQuery) return null
+
+    if (cleaned.includes('start tracking') || cleaned.includes('track my location')) {
+      locationService.startTracking()
+    }
+
+    let loc = locationService.getState().location
+    if (!loc) {
+      loc = await locationService.requestFix()
+    }
+
+    if (loc) {
+      const coordsStr = locationService.formatCoordinates(loc.latitude, loc.longitude)
+      const placeStr = loc.city
+        ? `${loc.city}${loc.region ? `, ${loc.region}` : ''}${loc.country ? `, ${loc.country}` : ''}`
+        : loc.displayName || coordsStr
+
+      const accStr = loc.accuracy ? `with ±${Math.round(loc.accuracy)} meters accuracy` : ''
+      const spoken = `You are currently in ${placeStr}, coordinates ${coordsStr} ${accStr}.`
+
+      return {
+        handled: true,
+        intent: 'LIVE_LOCATION',
+        actionExecuted: 'ACQUIRE_LIVE_LOCATION',
+        spokenResponse: spoken,
+        metadata: {
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          city: loc.city,
+          country: loc.country,
+          formattedCoordinates: coordsStr,
+          mapsUrl: locationService.getMapsUrl(loc.latitude, loc.longitude)
+        }
+      }
+    }
+
+    return {
+      handled: true,
+      intent: 'LIVE_LOCATION',
+      spokenResponse:
+        'Live location access was requested, but GPS satellites could not be locked yet. Please ensure location permissions are enabled in your browser.'
+    }
+  }
+
+  // ==========================================
   // 7. ANDROID AI APP LAUNCHER PIPELINE
   // ==========================================
   private async checkAppLauncher(
@@ -825,7 +1076,11 @@ class VoiceCommandProcessor {
       }
     }
 
-    if (lower === 'settings' || lower === 'preferences' || lower === 'configuration') {
+    if (
+      lower === 'iris settings' ||
+      lower === 'assistant settings' ||
+      lower === 'iris configuration'
+    ) {
       context?.navigate?.('SETTINGS')
       return {
         handled: true,
@@ -858,6 +1113,167 @@ class VoiceCommandProcessor {
         app: result.app
       }
     }
+  }
+
+  // ==========================================
+  // 0.3 SECURITY CONFIRMATION INTERCEPTION
+  // ==========================================
+  private async checkPendingConfirmation(
+    cleaned: string,
+    _originalText: string
+  ): Promise<CommandProcessResult | null> {
+    if (!agentLoop.hasPendingConfirmation()) {
+      return null
+    }
+
+    const lower = cleaned.toLowerCase().trim()
+    const confirmWords = [
+      'yes',
+      'confirm',
+      'proceed',
+      'go ahead',
+      'sure',
+      'do it',
+      'approved',
+      'continue',
+      'ok',
+      'okay',
+      'yes please',
+      'send it',
+      'allow'
+    ]
+    const cancelWords = [
+      'no',
+      'cancel',
+      'stop',
+      'abort',
+      "don't",
+      "don't do it",
+      'never mind',
+      'reject',
+      "don't send",
+      'do not proceed',
+      'disallow'
+    ]
+
+    const isConfirmed = confirmWords.some(
+      (w) => lower === w || lower.startsWith(`${w} `) || lower.endsWith(` ${w}`)
+    )
+    const isCancelled = cancelWords.some(
+      (w) => lower === w || lower.startsWith(`${w} `) || lower.endsWith(` ${w}`)
+    )
+
+    if (isConfirmed) {
+      const outcome = await confirm_pending_action(true)
+      return {
+        handled: true,
+        intent: 'SECURITY_CONFIRMATION',
+        actionExecuted: 'CONFIRMATION_APPROVED',
+        spokenResponse: outcome.spokenResponse,
+        displayText: outcome.displayText,
+        metadata: {
+          approved: true,
+          status: outcome.status,
+          summary: outcome.summary
+        }
+      }
+    }
+
+    if (isCancelled) {
+      const outcome = await confirm_pending_action(false)
+      return {
+        handled: true,
+        intent: 'SECURITY_CONFIRMATION',
+        actionExecuted: 'CONFIRMATION_CANCELLED',
+        spokenResponse: outcome.spokenResponse,
+        displayText: outcome.displayText,
+        metadata: {
+          approved: false,
+          status: outcome.status,
+          summary: outcome.summary
+        }
+      }
+    }
+
+    // Pending confirmation is active but user gave an unrelated response; prompt gently
+    return {
+      handled: true,
+      intent: 'SECURITY_CONFIRMATION',
+      spokenResponse:
+        'A sensitive action is awaiting your confirmation. Please say "confirm" to proceed or "cancel" to stop.',
+      displayText:
+        '🔒 **Security Confirmation Required**\n\nPlease reply with **"Confirm"** to proceed or **"Cancel"** to abort the sensitive operation.'
+    }
+  }
+
+  // ==========================================
+  // 0.4 ANDROID CONTROL & AUTONOMOUS AGENT
+  // ==========================================
+  private async checkAndroidControl(
+    cleaned: string,
+    originalText: string,
+    _context?: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    const lower = cleaned.toLowerCase().trim()
+
+    // 1. Multi-step task triggers (e.g., "search youtube for minecraft", "open maps and search for india gate")
+    const isSearchAppFor = /^search\s+[a-z0-9\s]+?\s+for\s+.+$/i.test(lower)
+    const isOpenAndSearch = /^open\s+[a-z0-9\s]+?\s+(?:and|then)\s+search(?:\s+for)?\s+.+$/i.test(
+      lower
+    )
+    const isOpenAndMessage =
+      /^open\s+[a-z0-9]+\s+(?:and|then)\s+(?:send\s+message|message|text)\s+.+$/i.test(lower)
+
+    // 2. Direct screen actions & gestures
+    const isScroll = /^(?:scroll|swipe)\s+(?:down|up|left|right)$/i.test(lower)
+    const isBack = /^(?:go\s+back|press\s+back|back)$/i.test(lower)
+    const isHome = /^(?:press\s+home|go\s+home|home\s+screen)$/i.test(lower)
+    const isTapElement = /^(?:tap|click|press)(?:\s+on|\s+the)?\s+[a-z0-9\s]+$/i.test(lower)
+    const isTypeText = /^(?:type|enter|input)(?:\s+this\s+text)?\s+.+$/i.test(lower)
+    const isClearText = /^(?:clear\s+text|clear\s+input(?:\s+field)?)$/i.test(lower)
+    const isFindElement =
+      /^(?:find|locate)(?:\s+the)?\s+[a-z0-9\s]+?(?:\s+option|\s+button|\s+setting|\s+element)?$/i.test(
+        lower
+      )
+    const isScreenStateQuery =
+      /^(?:what\s+is\s+on\s+(?:the\s+)?screen|get\s+screen\s+state|inspect\s+screen)$/i.test(lower)
+
+    if (
+      isSearchAppFor ||
+      isOpenAndSearch ||
+      isOpenAndMessage ||
+      isScroll ||
+      isBack ||
+      isHome ||
+      isTapElement ||
+      isTypeText ||
+      isClearText ||
+      isFindElement ||
+      isScreenStateQuery
+    ) {
+      console.log(`[VoiceCommandProcessor] Routing to Android Agent: "${originalText}"`)
+      const outcome = await execute_agent_task(originalText)
+
+      return {
+        handled: true,
+        intent: 'android_control',
+        actionExecuted: `ANDROID_AGENT_${outcome.status}`,
+        spokenResponse: outcome.spokenResponse,
+        displayText: outcome.displayText,
+        metadata: {
+          status: outcome.status,
+          goal: outcome.goal,
+          summary: outcome.summary,
+          stepsExecuted: outcome.stepsExecuted,
+          totalSteps: outcome.totalSteps,
+          pendingConfirmation: outcome.pendingConfirmation,
+          screenState: outcome.screenState,
+          error: outcome.error
+        }
+      }
+    }
+
+    return null
   }
 
   // ==========================================
@@ -1141,8 +1557,9 @@ class VoiceCommandProcessor {
     }
 
     // 2. Codebase Search
-    const searchMatch =
-      cleaned.match(/^(?:search codebase for|search code for|codebase search|find in codebase|find code for|find code)\s+(.+)$/i)
+    const searchMatch = cleaned.match(
+      /^(?:search codebase for|search code for|codebase search|find in codebase|find code for|find code)\s+(.+)$/i
+    )
     if (searchMatch) {
       const query = searchMatch[1].trim()
       const results = await clientCodebaseService.searchCodebase(query, undefined, 5)
@@ -1206,8 +1623,9 @@ class VoiceCommandProcessor {
     }
 
     // 4. Find Symbol Definition
-    const symbolMatch =
-      cleaned.match(/^(?:find symbol|where is symbol|find function|find class|find interface)\s+([a-zA-Z0-9_$]+)$/i)
+    const symbolMatch = cleaned.match(
+      /^(?:find symbol|where is symbol|find function|find class|find interface)\s+([a-zA-Z0-9_$]+)$/i
+    )
     if (symbolMatch) {
       const symName = symbolMatch[1].trim()
       const symbols = await clientCodebaseService.findSymbol(symName)
@@ -1220,7 +1638,9 @@ class VoiceCommandProcessor {
         }
       }
 
-      const locations = symbols.map((s) => `${s.name} (${s.kind}) in ${s.filePath}:${s.line}`).join('\n')
+      const locations = symbols
+        .map((s) => `${s.name} (${s.kind}) in ${s.filePath}:${s.line}`)
+        .join('\n')
       return {
         handled: true,
         intent: 'CODEBASE_SYMBOL',
@@ -1231,8 +1651,9 @@ class VoiceCommandProcessor {
     }
 
     // 5. Find References
-    const refMatch =
-      cleaned.match(/^(?:find references to|where is)\s+([a-zA-Z0-9_$]+)(?:\s+used)?$/i)
+    const refMatch = cleaned.match(
+      /^(?:find references to|where is)\s+([a-zA-Z0-9_$]+)(?:\s+used)?$/i
+    )
     if (refMatch && (cleaned.includes('references') || cleaned.includes('used'))) {
       const symName = refMatch[1].trim()
       const refs = await clientCodebaseService.findReferences(symName)
@@ -1253,6 +1674,264 @@ class VoiceCommandProcessor {
         spokenResponse: `Symbol "${symName}" is referenced in:\n${sites}`,
         metadata: { references: refs }
       }
+    }
+
+    return null
+  }
+
+  // ==========================================
+  // WEB SEARCH, BROWSING & RESEARCH COMMANDS
+  // ==========================================
+  private async checkWebSearchCommands(
+    originalText: string,
+    cleaned: string
+  ): Promise<CommandProcessResult | null> {
+    // 1. URL Browsing / Reading: e.g. "browse https://example.com" or "read webpage https://..."
+    const urlMatch = originalText.match(/https?:\/\/[^\s]+/i)
+    const isBrowseIntent =
+      cleaned.startsWith('browse') ||
+      cleaned.startsWith('read webpage') ||
+      cleaned.startsWith('read page') ||
+      cleaned.startsWith('open url') ||
+      cleaned.startsWith('visit') ||
+      cleaned.startsWith('fetch page')
+
+    if (urlMatch && isBrowseIntent) {
+      const url = urlMatch[0]
+      const page = await webSearchService.browseUrl(url, 2500)
+      if (!page.success) {
+        return {
+          handled: true,
+          intent: 'WEB_BROWSE',
+          actionExecuted: 'WEB_BROWSE_FAILED',
+          spokenResponse: `Could not extract content from ${url}: ${page.content}`
+        }
+      }
+
+      const snippet = page.content.slice(0, 300).trim()
+      return {
+        handled: true,
+        intent: 'WEB_BROWSE',
+        actionExecuted: 'WEB_BROWSE_SUCCESS',
+        spokenResponse: `Extracted "${page.title || url}": ${snippet}`,
+        metadata: { url, title: page.title, content: page.content }
+      }
+    }
+
+    // 2. Deep Research: e.g. "deep research on quantum computing", "research artificial intelligence"
+    const researchMatch = cleaned.match(
+      /^(?:deep research on|deep research|research topic|conduct research on|research)\s+(.+)$/i
+    )
+    if (researchMatch) {
+      const topic = researchMatch[1].trim()
+      const research = await webSearchService.research(topic, 'deep')
+      if (!research) {
+        return {
+          handled: true,
+          intent: 'DEEP_RESEARCH',
+          actionExecuted: 'DEEP_RESEARCH_FAILED',
+          spokenResponse: `Deep research could not be completed for "${topic}" at this moment.`
+        }
+      }
+
+      const sourcesList = (research.sources || [])
+        .map((s: any) => `[${s.index}] [${s.title}](${s.url}) (${s.domain})`)
+        .join('\n')
+
+      const responseText = `${research.summary}\n\n**Key Findings:**\n${(research.keyFindings || []).join('\n')}\n\n**Sources:**\n${sourcesList}`
+
+      return {
+        handled: true,
+        intent: 'DEEP_RESEARCH',
+        actionExecuted: 'DEEP_RESEARCH_SUCCESS',
+        spokenResponse: `Completed research on "${topic}". Found ${research.sources?.length || 0} authoritative sources. ${research.summary}`,
+        displayText: responseText,
+        metadata: { research }
+      }
+    }
+
+    // 3. News Inquiries: e.g. "latest news on spacex", "news about artificial intelligence"
+    const newsMatch = cleaned.match(
+      /^(?:latest news on|latest news about|news about|news on|breaking news on)\s+(.+)$/i
+    )
+    if (newsMatch) {
+      const query = newsMatch[1].trim()
+      const outcome = await webSearchService.search(query, { category: 'news', limit: 4 })
+
+      const sourcesMarkdown =
+        outcome.citations.length > 0
+          ? '\n\n**Sources:**\n' +
+            outcome.citations
+              .map((c) => `[${c.index}] [${c.title}](${c.url}) (${c.domain})`)
+              .join('\n')
+          : ''
+
+      const displayText = `${outcome.spokenAnswer}${sourcesMarkdown}`
+
+      return {
+        handled: true,
+        intent: 'WEB_SEARCH',
+        actionExecuted: 'WEB_SEARCH_NEWS',
+        spokenResponse: outcome.spokenAnswer || `Found latest news on ${query}.`,
+        displayText,
+        metadata: {
+          query,
+          results: outcome.results,
+          citations: outcome.citations,
+          provider: outcome.provider
+        }
+      }
+    }
+
+    // 4. Explicit Search Commands: e.g. "search the web for...", "search web for...", "google...", "search online for..."
+    const searchMatch = cleaned.match(
+      /^(?:search the web for|search web for|search online for|search google for|google for|web search for|search web|search online|look up on the web|look up online|look up)\s+(.+)$/i
+    )
+    if (searchMatch) {
+      const query = searchMatch[1].trim()
+      const outcome = await webSearchService.search(query, { category: 'general', limit: 4 })
+
+      const sourcesMarkdown =
+        outcome.citations.length > 0
+          ? '\n\n**Sources:**\n' +
+            outcome.citations
+              .map((c) => `[${c.index}] [${c.title}](${c.url}) (${c.domain})`)
+              .join('\n')
+          : ''
+
+      const displayText = `${outcome.spokenAnswer}${sourcesMarkdown}`
+
+      return {
+        handled: true,
+        intent: 'WEB_SEARCH',
+        actionExecuted: 'WEB_SEARCH_EXPLICIT',
+        spokenResponse: outcome.spokenAnswer || `Searched the web for ${query}.`,
+        displayText,
+        metadata: {
+          query,
+          results: outcome.results,
+          citations: outcome.citations,
+          provider: outcome.provider
+        }
+      }
+    }
+
+    return null
+  }
+
+  // ==========================================
+  // SPECIALIZED AGENCY COMMANDS (FLUX #20, DIAGRAMS #05, SCIENTIFIC RESEARCH #04)
+  // ==========================================
+  private async checkSpecializedAgencyCommands(
+    originalText: string,
+    cleaned: string
+  ): Promise<CommandProcessResult | null> {
+    // 1. FLUX Image Generation (FLUX #20)
+    const imageMatch =
+      originalText.match(
+        /^(?:generate an image of|create an image of|generate image of|draw an image of|draw a|paint a|flux image of|flux image|generate picture of|create image of)\s+(.+)$/i
+      ) || cleaned.match(/^(?:generate image|create image|draw picture|paint image)\s+(.+)$/i)
+
+    if (imageMatch) {
+      const prompt = imageMatch[1].trim()
+      try {
+        const res = await fetch('/api/image/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, aspectRatio: '1:1' })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.imageUrl) {
+            const markdownDisplay = `![${prompt}](${data.imageUrl})\n\n**FLUX Generation:** "${prompt}" (${data.model})`
+            return {
+              handled: true,
+              intent: 'IMAGE_GENERATION',
+              actionExecuted: 'FLUX_IMAGE_GENERATE',
+              spokenResponse: `Generated image for: "${prompt}". Rendering visual output.`,
+              displayText: markdownDisplay,
+              metadata: { imageUrl: data.imageUrl, model: data.model }
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+
+    // 2. Diagram Design (Diagram Design #05)
+    const diagramMatch = originalText.match(
+      /^(?:generate diagram of|draw flowchart of|create architecture diagram of|create sequence diagram of|flowchart of|architecture diagram of|generate diagram|create diagram)\s+(.+)$/i
+    )
+
+    if (diagramMatch) {
+      const title = diagramMatch[1].trim()
+      let type: 'flowchart' | 'sequence' | 'architecture' | 'state' = 'flowchart'
+      if (title.toLowerCase().includes('architecture') || cleaned.includes('architecture')) {
+        type = 'architecture'
+      } else if (title.toLowerCase().includes('sequence') || cleaned.includes('sequence')) {
+        type = 'sequence'
+      } else if (title.toLowerCase().includes('state') || cleaned.includes('state')) {
+        type = 'state'
+      }
+
+      try {
+        const res = await fetch('/api/diagram/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, type })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.diagram) {
+            const d = data.diagram
+            const display = `### ${d.title}\n\n\`\`\`mermaid\n${d.mermaidCode}\`\`\`\n\n${d.asciiDiagram ? '```\n' + d.asciiDiagram + '\n```' : ''}`
+            return {
+              handled: true,
+              intent: 'DIAGRAM_GENERATION',
+              actionExecuted: 'GENERATE_DIAGRAM',
+              spokenResponse: `Generated ${d.type} diagram for ${title}.`,
+              displayText: display,
+              metadata: { diagram: d }
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+
+    // 3. Scientific Research Workflow (Scientific Agent Skills #04)
+    const scientificMatch = originalText.match(
+      /^(?:scientific research on|empirical study on|literature review on|academic research on)\s+(.+)$/i
+    )
+
+    if (scientificMatch) {
+      const topic = scientificMatch[1].trim()
+      try {
+        const res = await fetch('/api/research/scientific', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic })
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.success && data.report) {
+            const rep = data.report
+            const evidence = rep.evidenceMatrix
+              .map((e: any) => `- **Evidence:** ${e.claim}`)
+              .join('\n')
+            const refs = rep.references
+              .map((r: any) => `[${r.index}] [${r.title}](${r.url})`)
+              .join('\n')
+            const display = `## Scientific Report: ${rep.topic}\n\n**Abstract:** ${rep.abstract}\n\n**Hypothesis:** ${rep.hypothesis.statement}\n\n${evidence}\n\n**Synthesis:** ${rep.synthesis}\n\n**References:**\n${refs}`
+            return {
+              handled: true,
+              intent: 'SCIENTIFIC_RESEARCH',
+              actionExecuted: 'SCIENTIFIC_EVALUATION',
+              spokenResponse: `Completed scientific synthesis for ${topic}. Formulated empirical hypothesis and compiled peer evidence.`,
+              displayText: display,
+              metadata: { report: rep }
+            }
+          }
+        }
+      } catch (_e) {}
     }
 
     return null
@@ -1304,9 +1983,7 @@ class VoiceCommandProcessor {
     }
 
     // 2. Automatic Memory Extraction: Check if this turn contains stable facts/preferences worth remembering
-    memoryService
-      .extractAndSaveAutomaticMemory(originalText, '', currentUid)
-      .catch(() => {})
+    memoryService.extractAndSaveAutomaticMemory(originalText, '', currentUid).catch(() => {})
 
     // 3. If query relates to user preferences/history, prioritize answering using retrieved Mem0 memory
     if (relevantMemories.length > 0) {
@@ -1483,12 +2160,33 @@ class VoiceCommandProcessor {
       if (apiRes.ok) {
         const data = await apiRes.json()
         if (data?.text) {
+          const isWebGrounded = Boolean(
+            (data.webSourcesCount && data.webSourcesCount > 0) ||
+            (data.citations && data.citations.length > 0)
+          )
+
+          let intent: VoiceCommandIntent = 'CONVERSATIONAL_AI'
+          let actionExecuted = 'GEMINI_SERVER_ANSWER'
+
+          if (isWebGrounded) {
+            intent = 'WEB_SEARCH_QA'
+            actionExecuted = 'WEB_SEARCH_GROUNDED_ANSWER'
+          } else if (codebaseContext.length > 0) {
+            intent = 'CODEBASE_EXPLAIN'
+            actionExecuted = 'CLAUDE_CONTEXT_ANSWER'
+          }
+
           return {
             handled: true,
-            intent: codebaseContext.length > 0 ? 'CODEBASE_EXPLAIN' : 'CONVERSATIONAL_AI',
-            actionExecuted: codebaseContext.length > 0 ? 'CLAUDE_CONTEXT_ANSWER' : 'GEMINI_SERVER_ANSWER',
+            intent,
+            actionExecuted,
             spokenResponse: data.text,
-            metadata: { codebaseSnippets: codebaseContext.length }
+            metadata: {
+              codebaseSnippets: codebaseContext.length,
+              webSources: data.webSourcesCount || 0,
+              citations: data.citations || [],
+              searchQuery: data.searchQuery
+            }
           }
         }
       }
@@ -1502,6 +2200,5 @@ class VoiceCommandProcessor {
     }
   }
 }
-
 
 export const voiceCommandProcessor = new VoiceCommandProcessor()

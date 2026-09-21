@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera,
   Mic,
@@ -16,6 +17,7 @@ import {
 import RightPanel from '@renderer/components/UI/RightPanel'
 import LeftPanels from '@renderer/components/UI/LeftPanels'
 import AICore from '@renderer/components/UI/AICoreSphere'
+import { LiveLocationCard } from '@renderer/components/UI/LiveLocationCard'
 
 interface DashboardProps {
   isConnected: boolean
@@ -63,11 +65,16 @@ export default function Dashboard({
   }
 
   const quickVoicePrompts = [
+    { label: 'YouTube Trends', prompt: "Find today's trending topics for YouTube." },
+    { label: 'Produce Video', prompt: 'Create a 60-second Short on autonomous AI agents' },
+    { label: 'PDF Docs', prompt: 'Search my uploaded PDF documents for summary and key data' },
+    { label: 'My Location', prompt: 'Where am I right now? Live location telemetry' },
     { label: 'System Stats', prompt: 'System telemetry status' },
-    { label: 'Open Notes', prompt: 'Open notes' },
-    { label: 'Take Note', prompt: 'Take note: Review system telemetry today' },
-    { label: 'Turn on Lens', prompt: 'Turn on camera' },
-    { label: 'What is IRIS?', prompt: 'What is IRIS and what can you do?' }
+    { label: 'Search Web', prompt: 'Search the web for latest AI breakthroughs' },
+    { label: 'FLUX Image', prompt: 'Generate an image of cybernetic neural city' },
+    { label: 'Diagram', prompt: 'Create architecture diagram of microservices' },
+    { label: 'Research', prompt: 'Scientific research on quantum entanglement' },
+    { label: 'Take Note', prompt: 'Take note: Review system telemetry today' }
   ]
 
   return (
@@ -77,50 +84,71 @@ export default function Dashboard({
 
       {/* Mobile Sub-Panel Switcher (< lg) */}
       <div className="lg:hidden flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md border-b border-white/5 z-30 shrink-0">
-        <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-white/10 w-full justify-around">
-          <button
+        <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-white/10 w-full justify-around relative">
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setMobileSection('core')}
-            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-all cursor-pointer ${
-              mobileSection === 'core'
-                ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30 shadow-[0_0_12px_rgba(0,255,65,0.2)]'
-                : 'text-zinc-500 hover:text-zinc-300'
+            className={`relative flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-colors cursor-pointer ${
+              mobileSection === 'core' ? 'text-[#00ff41]' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Radio size={12} />
-            <span>AI CORE</span>
-          </button>
-          <button
+            {mobileSection === 'core' && (
+              <motion.div
+                layoutId="mobileActiveTab"
+                className="absolute inset-0 bg-[#00ff41]/20 border border-[#00ff41]/30 rounded-lg shadow-[0_0_12px_rgba(0,255,65,0.2)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
+            <Radio size={12} className="relative z-10" />
+            <span className="relative z-10">AI CORE</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setMobileSection('chat')}
-            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-all cursor-pointer ${
-              mobileSection === 'chat'
-                ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30 shadow-[0_0_12px_rgba(0,255,65,0.2)]'
-                : 'text-zinc-500 hover:text-zinc-300'
+            className={`relative flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-colors cursor-pointer ${
+              mobileSection === 'chat' ? 'text-[#00ff41]' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <MessageSquare size={12} />
-            <span>CHAT</span>
-          </button>
-          <button
+            {mobileSection === 'chat' && (
+              <motion.div
+                layoutId="mobileActiveTab"
+                className="absolute inset-0 bg-[#00ff41]/20 border border-[#00ff41]/30 rounded-lg shadow-[0_0_12px_rgba(0,255,65,0.2)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
+            <MessageSquare size={12} className="relative z-10" />
+            <span className="relative z-10">CHAT</span>
+          </motion.button>
+
+          <motion.button
+            whileTap={{ scale: 0.96 }}
             onClick={() => setMobileSection('telemetry')}
-            className={`flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-all cursor-pointer ${
-              mobileSection === 'telemetry'
-                ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30 shadow-[0_0_12px_rgba(0,255,65,0.2)]'
-                : 'text-zinc-500 hover:text-zinc-300'
+            className={`relative flex items-center justify-center gap-1.5 flex-1 py-1.5 text-[10px] font-mono font-bold tracking-wider rounded-lg transition-colors cursor-pointer ${
+              mobileSection === 'telemetry' ? 'text-[#00ff41]' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            <Activity size={12} />
-            <span>SYSTEM</span>
-          </button>
+            {mobileSection === 'telemetry' && (
+              <motion.div
+                layoutId="mobileActiveTab"
+                className="absolute inset-0 bg-[#00ff41]/20 border border-[#00ff41]/30 rounded-lg shadow-[0_0_12px_rgba(0,255,65,0.2)]"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+              />
+            )}
+            <Activity size={12} className="relative z-10" />
+            <span className="relative z-10">SYSTEM</span>
+          </motion.button>
         </div>
       </div>
 
       <main className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-6 p-2.5 sm:p-4 lg:p-6 relative z-10 overflow-hidden">
-        {/* Left Panels (Telemetry / Optics Feed) */}
+        {/* Left Panels (Telemetry / Optics Feed / Live Location) */}
         <div
           className={`${
             mobileSection === 'telemetry' ? 'flex' : 'hidden'
-          } lg:flex col-span-12 lg:col-span-3 flex-col gap-4 lg:gap-6 z-10 min-h-0 overflow-y-auto max-h-full pb-16 lg:pb-0 scrollbar-small`}
+          } lg:flex col-span-12 lg:col-span-3 flex-col gap-3 lg:gap-4 z-10 min-h-0 overflow-y-auto max-h-full pb-16 lg:pb-0 scrollbar-small`}
         >
+          <LiveLocationCard />
           <LeftPanels status={isConnected ? 'ACTIVE' : 'STANDBY'} visionMode={visionMode} />
         </div>
 
@@ -137,7 +165,9 @@ export default function Dashboard({
             {voiceStatus === 'denied' && (
               <div className="w-full px-3 py-2 bg-red-950/80 border border-red-500/30 rounded-xl flex items-center gap-2 text-[11px] text-red-200 backdrop-blur-md animate-in fade-in">
                 <AlertCircle size={14} className="text-red-400 shrink-0" />
-                <span>Microphone access was denied. Please allow microphone permissions in your browser.</span>
+                <span>
+                  Microphone access was denied. Please allow microphone permissions in your browser.
+                </span>
               </div>
             )}
 
@@ -170,7 +200,9 @@ export default function Dashboard({
                       <span className="text-zinc-500 text-[9px] mr-1">INPUT</span>
                       <div className="flex items-end gap-0.5 h-3">
                         {[0.5, 1.2, 0.8, 1.5, 0.9, 1.1].map((scale, i) => {
-                          const h = isSpeaking ? 8 : Math.max(3, Math.min(14, micLevel * 20 * scale))
+                          const h = isSpeaking
+                            ? 8
+                            : Math.max(3, Math.min(14, micLevel * 20 * scale))
                           return (
                             <span
                               key={i}
@@ -196,17 +228,21 @@ export default function Dashboard({
                     </span>
                   ) : lastFinalTranscript && !isSpeaking ? (
                     <span className="text-zinc-400 font-mono text-[11px] truncate">
-                      <span className="text-zinc-600">&gt; Last query:</span> "{lastFinalTranscript}"
+                      <span className="text-zinc-600">&gt; Last query:</span> "{lastFinalTranscript}
+                      "
                     </span>
                   ) : isSpeaking ? (
                     <span className="text-cyan-300 font-mono text-[11px] italic">
                       Transmitting verbal neural telemetry...
                     </span>
                   ) : isMuted ? (
-                    <span className="text-zinc-500 text-[11px]">Microphone muted. Click the mic button to speak.</span>
+                    <span className="text-zinc-500 text-[11px]">
+                      Microphone muted. Click the mic button to speak.
+                    </span>
                   ) : (
                     <span className="text-zinc-500 text-[11px] italic truncate">
-                      {statusMessage || 'Speak now — IRIS is listening for your command or question...'}
+                      {statusMessage ||
+                        'Speak now — IRIS is listening for your command or question...'}
                     </span>
                   )}
                 </div>
@@ -215,53 +251,84 @@ export default function Dashboard({
 
             {/* Quick Voice Command Chips */}
             {isConnected && (
-              <div className="flex items-center gap-1.5 flex-wrap justify-center max-w-md">
-                {quickVoicePrompts.map((item) => (
-                  <button
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-center gap-1.5 flex-wrap justify-center max-w-md"
+              >
+                {quickVoicePrompts.map((item, idx) => (
+                  <motion.button
                     key={item.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.03, duration: 0.18 }}
+                    whileHover={{ scale: 1.05, y: -1.5 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => submitVoicePrompt?.(item.prompt)}
-                    className="cursor-pointer px-2.5 py-1 rounded-full bg-zinc-900/60 hover:bg-[#00ff41]/10 border border-white/5 hover:border-[#00ff41]/30 text-zinc-400 hover:text-[#00ff41] text-[10px] font-mono transition-all duration-200"
+                    className="cursor-pointer px-2.5 py-1 rounded-full bg-zinc-900/60 hover:bg-[#00ff41]/10 border border-white/5 hover:border-[#00ff41]/30 text-zinc-400 hover:text-[#00ff41] text-[10px] font-mono transition-colors duration-200"
                     title={`Speak: "${item.prompt}"`}
                   >
                     🎤 {item.label}
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </motion.div>
             )}
           </div>
 
           {/* Control Capsule */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] z-20">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] z-20"
+          >
             <div className="relative flex items-center justify-center">
-              {showVisionMenu && isConnected && (
-                <div className="absolute bottom-[calc(100%+12px)] flex flex-col gap-1 p-1.5 bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,255,65,0.15)] z-50 origin-bottom animate-in fade-in zoom-in-95 duration-200 min-w-35">
-                  <div className="px-3 py-1.5 border-b border-white/5 mb-1">
-                    <span className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">
-                      Optics Feed
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => changeVisionMode('camera')}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer ${visionMode === 'camera' ? 'bg-[#00ff41]/15 text-[#00ff41]' : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-100'}`}
+              <AnimatePresence>
+                {showVisionMenu && isConnected && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.92 }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+                    className="absolute bottom-[calc(100%+12px)] flex flex-col gap-1 p-1.5 bg-zinc-950/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,255,65,0.15)] z-50 origin-bottom min-w-35"
                   >
-                    <Camera size={14} /> Lens
-                  </button>
-                  <button
-                    onClick={() => changeVisionMode('screen')}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer ${visionMode === 'screen' ? 'bg-cyan-500/15 text-cyan-400' : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-100'}`}
-                  >
-                    <Monitor size={14} /> Display
-                  </button>
-                  <button
-                    onClick={() => changeVisionMode('off')}
-                    className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase hover:bg-red-500/10 text-zinc-500 hover:text-red-400 cursor-pointer"
-                  >
-                    <X size={14} /> Offline
-                  </button>
-                </div>
-              )}
+                    <div className="px-3 py-1.5 border-b border-white/5 mb-1">
+                      <span className="text-[9px] font-mono tracking-widest text-zinc-500 uppercase">
+                        Optics Feed
+                      </span>
+                    </div>
+                    <motion.button
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => changeVisionMode('camera')}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer ${visionMode === 'camera' ? 'bg-[#00ff41]/15 text-[#00ff41]' : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-100'}`}
+                    >
+                      <Camera size={14} /> Lens
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => changeVisionMode('screen')}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer ${visionMode === 'screen' ? 'bg-cyan-500/15 text-cyan-400' : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-100'}`}
+                    >
+                      <Monitor size={14} /> Display
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => changeVisionMode('off')}
+                      className="flex items-center gap-3 px-3 py-2.5 mt-1 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase hover:bg-red-500/10 text-zinc-500 hover:text-red-400 cursor-pointer"
+                    >
+                      <X size={14} /> Offline
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={() => isConnected && setShowVisionMenu(!showVisionMenu)}
                 disabled={!isConnected}
                 className={`group cursor-pointer w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all duration-300 border ${
@@ -288,10 +355,12 @@ export default function Dashboard({
                     className="group-hover:scale-110 transition-transform sm:w-[18px] sm:h-[18px]"
                   />
                 )}
-              </button>
+              </motion.button>
             </div>
 
-            <div
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
               onClick={toggleConnection}
               className={`flex items-center gap-2 sm:gap-3 cursor-pointer pr-3.5 sm:pr-5 pl-1 sm:pl-1.5 py-1 sm:py-1.5 rounded-full border transition-all duration-300 ${
                 isConnected
@@ -316,19 +385,32 @@ export default function Dashboard({
               <span className="text-[10px] sm:text-[11px] font-mono font-bold tracking-widest text-zinc-300 uppercase">
                 {isConnected ? 'Terminate' : 'Initialize'}
               </span>
-            </div>
+            </motion.div>
 
-            <button
-              onClick={handleMicToggle}
-              disabled={!isConnected}
+            <motion.button
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              onClick={async () => {
+                if (!isConnected) {
+                  await toggleConnection()
+                } else {
+                  handleMicToggle()
+                }
+              }}
               className={`group w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border transition-all duration-300 cursor-pointer ${
                 !isConnected
-                  ? 'opacity-30 cursor-not-allowed bg-zinc-900 border-transparent text-zinc-600'
+                  ? 'bg-zinc-900/80 text-zinc-400 border-white/10 hover:border-[#00ff41]/40 hover:text-[#00ff41] hover:bg-zinc-900'
                   : isMuted
                     ? 'bg-red-500/10 text-red-500 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] hover:bg-red-500/20'
                     : 'bg-zinc-800/50 text-[#00ff41] border-[#00ff41]/20 shadow-[0_0_15px_rgba(0,255,65,0.1)] hover:border-[#00ff41]/40 hover:bg-zinc-800'
               }`}
-              title={!isConnected ? 'Connect to enable microphone' : isMuted ? 'Unmute microphone' : 'Mute microphone'}
+              title={
+                !isConnected
+                  ? 'Click to start voice listening'
+                  : isMuted
+                    ? 'Unmute microphone'
+                    : 'Mute microphone'
+              }
             >
               {isMuted ? (
                 <MicOff
@@ -343,8 +425,8 @@ export default function Dashboard({
                   className="group-hover:scale-110 transition-transform drop-shadow-[0_0_5px_rgba(0,255,65,0.5)] sm:w-[18px] sm:h-[18px]"
                 />
               )}
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
 
         {/* Right Panel (Conversation Chat) */}

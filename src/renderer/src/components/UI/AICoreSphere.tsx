@@ -6,6 +6,7 @@ import {
   COLOR_SCHEMES,
   ParticleCoreConfig
 } from '../../services/coreSettingsService'
+import { orbAnimationEngine } from '../../services/orbAnimationEngine'
 
 const _blendColor = new THREE.Color()
 const _ringColor = new THREE.Color()
@@ -56,16 +57,20 @@ function ParticleShell({
   }, [COUNT])
 
   useFrame((_, delta) => {
+    orbAnimationEngine.recordFrame(delta)
+
     if (!ref.current) return
     const pts = ref.current
     const geo = pts.geometry
     const mat = pts.material as THREE.PointsMaterial
 
-    const speedMult = config.speed || 1.0
+    const safeDelta = Math.min(delta, 0.05)
+    const isReduced = Boolean(config.reducedMotion)
+    const speedMult = isReduced ? (config.speed || 1.0) * 0.4 : config.speed || 1.0
     const intensityMult = config.intensity || 1.0
 
-    pts.rotation.y += delta * 0.07 * speedMult
-    pts.rotation.z += delta * 0.03 * speedMult
+    pts.rotation.y += safeDelta * 0.07 * speedMult
+    pts.rotation.z += safeDelta * 0.03 * speedMult
 
     const t = performance.now() * 0.001 * speedMult
 
@@ -85,7 +90,7 @@ function ParticleShell({
     const targetOp = (isConnected ? 0.65 + vol * 0.3 : 0.2) * (config.glow || 1.0)
     mat.opacity += (targetOp - mat.opacity) * 0.07
 
-    if (vol > 0.002) {
+    if (vol > 0.002 && !isReduced) {
       const posArr = geo.attributes.position.array as Float32Array
       for (let i = 0; i < COUNT; i++) {
         const ix = i * 3
@@ -162,10 +167,11 @@ function OrbitalRing({
   useFrame((_, delta) => {
     if (!ref.current || !matRef.current) return
 
+    const safeDelta = Math.min(delta, 0.05)
     const speedMult = config.speed || 1.0
     const intensityMult = config.intensity || 1.0
 
-    ref.current.rotation.y += delta * rotSpeed * speedMult
+    ref.current.rotation.y += safeDelta * rotSpeed * speedMult
 
     const t = performance.now() * 0.001 * speedMult + phase
     let targetVol = 0
@@ -274,14 +280,13 @@ export default function AICore({
         style={{ width: '100%', height: '100%' }}
         camera={{ position: [0, 0, 5], fov: 42 }}
         gl={{
-          antialias: false,
-          powerPreference: 'default',
+          antialias: true,
+          powerPreference: 'high-performance',
           alpha: true,
           depth: false,
-          stencil: false,
-          precision: 'lowp'
+          stencil: false
         }}
-        dpr={Math.min(window.devicePixelRatio, 1.5)}
+        dpr={[1, 2]}
         frameloop="always"
       >
         <AIOrb isConnected={isConnected} isSpeaking={isSpeaking} config={coreConfig} />
@@ -289,4 +294,3 @@ export default function AICore({
     </div>
   )
 }
-

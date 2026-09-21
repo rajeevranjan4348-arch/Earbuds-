@@ -4,6 +4,8 @@
  * Strictly guarantees that every memory read, write, search, and deletion is scoped
  * to the authenticated Firebase user UID.
  */
+import { auth } from '../lib/firebase'
+import { onAuthStateChanged as onFirebaseAuthStateChanged } from 'firebase/auth'
 
 export interface FirebaseUser {
   uid: string
@@ -12,6 +14,8 @@ export interface FirebaseUser {
   isAnonymous: boolean
   role?: string
 }
+
+export type FirebaseUserContext = FirebaseUser
 
 export const PRESET_USERS: FirebaseUser[] = [
   {
@@ -44,9 +48,56 @@ type AuthListener = (user: FirebaseUser) => void
 class FirebaseAuthService {
   private currentUser: FirebaseUser
   private listeners: Set<AuthListener> = new Set()
+  private isInitialized = false
+  private readyPromise: Promise<FirebaseUser>
+  private readyResolve!: (user: FirebaseUser) => void
 
   constructor() {
+    this.readyPromise = new Promise((resolve) => {
+      this.readyResolve = resolve
+    })
     this.currentUser = this.loadUser()
+    this.initFirebaseSync()
+  }
+
+  private initFirebaseSync() {
+    if (typeof window === 'undefined') {
+      this.isInitialized = true
+      this.readyResolve(this.currentUser)
+      return
+    }
+    try {
+      onFirebaseAuthStateChanged(auth, (fbUser) => {
+        if (fbUser) {
+          this.currentUser = {
+            uid: fbUser.uid,
+            email: fbUser.email || `${fbUser.uid}@iris.auth`,
+            displayName:
+              fbUser.displayName ||
+              fbUser.email?.split('@')[0] ||
+              `User (${fbUser.uid.slice(0, 6)})`,
+            isAnonymous: fbUser.isAnonymous,
+            role: 'Authenticated Google User'
+          }
+          this.saveUser()
+        }
+        if (!this.isInitialized) {
+          this.isInitialized = true
+          this.readyResolve(this.currentUser)
+        }
+      })
+    } catch (_e) {
+      this.isInitialized = true
+      this.readyResolve(this.currentUser)
+    }
+  }
+
+  public isReady(): Promise<FirebaseUser> {
+    return this.readyPromise
+  }
+
+  public getInitialized(): boolean {
+    return this.isInitialized
   }
 
   private loadUser(): FirebaseUser {
@@ -84,6 +135,10 @@ class FirebaseAuthService {
     return { ...this.currentUser }
   }
 
+  public getCurrentUser(): FirebaseUser {
+    return this.getUser()
+  }
+
   public getUserId(): string {
     return this.currentUser.uid || 'usr_kumarimamta87565'
   }
@@ -96,7 +151,11 @@ class FirebaseAuthService {
     }
   }
 
-  public switchUser(target: FirebaseUser | string) {
+  public subscribe(fn: AuthListener): () => void {
+    return this.onAuthStateChanged(fn)
+  }
+
+  public switchUser(target: FirebaseUser | string, name?: string) {
     if (typeof target === 'string') {
       const matched = PRESET_USERS.find((u) => u.uid === target || u.email === target)
       if (matched) {
@@ -105,12 +164,15 @@ class FirebaseAuthService {
         this.currentUser = {
           uid: target,
           email: `${target}@iris.auth`,
-          displayName: `Custom User (${target.slice(0, 8)})`,
+          displayName: name || `Custom User (${target.slice(0, 8)})`,
           isAnonymous: false
         }
       }
     } else if (target && target.uid) {
       this.currentUser = { ...target }
+      if (name) {
+        this.currentUser.displayName = name
+      }
     }
     this.saveUser()
   }

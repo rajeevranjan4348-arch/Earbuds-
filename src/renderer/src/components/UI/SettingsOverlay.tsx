@@ -16,7 +16,8 @@ import {
   Check,
   RefreshCw,
   Sparkles,
-  Key
+  Key,
+  MapPin
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -143,8 +144,12 @@ export default function SettingsOverlay({
                   <Sliders size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-white tracking-wide">IRIS System Controls</h3>
-                  <p className="text-xs text-zinc-400">Core parameters, Mem0 long-term memory & hardware orchestration</p>
+                  <h3 className="text-base font-semibold text-white tracking-wide">
+                    IRIS System Controls
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    Core parameters, Mem0 long-term memory & hardware orchestration
+                  </p>
                 </div>
               </div>
               <button
@@ -214,7 +219,8 @@ export default function SettingsOverlay({
                   <div>
                     <h4 className="text-sm font-semibold text-white mb-1">Color Scheme Presets</h4>
                     <p className="text-xs text-zinc-400 mb-3">
-                      Select reactive aesthetic themes mapped onto the dynamic Three.js neural sphere
+                      Select reactive aesthetic themes mapped onto the dynamic Three.js neural
+                      sphere
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                       {(Object.keys(PARTICLE_PRESETS) as ParticlePresetKey[]).map((key) => {
@@ -269,7 +275,9 @@ export default function SettingsOverlay({
 
                     <div>
                       <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-zinc-300 font-medium">Rotation & Oscillation Speed</span>
+                        <span className="text-zinc-300 font-medium">
+                          Rotation & Oscillation Speed
+                        </span>
                         <span className="text-emerald-400 font-mono">
                           {Math.round(settings.particleSettings.speed * 100)}%
                         </span>
@@ -483,6 +491,12 @@ export default function SettingsOverlay({
                         label: 'Synthesizer Audio Output',
                         desc: 'Vocal response playback and dynamic acoustic feedback',
                         icon: <Volume2 size={16} className="text-amber-400" />
+                      },
+                      {
+                        key: 'location' as const,
+                        label: 'Live Geolocation & Spatial Telemetry',
+                        desc: 'Acquires satellite GPS coordinates, street/city geocoding, and telemetry mapping',
+                        icon: <MapPin size={16} className="text-cyan-400" />
                       }
                     ].map((item) => {
                       const enabled = settings.hardwarePermissions[item.key]
@@ -527,11 +541,31 @@ export default function SettingsOverlay({
                   </p>
                   <div className="space-y-2.5">
                     {[
-                      { key: 'gemini' as const, name: 'Google Gemini Pro / Flash 2.5', status: 'Active Provider' },
-                      { key: 'groq' as const, name: 'Groq LPU Inference (Llama 3)', status: 'Fallback Engine' },
-                      { key: 'huggingface' as const, name: 'Hugging Face Inference API', status: 'Available' },
-                      { key: 'tavily' as const, name: 'Tavily Deep Web Search', status: 'Grounding' },
-                      { key: 'mem0' as const, name: 'Mem0 Persistent Memory Layer', status: 'Enabled & Synced' }
+                      {
+                        key: 'gemini' as const,
+                        name: 'Google Gemini Pro / Flash 2.5',
+                        status: 'Active Provider'
+                      },
+                      {
+                        key: 'groq' as const,
+                        name: 'Groq LPU Inference (Llama 3)',
+                        status: 'Fallback Engine'
+                      },
+                      {
+                        key: 'huggingface' as const,
+                        name: 'Hugging Face Inference API',
+                        status: 'Available'
+                      },
+                      {
+                        key: 'tavily' as const,
+                        name: 'Tavily Deep Web Search',
+                        status: 'Grounding'
+                      },
+                      {
+                        key: 'mem0' as const,
+                        name: 'Mem0 Persistent Memory Layer',
+                        status: 'Enabled & Synced'
+                      }
                     ].map((p) => {
                       const isSelected = settings.apiProviders.selected === p.key
                       return (

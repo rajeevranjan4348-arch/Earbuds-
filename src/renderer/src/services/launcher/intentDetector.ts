@@ -36,7 +36,7 @@ const LEADING_ARTICLES = [/^(the|my|an|a)\s+/i]
 /**
  * Detects whether an input string represents a 'launch_app' intent,
  * and extracts the target app name.
- * 
+ *
  * Returns structured internal intent:
  * {
  *   "intent": "launch_app",

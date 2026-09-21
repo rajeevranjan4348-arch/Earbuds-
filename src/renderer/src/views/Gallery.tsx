@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   RiImage2Line,
   RiDeleteBinLine,
@@ -26,7 +26,6 @@ interface MediaFile {
 
 const GalleryView = () => {
   const [allMedia, setAllMedia] = useState<MediaFile[]>([])
-  const [visibleMedia, setVisibleMedia] = useState<MediaFile[]>([])
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null)
 
   const [direction, setDirection] = useState(0)
@@ -34,17 +33,21 @@ const GalleryView = () => {
   const ITEMS_PER_PAGE = 12
   const observer = useRef<IntersectionObserver | null>(null)
 
+  const visibleMedia = useMemo(() => {
+    return allMedia.slice(0, page * ITEMS_PER_PAGE)
+  }, [allMedia, page])
+
   const lastMediaRef = useCallback(
     (node: HTMLDivElement) => {
       if (observer.current) observer.current.disconnect()
       observer.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && visibleMedia.length < allMedia.length) {
+        if (entries[0].isIntersecting && page * ITEMS_PER_PAGE < allMedia.length) {
           setPage((prev) => prev + 1)
         }
       })
       if (node) observer.current.observe(node)
     },
-    [visibleMedia.length, allMedia.length]
+    [page, allMedia.length]
   )
 
   const fetchGallery = async () => {
@@ -70,11 +73,6 @@ const GalleryView = () => {
     const interval = setInterval(fetchGallery, 5000)
     return () => clearInterval(interval)
   }, [])
-
-  useEffect(() => {
-    const endIndex = page * ITEMS_PER_PAGE
-    setVisibleMedia(allMedia.slice(0, endIndex))
-  }, [page, allMedia])
 
   const deleteMedia = async (filename: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -171,7 +169,9 @@ const GalleryView = () => {
             <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-neutral-900 flex items-center justify-center border border-neutral-800 shadow-inner">
               <RiImage2Line size={32} className="opacity-20 sm:w-10 sm:h-10" />
             </div>
-            <p className="text-xs sm:text-sm font-bold tracking-widest opacity-40 uppercase">No Media Found</p>
+            <p className="text-xs sm:text-sm font-bold tracking-widest opacity-40 uppercase">
+              No Media Found
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6 pb-12 auto-rows-max">

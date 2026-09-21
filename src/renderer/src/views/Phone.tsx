@@ -27,7 +27,7 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
   const [uiMode, setUiMode] = useState<'history' | 'manual'>('history')
   const [errorMsg, setErrorMsg] = useState('')
   const [deviceHistory, setDeviceHistory] = useState<any[]>([])
-  const [copied, setCopied] = useState(false) 
+  const [copied, setCopied] = useState(false)
 
   const screenRef = useRef<HTMLImageElement>(null)
   const isStreaming = useRef(false)
@@ -238,8 +238,12 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
                 <FaAndroid className="text-emerald-400 text-xl sm:text-2xl" />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">Device Uplink</h2>
-                <p className="text-[9px] sm:text-[10px] text-emerald-400/70 font-mono">TCP/IP CONFIGURATION</p>
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
+                  Device Uplink
+                </h2>
+                <p className="text-[9px] sm:text-[10px] text-emerald-400/70 font-mono">
+                  TCP/IP CONFIGURATION
+                </p>
               </div>
             </div>
 
@@ -462,7 +466,9 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
               <RiBattery2ChargeLine className="text-green-500" />
             </div>
             <div className="flex justify-between items-end mb-2">
-              <h4 className="text-2xl sm:text-3xl font-black text-white">{telemetry.battery.level}%</h4>
+              <h4 className="text-2xl sm:text-3xl font-black text-white">
+                {telemetry.battery.level}%
+              </h4>
               <span className="text-[10px] font-mono text-green-500">
                 {telemetry.battery.isCharging ? 'CHARGING' : 'DISCHARGING'}
               </span>
@@ -481,7 +487,9 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
               <RiDatabase2Line className="text-orange-500" />
             </div>
             <div className="flex justify-between items-end mb-2">
-              <h4 className="text-2xl sm:text-3xl font-black text-white">{telemetry.storage.used}</h4>
+              <h4 className="text-2xl sm:text-3xl font-black text-white">
+                {telemetry.storage.used}
+              </h4>
               <span className="text-[10px] font-mono text-zinc-500">{telemetry.storage.total}</span>
             </div>
             <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">

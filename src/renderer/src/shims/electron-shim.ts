@@ -399,6 +399,18 @@ const electronShim = {
           }
         }
 
+        case 'accessibility-check-permission': {
+          return {
+            granted: true,
+            status: 'READY'
+          }
+        }
+
+        case 'accessibility-dispatch-action': {
+          console.log(`[IRIS Accessibility Action]`, args[0])
+          return { success: true }
+        }
+
         case 'secure-get-keys': {
           try {
             const raw = localStorage.getItem('iris_api_keys')

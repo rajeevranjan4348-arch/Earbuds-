@@ -33,13 +33,46 @@ const EXCLUDED_DIRS = new Set([
 ])
 
 const EXCLUDED_EXTENSIONS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'webp', 'bmp',
-  'zip', 'tar', 'gz', 'rar', '7z',
-  'pdf', 'doc', 'docx', 'xls', 'xlsx',
-  'mp3', 'wav', 'ogg', 'mp4', 'mov', 'webm', 'avi',
-  'exe', 'dll', 'so', 'dylib', 'bin', 'o', 'a',
-  'pyc', 'pyo', 'class', 'wasm',
-  'lock', 'log', 'sqlite', 'db'
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'ico',
+  'svg',
+  'webp',
+  'bmp',
+  'zip',
+  'tar',
+  'gz',
+  'rar',
+  '7z',
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'mp3',
+  'wav',
+  'ogg',
+  'mp4',
+  'mov',
+  'webm',
+  'avi',
+  'exe',
+  'dll',
+  'so',
+  'dylib',
+  'bin',
+  'o',
+  'a',
+  'pyc',
+  'pyo',
+  'class',
+  'wasm',
+  'lock',
+  'log',
+  'sqlite',
+  'db'
 ])
 
 const EXCLUDED_FILES = new Set([
@@ -103,9 +136,7 @@ export function loadGitignorePatterns(rootPath: string): string[] {
 
   try {
     const lines = readFileSync(gitignorePath, 'utf-8').split(/\r?\n/)
-    return lines
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0 && !l.startsWith('#'))
+    return lines.map((l) => l.trim()).filter((l) => l.length > 0 && !l.startsWith('#'))
   } catch (_e) {
     return []
   }

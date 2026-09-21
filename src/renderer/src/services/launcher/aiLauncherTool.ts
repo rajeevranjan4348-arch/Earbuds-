@@ -4,7 +4,7 @@
  * - launch_app(app_name)
  * - get_installed_apps()
  * - resolve_app(app_name)
- * 
+ *
  * Separates tool execution from the conversational response layer.
  */
 

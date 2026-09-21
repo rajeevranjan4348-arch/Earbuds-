@@ -22,7 +22,21 @@ export function tokenizeCode(text: string): string[] {
 }
 
 const STOP_WORDS = new Set([
-  'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'in', 'with', 'to', 'for', 'of', 'by'
+  'the',
+  'is',
+  'at',
+  'which',
+  'on',
+  'a',
+  'an',
+  'and',
+  'or',
+  'in',
+  'with',
+  'to',
+  'for',
+  'of',
+  'by'
 ])
 
 /**
@@ -79,7 +93,9 @@ export class BM25Engine {
 
         const docLen = this.docLengths[i]
         const termScore =
-          idf * ((tf * (this.k1 + 1)) / (tf + this.k1 * (1 - this.b + this.b * (docLen / this.avgDocLength))))
+          idf *
+          ((tf * (this.k1 + 1)) /
+            (tf + this.k1 * (1 - this.b + this.b * (docLen / this.avgDocLength))))
         scores[i] += termScore
       }
     })
@@ -228,10 +244,7 @@ export function searchCodebase(
 /**
  * Finds all symbol definitions matching a symbol name
  */
-export function findSymbolInIndex(
-  symbols: SymbolDef[],
-  name: string
-): SymbolDef[] {
+export function findSymbolInIndex(symbols: SymbolDef[], name: string): SymbolDef[] {
   const norm = name.toLowerCase().trim()
   return symbols.filter((s) => {
     const sNorm = s.name.toLowerCase()

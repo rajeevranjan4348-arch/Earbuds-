@@ -23,9 +23,15 @@ try {
 /**
  * Validates and normalizes GitHub URL
  */
-export function sanitizeGithubUrl(rawUrl: string): { owner: string; repo: string; cleanUrl: string } {
+export function sanitizeGithubUrl(rawUrl: string): {
+  owner: string
+  repo: string
+  cleanUrl: string
+} {
   const trimmed = rawUrl.trim()
-  const match = trimmed.match(/^https:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+?)(?:\.git)?\/?$/)
+  const match = trimmed.match(
+    /^https:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+?)(?:\.git)?\/?$/
+  )
   if (!match) {
     throw new Error('Invalid GitHub repository URL. Expected format: https://github.com/owner/repo')
   }
@@ -82,7 +88,10 @@ export async function syncGithubRepository(
       try {
         rmSync(targetDir, { recursive: true, force: true })
       } catch (_e) {}
-      const sanitizedMsg = (err?.message || 'Git clone failed').replace(/https:\/\/.*@github\.com/, 'https://[TOKEN]@github.com')
+      const sanitizedMsg = (err?.message || 'Git clone failed').replace(
+        /https:\/\/.*@github\.com/,
+        'https://[TOKEN]@github.com'
+      )
       throw new Error(`Failed to clone GitHub repository: ${sanitizedMsg}`)
     }
   } else {

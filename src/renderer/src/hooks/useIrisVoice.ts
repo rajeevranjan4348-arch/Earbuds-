@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { voiceService, VoiceStatus } from '../services/voiceService'
 
 interface UseIrisVoiceOptions {
-  onNavigate?: (tab: 'DASHBOARD' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS') => void
+  onNavigate?: (
+    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
+  ) => void
   onVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
+  onKnowledgeOpen?: (open: boolean) => void
 }
 
 export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
@@ -17,16 +20,14 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
   const [statusMessage, setStatusMessage] = useState('Standby')
 
   const optionsRef = useRef(options)
+  optionsRef.current = options
   const lastSubmittedPromptRef = useRef<{ text: string; time: number }>({ text: '', time: 0 })
-
-  useEffect(() => {
-    optionsRef.current = options
-  }, [options])
 
   useEffect(() => {
     voiceService.setHandlers({
       onNavigate: (tab) => optionsRef.current.onNavigate?.(tab),
       onVisionMode: (mode) => optionsRef.current.onVisionMode?.(mode),
+      onKnowledgeOpen: (open) => optionsRef.current.onKnowledgeOpen?.(open),
       onInterimTranscript: (text) => {
         setInterimTranscript(text)
       },

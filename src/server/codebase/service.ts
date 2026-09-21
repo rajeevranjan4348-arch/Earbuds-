@@ -68,7 +68,11 @@ export class CodebaseService {
     if (params.githubUrl) {
       // GitHub repo flow
       const cleanProjId = projectId || `gh_${Date.now()}`
-      const syncResult = await syncGithubRepository(params.githubUrl, cleanProjId, params.githubToken)
+      const syncResult = await syncGithubRepository(
+        params.githubUrl,
+        cleanProjId,
+        params.githubToken
+      )
       rootPath = syncResult.repoPath
       projectId = cleanProjId
     }
@@ -108,7 +112,8 @@ export class CodebaseService {
     userId?: string,
     options: SearchCodebaseOptions = {}
   ): SearchResult[] {
-    const project = projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
+    const project =
+      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
     if (!project) {
       return []
     }
@@ -139,7 +144,8 @@ export class CodebaseService {
     projectId = this.defaultProjectId,
     userId?: string
   ): SymbolDef[] {
-    const project = projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
+    const project =
+      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
     if (!project) return []
 
     return findSymbolInIndex(project.symbols, symbolName)
@@ -154,7 +160,8 @@ export class CodebaseService {
     projectId = this.defaultProjectId,
     userId?: string
   ): SearchResult[] {
-    const project = projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
+    const project =
+      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
     if (!project) return []
 
     return findReferencesInIndex(project.chunks, symbolName)
@@ -169,7 +176,8 @@ export class CodebaseService {
     userId?: string,
     depth = 3
   ): ProjectStructure | null {
-    const project = projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
+    const project =
+      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)
     if (!project) return null
 
     return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)

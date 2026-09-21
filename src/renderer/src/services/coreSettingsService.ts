@@ -90,14 +90,16 @@ export const COLOR_SCHEMES: Record<ColorSchemeId, ColorSchemeConfig> = {
 export const PARTICLE_PRESETS = COLOR_SCHEMES
 export type ParticlePresetKey = ColorSchemeId
 
-
 export interface HardwarePermissions {
   camera: boolean
   microphone: boolean
   screen: boolean
   screenCapture?: boolean
   audioOutput: boolean
+  location?: boolean
 }
+
+export type OrbQuality = 'ultra' | 'high' | 'medium' | 'low'
 
 export interface ParticleCoreConfig {
   intensity: number // 0.2 - 2.5
@@ -105,6 +107,9 @@ export interface ParticleCoreConfig {
   speed: number // 0.5 - 2.5
   glow: number // 0.5 - 2.0
   colorScheme: ColorSchemeId
+  reducedMotion?: boolean
+  quality?: OrbQuality
+  autoOptimize?: boolean
 }
 
 export type ApiProviderId = 'gemini' | 'groq' | 'huggingface' | 'tavily' | 'mem0'
@@ -128,8 +133,6 @@ export interface CoreSettingsState {
 
 export type CoreSettings = CoreSettingsState
 
-
-
 const STORAGE_KEY = 'iris_core_settings_v2'
 
 const DEFAULT_SETTINGS: CoreSettingsState = {
@@ -138,14 +141,18 @@ const DEFAULT_SETTINGS: CoreSettingsState = {
     microphone: true,
     screen: true,
     screenCapture: true,
-    audioOutput: true
+    audioOutput: true,
+    location: true
   },
   particleCore: {
     intensity: 1.0,
     density: 900,
     speed: 1.0,
     glow: 1.0,
-    colorScheme: 'emerald'
+    colorScheme: 'emerald',
+    reducedMotion: false,
+    quality: 'high',
+    autoOptimize: true
   },
   activeProvider: 'gemini',
   hardwarePermissions: {
@@ -153,7 +160,8 @@ const DEFAULT_SETTINGS: CoreSettingsState = {
     microphone: true,
     screen: true,
     screenCapture: true,
-    audioOutput: true
+    audioOutput: true,
+    location: true
   },
   particleSettings: {
     preset: 'emerald',
@@ -194,9 +202,15 @@ class CoreSettingsService {
       if (raw) {
         const parsed = JSON.parse(raw)
         return {
-          permissions: { ...DEFAULT_SETTINGS.permissions, ...(parsed.permissions || parsed.hardwarePermissions || {}) },
+          permissions: {
+            ...DEFAULT_SETTINGS.permissions,
+            ...(parsed.permissions || parsed.hardwarePermissions || {})
+          },
           particleCore: { ...DEFAULT_SETTINGS.particleCore, ...(parsed.particleCore || {}) },
-          activeProvider: parsed.activeProvider || parsed.apiProviders?.selected || DEFAULT_SETTINGS.activeProvider
+          activeProvider:
+            parsed.activeProvider ||
+            parsed.apiProviders?.selected ||
+            DEFAULT_SETTINGS.activeProvider
         }
       }
     } catch (_e) {}
@@ -324,6 +338,35 @@ class CoreSettingsService {
     this.setActiveProvider(provider)
   }
 
+  public setQuality(quality: OrbQuality) {
+    this.state.particleCore.quality = quality
+    // Adjust density based on quality
+    if (quality === 'low') {
+      this.state.particleCore.density = 400
+    } else if (quality === 'medium') {
+      this.state.particleCore.density = 650
+    } else if (quality === 'high') {
+      this.state.particleCore.density = 900
+    } else if (quality === 'ultra') {
+      this.state.particleCore.density = 1300
+    }
+    this.saveSettings()
+  }
+
+  public setReducedMotion(reducedMotion: boolean) {
+    this.state.particleCore.reducedMotion = reducedMotion
+    if (reducedMotion) {
+      this.state.particleCore.speed = 0.5
+      this.state.particleCore.density = Math.min(this.state.particleCore.density, 450)
+    }
+    this.saveSettings()
+  }
+
+  public setAutoOptimize(autoOptimize: boolean) {
+    this.state.particleCore.autoOptimize = autoOptimize
+    this.saveSettings()
+  }
+
   public resetToDefaults() {
     this.state = {
       permissions: { ...DEFAULT_SETTINGS.permissions },
@@ -333,6 +376,5 @@ class CoreSettingsService {
     this.saveSettings()
   }
 }
-
 
 export const coreSettingsService = new CoreSettingsService()

@@ -28,7 +28,8 @@ export interface ResolveAppResult {
   clarificationPrompt?: string
 }
 
-export type LaunchStatus = 'SUCCESS' | 'APP_NOT_FOUND' | 'MULTIPLE_MATCHES' | 'LAUNCH_FAILED' | 'PERMISSION_REQUIRED'
+export type LaunchStatus =
+  'SUCCESS' | 'APP_NOT_FOUND' | 'MULTIPLE_MATCHES' | 'LAUNCH_FAILED' | 'PERMISSION_REQUIRED'
 
 export interface LaunchAppResult {
   success: boolean

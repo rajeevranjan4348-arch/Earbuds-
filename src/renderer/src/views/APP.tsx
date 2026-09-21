@@ -1,5 +1,5 @@
 import { AppItem, getAllApps } from '@renderer/services/system-info'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   RiAppsLine,
   RiTerminalBoxLine,
@@ -68,9 +68,12 @@ const AppCard = ({ app }: { app: AppItem }) => (
 
 const AppsView = () => {
   const [allApps, setAllApps] = useState<AppItem[]>([])
-  const [visibleApps, setVisibleApps] = useState<AppItem[]>([])
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+
+  const visibleApps = useMemo(() => {
+    return allApps.slice(0, page === 1 ? 15 : page * 12 + 6)
+  }, [allApps, page])
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastAppElementRef = useCallback(
@@ -95,17 +98,9 @@ const AppsView = () => {
       )
 
       setAllApps(cleanData)
-      setVisibleApps(cleanData.slice(0, 15))
       setLoading(false)
     })
   }, [])
-
-  useEffect(() => {
-    if (page > 1) {
-      const nextBatch = allApps.slice(0, page * 12 + 6)
-      setVisibleApps(nextBatch)
-    }
-  }, [page, allApps])
 
   return (
     <div className="flex-1 bg-white/8 p-8 h-full flex flex-col animate-in fade-in zoom-in duration-300">

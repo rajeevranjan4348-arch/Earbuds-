@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GiArtificialIntelligence } from 'react-icons/gi'
-import {
-  RiKey2Line,
-  RiSave3Line,
-  RiShieldKeyholeLine,
-  RiPlugLine
-} from 'react-icons/ri'
+import { RiKey2Line, RiSave3Line, RiShieldKeyholeLine, RiPlugLine } from 'react-icons/ri'
 import {
   Brain,
   Cpu,
@@ -19,7 +14,8 @@ import {
   Plus,
   User,
   Check,
-  Sliders
+  Sliders,
+  MapPin
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -114,7 +110,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
     if (!newMemoryText.trim()) return
     setIsAddingMemory(true)
     try {
-      await memoryService.addMemory(newMemoryText.trim(), currentUser.uid, { source: 'settings_ui' })
+      await memoryService.addMemory(newMemoryText.trim(), currentUser.uid, {
+        source: 'settings_ui'
+      })
       setNewMemoryText('')
       await loadMemories(currentUser.uid)
       setSaveStatus('Memory saved to Mem0 persistent storage.')
@@ -180,8 +178,10 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
   const inputContainerClass =
     'flex items-center bg-black/40 border border-white/10 rounded-lg px-3.5 sm:px-4 py-2.5 sm:py-3 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all duration-200 w-full'
-  const labelClass = 'text-xs sm:text-sm text-zinc-300 font-medium flex items-center gap-2 mb-1.5 sm:mb-2'
-  const titleClass = 'text-base sm:text-lg font-semibold text-white flex items-center gap-2 sm:gap-3'
+  const labelClass =
+    'text-xs sm:text-sm text-zinc-300 font-medium flex items-center gap-2 mb-1.5 sm:mb-2'
+  const titleClass =
+    'text-base sm:text-lg font-semibold text-white flex items-center gap-2 sm:gap-3'
 
   const tabConfigs = [
     { id: 'keys', label: 'API Keys', icon: <RiPlugLine size={18} /> },
@@ -215,20 +215,25 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
             </div>
           </div>
 
-          <div className="flex bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-md shadow-xl overflow-x-auto scrollbar-none self-start sm:self-auto">
+          <div className="flex bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-md shadow-xl overflow-x-auto scrollbar-none self-start sm:self-auto relative">
             {tabConfigs.map((tab) => (
               <motion.button
                 key={tab.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`cursor-pointer flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-white text-black shadow-md'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                className={`relative cursor-pointer flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                  activeTab === tab.id ? 'text-black' : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                {tab.icon} {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="settingsTabActivePill"
+                    className="absolute inset-0 bg-white rounded-lg shadow-md"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.icon}</span>
+                <span className="relative z-10">{tab.label}</span>
               </motion.button>
             ))}
           </div>
@@ -255,7 +260,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6 sm:gap-8">
                   <div className="flex justify-between items-center pb-2 gap-3 flex-wrap">
                     <span className={titleClass}>
-                      <RiKey2Line className="text-emerald-400 shrink-0" size={22} /> API Providers & Services
+                      <RiKey2Line className="text-emerald-400 shrink-0" size={22} /> API Providers &
+                      Services
                     </span>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -281,7 +287,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                       </div>
                     </div>
                     <div>
-                      <label className={labelClass}>Mem0 Memory API Key (Optional Cloud Sync)</label>
+                      <label className={labelClass}>
+                        Mem0 Memory API Key (Optional Cloud Sync)
+                      </label>
                       <div className={inputContainerClass}>
                         <input
                           type="password"
@@ -334,8 +342,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                     <RiShieldKeyholeLine className="text-zinc-400 shrink-0 mt-0.5" size={18} />
                     <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                       <strong>Privacy Notice:</strong> Your API keys are encrypted and saved locally
-                      or passed safely through server-side environment variables. Mem0 runs with an automatic
-                      local resilient store if an external cloud key is not configured.
+                      or passed safely through server-side environment variables. Mem0 runs with an
+                      automatic local resilient store if an external cloud key is not configured.
                     </p>
                   </div>
                 </GlassPanel>
@@ -355,7 +363,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6 sm:gap-8">
                   <div className="flex justify-between items-center pb-2">
                     <span className={titleClass}>
-                      <Sparkles className="text-emerald-400 shrink-0" size={22} /> 3D Particle Core & Visual Dynamics
+                      <Sparkles className="text-emerald-400 shrink-0" size={22} /> 3D Particle Core
+                      & Visual Dynamics
                     </span>
                   </div>
 
@@ -413,7 +422,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
                     <div>
                       <div className="flex justify-between text-xs sm:text-sm mb-2">
-                        <span className="text-zinc-300 font-medium">Rotation & Oscillation Speed</span>
+                        <span className="text-zinc-300 font-medium">
+                          Rotation & Oscillation Speed
+                        </span>
                         <span className="text-emerald-400 font-mono">
                           {Math.round(coreSettings.particleSettings.speed * 100)}%
                         </span>
@@ -494,7 +505,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
                   <div className="flex justify-between items-center pb-2 flex-wrap gap-3">
                     <span className={titleClass}>
-                      <Brain className="text-emerald-400 shrink-0" size={22} /> Mem0 Persistent Memory Vault
+                      <Brain className="text-emerald-400 shrink-0" size={22} /> Mem0 Persistent
+                      Memory Vault
                     </span>
                     {memories.length > 0 && (
                       <button
@@ -510,7 +522,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                   <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="text-xs font-semibold text-zinc-200 flex items-center gap-2">
-                        <User size={16} className="text-emerald-400" /> Active User Profile Scope (Multi-Tenancy)
+                        <User size={16} className="text-emerald-400" /> Active User Profile Scope
+                        (Multi-Tenancy)
                       </span>
                       <span className="text-[11px] font-mono text-zinc-400 px-2 py-0.5 bg-white/5 rounded">
                         UID: {currentUser.uid}
@@ -569,7 +582,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                       <div className="p-8 text-center border border-dashed border-white/10 rounded-xl text-zinc-500 text-xs sm:text-sm">
                         No persistent memories recorded for this user profile yet.
                         <p className="mt-1 text-zinc-600">
-                          Use voice commands like "Remember that I prefer Python" or add an entry above.
+                          Use voice commands like "Remember that I prefer Python" or add an entry
+                          above.
                         </p>
                       </div>
                     ) : (
@@ -621,7 +635,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
                   <div className="flex justify-between items-center pb-2">
                     <span className={titleClass}>
-                      <Cpu className="text-emerald-400 shrink-0" size={22} /> Hardware Permissions & Telemetry
+                      <Cpu className="text-emerald-400 shrink-0" size={22} /> Hardware Permissions &
+                      Telemetry
                     </span>
                   </div>
 
@@ -654,6 +669,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         label: 'Synthesizer Audio Output',
                         desc: 'Vocal response playback and acoustic feedback',
                         icon: <Volume2 size={18} className="text-amber-400" />
+                      },
+                      {
+                        key: 'location' as const,
+                        label: 'Live Geolocation & Spatial Telemetry',
+                        desc: 'Acquires satellite GPS coordinates, street/city geocoding, and telemetry mapping',
+                        icon: <MapPin size={18} className="text-cyan-400" />
                       }
                     ].map((item) => {
                       const enabled = coreSettings.hardwarePermissions[item.key]
@@ -698,4 +719,3 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
     </div>
   )
 }
-

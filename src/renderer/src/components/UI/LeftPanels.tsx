@@ -301,7 +301,11 @@ const createSyntheticVisionStream = (mode: 'camera' | 'screen'): MediaStream | n
       simCtx.fillStyle = `rgb(${color})`
       simCtx.font = '11px monospace'
       simCtx.fillText(`[IRIS OPTICS] ${mode.toUpperCase()} MATRIX FEED`, 20, 36)
-      simCtx.fillText(`RESOLUTION: 640x480 @ 30FPS | TARGET: [X:${Math.round(cx)} Y:${Math.round(cy)}]`, 20, 56)
+      simCtx.fillText(
+        `RESOLUTION: 640x480 @ 30FPS | TARGET: [X:${Math.round(cx)} Y:${Math.round(cy)}]`,
+        20,
+        56
+      )
       simCtx.fillText(`OPTIC STATUS: ACTIVE TELEMETRY LOCK`, 20, 76)
 
       animFrameId = requestAnimationFrame(draw)
@@ -366,7 +370,10 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
                 video: { width: 640, height: 480 }
               })
             } catch (camErr) {
-              console.warn('[IRIS Vision] Physical camera unavailable, engaging synthetic lens feed:', camErr)
+              console.warn(
+                '[IRIS Vision] Physical camera unavailable, engaging synthetic lens feed:',
+                camErr
+              )
               stream = createSyntheticVisionStream('camera')
             }
           } else {
@@ -381,7 +388,10 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
             try {
               stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
             } catch (dispErr) {
-              console.warn('[IRIS Vision] Display capture unavailable, engaging synthetic display feed:', dispErr)
+              console.warn(
+                '[IRIS Vision] Display capture unavailable, engaging synthetic display feed:',
+                dispErr
+              )
               stream = createSyntheticVisionStream('screen')
             }
           } else {

@@ -1,20 +1,11 @@
 /**
- * IRIS Voice-to-Text & Speech Interaction Engine
- * Implements real-time microphone capture, audio analysis, Web Speech API recognition,
- * voice command execution, and speech synthesis responses.
+ * IRIS Neural Voice Core Service
+ * Handles microphone audio stream, live spectrum analysis,
+ * Web Speech Recognition (STT), Web Speech Synthesis (TTS),
+ * and audio reactivity state.
  */
 
 import { voiceCommandProcessor } from './voiceCommandProcessor'
-
-export interface VoiceCommandHandlers {
-  onNavigate?: (tab: 'DASHBOARD' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS') => void
-  onVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
-  onInterimTranscript?: (text: string) => void
-  onFinalTranscript?: (text: string) => void
-  onSpeakingChange?: (isSpeaking: boolean) => void
-  onAudioLevel?: (level: number) => void
-  onStatusChange?: (status: VoiceStatus, message?: string) => void
-}
 
 export type VoiceStatus =
   | 'idle'
@@ -23,20 +14,51 @@ export type VoiceStatus =
   | 'processing'
   | 'speaking'
   | 'muted'
-  | 'denied'
+  | 'error'
   | 'unsupported'
+  | 'denied'
+
+export interface VoiceCommandHandlers {
+  onStatusChange?: (status: VoiceStatus, message?: string) => void
+  onInterimTranscript?: (text: string) => void
+  onFinalTranscript?: (text: string) => void
+  onAudioLevel?: (level: number) => void
+  onSpeakingChange?: (isSpeaking: boolean) => void
+  onNavigate?: (
+    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
+  ) => void
+  onVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
+  onKnowledgeOpen?: (open: boolean) => void
+}
+
+function cleanTextForSpeech(text: string): string {
+  if (!text) return ''
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_#`~>]/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return cleaned || 'Task completed.'
+}
 
 class VoiceService {
   private mediaStream: MediaStream | null = null
   private audioContext: AudioContext | null = null
   private analyser: AnalyserNode | null = null
-  private animFrameId: number | null = null
   private recognition: any = null
-  private isRunning: boolean = false
-  private isMuted: boolean = false
-  private isSpeaking: boolean = false
-  private isProcessing: boolean = false
+  private isRecognitionActive: boolean = false
+  private animFrameId: number | null = null
   private handlers: VoiceCommandHandlers = {}
+  private watchdogInterval: any = null
+
+  public isRunning: boolean = false
+  public isMuted: boolean = false
+  public isSpeaking: boolean = false
+  public isProcessing: boolean = false
+
   private status: VoiceStatus = 'idle'
   private lastProcessedTranscript: string = ''
   private lastProcessedTime: number = 0
@@ -44,15 +66,39 @@ class VoiceService {
   private activeStreamInterval: any = null
   private speakingEndTimeout: any = null
 
+  private selectedLanguage: string = 'en-US'
+
   constructor() {
     this.initSpeechRecognition()
+    this.initVisibilityListener()
+  }
+
+  private initVisibilityListener() {
+    if (typeof document === 'undefined') return
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.isRunning && this.isRecognitionActive) {
+        this.stopRecognition()
+      } else if (!document.hidden && this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
+        this.startRecognition()
+      }
+    })
+  }
+
+  public setLanguage(lang: string) {
+    this.selectedLanguage = lang
+    if (this.recognition) {
+      this.recognition.lang = lang
+    }
   }
 
   private initSpeechRecognition() {
     if (typeof window === 'undefined') return
 
     const SpeechRecognitionClass =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition ||
+      (window as any).mozSpeechRecognition ||
+      (window as any).msSpeechRecognition
 
     if (!SpeechRecognitionClass) {
       console.warn('[IRIS Voice] Browser Web Speech API not natively supported in this runtime.')
@@ -60,14 +106,22 @@ class VoiceService {
     }
 
     try {
+      if (this.recognition) {
+        try {
+          this.recognition.abort()
+        } catch (_e) {}
+        this.recognition = null
+      }
+
       const rec = new SpeechRecognitionClass()
       rec.continuous = true
       rec.interimResults = true
-      rec.lang = 'en-US'
+      rec.lang = this.selectedLanguage || 'en-US'
       rec.maxAlternatives = 1
 
       rec.onstart = () => {
-        if (this.isRunning && !this.isMuted && !this.isSpeaking) {
+        this.isRecognitionActive = true
+        if (this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
           this.setStatus('listening', 'Microphone active. IRIS is listening...')
         }
       }
@@ -96,10 +150,10 @@ class VoiceService {
           const cleanFinal = final.trim()
           if (cleanFinal.length > 0) {
             const now = Date.now()
-            // Deduplicate: same transcript within 2500ms or identical consecutive phrase is dropped
+            // Deduplicate: exact same transcript within 1200ms
             if (
               cleanFinal.toLowerCase() === this.lastProcessedTranscript.toLowerCase() &&
-              now - this.lastProcessedTime < 2500
+              now - this.lastProcessedTime < 1200
             ) {
               return
             }
@@ -116,9 +170,10 @@ class VoiceService {
       }
 
       rec.onerror = (event: any) => {
+        this.isRecognitionActive = false
         const err = event.error
         if (err === 'no-speech') {
-          // Benign quiet timeout
+          // Benign timeout from silence, auto-restart
           return
         }
         if (err === 'not-allowed' || err === 'service-not-allowed') {
@@ -126,22 +181,21 @@ class VoiceService {
           return
         }
         if (err === 'network') {
-          console.warn('[IRIS Voice] Speech recognition network service transient warning.')
+          console.warn('[IRIS Voice] Speech recognition network service warning.')
           return
         }
         console.warn('[IRIS Voice] Speech recognition event:', err)
       }
 
       rec.onend = () => {
-        // Automatically restart only if session is active, unmuted, and IRIS is NOT speaking
-        if (this.isRunning && !this.isMuted && !this.isSpeaking) {
+        this.isRecognitionActive = false
+        // Automatically restart if session is active, unmuted, and IRIS is NOT speaking
+        if (this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
           setTimeout(() => {
-            if (this.isRunning && !this.isMuted && !this.isSpeaking) {
-              try {
-                rec.start()
-              } catch (_e) {}
+            if (this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
+              this.startRecognition()
             }
-          }, 300)
+          }, 200)
         }
       }
 
@@ -164,6 +218,52 @@ class VoiceService {
     if (this.handlers.onStatusChange) {
       this.handlers.onStatusChange(status, message)
     }
+  }
+
+  public startRecognition() {
+    if (!this.isRunning || this.isMuted || this.isSpeaking || this.isProcessing) return
+    if (this.isRecognitionActive) return
+
+    if (!this.recognition) {
+      this.initSpeechRecognition()
+    }
+    if (this.recognition) {
+      try {
+        this.recognition.start()
+      } catch (err: any) {
+        if (err.name === 'InvalidStateError') {
+          this.isRecognitionActive = true
+          return
+        }
+        // Re-initialize fresh instance if failed
+        try {
+          this.initSpeechRecognition()
+          this.recognition?.start()
+        } catch (_e) {}
+      }
+    }
+  }
+
+  public stopRecognition() {
+    this.isRecognitionActive = false
+    if (this.recognition) {
+      try {
+        this.recognition.abort()
+      } catch (_e) {}
+    }
+  }
+
+  private startWatchdog() {
+    if (this.watchdogInterval) {
+      clearInterval(this.watchdogInterval)
+    }
+    this.watchdogInterval = setInterval(() => {
+      if (this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
+        if (!this.isRecognitionActive) {
+          this.startRecognition()
+        }
+      }
+    }, 1200)
   }
 
   /**
@@ -190,26 +290,19 @@ class VoiceService {
 
       this.isRunning = true
       this.isMuted = false
+      this.isSpeaking = false
+      this.isProcessing = false
 
       // 2. Setup AudioContext and Analyser for live visual feedback
       this.setupAudioAnalyser()
 
       // 3. Start Speech Recognition
-      if (this.recognition) {
-        try {
-          this.recognition.start()
-        } catch (_e) {
-          // May already be started
-        }
-      }
+      this.startRecognition()
+
+      // 4. Start Watchdog to ensure continuous listening
+      this.startWatchdog()
 
       this.setStatus('listening', 'Microphone online. IRIS is listening for commands.')
-
-      // Welcome voice confirmation from IRIS
-      this.speak(
-        'IRIS Neural Core online. Audio interface synchronized. Speak a command or query.',
-        false
-      )
 
       return true
     } catch (err: any) {
@@ -229,16 +322,29 @@ class VoiceService {
   public stop() {
     this.isRunning = false
     this.isMuted = false
+    this.isSpeaking = false
+    this.isProcessing = false
 
-    if (this.recognition) {
-      try {
-        this.recognition.stop()
-      } catch (_e) {}
+    if (this.watchdogInterval) {
+      clearInterval(this.watchdogInterval)
+      this.watchdogInterval = null
     }
+
+    this.stopRecognition()
 
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId)
       this.animFrameId = null
+    }
+
+    if (this.speakingEndTimeout) {
+      clearTimeout(this.speakingEndTimeout)
+      this.speakingEndTimeout = null
+    }
+
+    if (this.activeStreamInterval) {
+      clearInterval(this.activeStreamInterval)
+      this.activeStreamInterval = null
     }
 
     if (this.mediaStream) {
@@ -247,15 +353,19 @@ class VoiceService {
     }
 
     if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close().catch(() => {})
+      try {
+        this.audioContext.close()
+      } catch (_e) {}
       this.audioContext = null
     }
 
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
+      try {
+        window.speechSynthesis.cancel()
+      } catch (_e) {}
     }
 
-    this.setStatus('idle', 'Voice interface in standby.')
+    this.setStatus('idle', 'Microphone and Voice interface disconnected.')
   }
 
   /**
@@ -271,27 +381,21 @@ class VoiceService {
     }
 
     if (muted) {
+      this.stopRecognition()
       this.setStatus('muted', 'Microphone muted.')
-      if (this.recognition) {
-        try {
-          this.recognition.stop()
-        } catch (_e) {}
-      }
     } else {
-      this.setStatus('listening', 'Microphone active. IRIS is listening...')
-      if (this.recognition && this.isRunning && !this.isSpeaking) {
-        try {
-          this.recognition.start()
-        } catch (_e) {}
+      if (this.isRunning && !this.isSpeaking && !this.isProcessing) {
+        this.setStatus('listening', 'Microphone unmuted. IRIS is listening...')
+        this.startRecognition()
       }
     }
   }
 
   /**
-   * Real-time audio waveform/volume analyzer
+   * Live Web Audio API Analyser loop
    */
   private setupAudioAnalyser() {
-    if (!this.mediaStream || typeof window === 'undefined') return
+    if (!this.mediaStream) return
 
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
@@ -299,23 +403,22 @@ class VoiceService {
 
       this.audioContext = new AudioCtx()
       if (this.audioContext.state === 'suspended') {
-        this.audioContext.resume().catch(() => {})
+        this.audioContext.resume()
       }
 
       const source = this.audioContext.createMediaStreamSource(this.mediaStream)
       this.analyser = this.audioContext.createAnalyser()
       this.analyser.fftSize = 256
-      this.analyser.smoothingTimeConstant = 0.5
+      this.analyser.smoothingTimeConstant = 0.8
       source.connect(this.analyser)
 
-      const dataArray = new Uint8Array(this.analyser.frequencyBinCount)
+      const bufferLength = this.analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
 
       const checkVolume = () => {
-        if (!this.isRunning || !this.analyser) return
+        if (!this.isRunning) return
 
-        if (this.isMuted) {
-          if (this.handlers.onAudioLevel) this.handlers.onAudioLevel(0)
-        } else {
+        if (this.analyser && !this.isMuted) {
           this.analyser.getByteFrequencyData(dataArray)
           let sum = 0
           for (let i = 0; i < dataArray.length; i++) {
@@ -341,7 +444,11 @@ class VoiceService {
   /**
    * Main conversational and command handler for user speech
    */
-  public async processUserSpeech(rawText: string, providedRequestId?: string) {
+  public async processUserSpeech(
+    rawText: string,
+    providedRequestId?: string,
+    inputType: 'voice' | 'text' = 'voice'
+  ) {
     const text = rawText.trim()
     if (!text) return
 
@@ -362,46 +469,82 @@ class VoiceService {
     this.isProcessing = true
     const userMsgId = `msg_user_${requestId}`
 
-    // 1. Post to Conversation UI with unique ID and requestId
+    // 1. Post to Conversation UI with unique ID and requestId (Voice/Text Input)
     if (typeof window !== 'undefined' && (window as any).iris?.emitTranscript) {
       ;(window as any).iris.emitTranscript({
         id: userMsgId,
+        messageId: userMsgId,
         requestId,
         role: 'user',
         text: text,
+        content: text,
+        timestamp: Date.now(),
+        inputType,
         isFinal: true
       })
       if ((window as any).iris?.addHistory) {
         ;(window as any).iris.addHistory({
           id: userMsgId,
+          messageId: userMsgId,
           requestId,
           role: 'user',
-          text
+          text,
+          content: text,
+          timestamp: Date.now(),
+          inputType
         })
       }
     }
 
     this.setStatus('processing', `Processing intent: "${text}"`)
 
-    // 2. Command intent resolution via dedicated VoiceCommandProcessor
-    const cmdResult = await voiceCommandProcessor.processCommand(text, {
-      navigate: (tab) => this.handlers.onNavigate?.(tab),
-      setVisionMode: (mode) => this.handlers.onVisionMode?.(mode),
-      setMuted: (muted) => this.setMuted(muted),
-      stopSpeaking: () => this.stopSpeaking(),
-      setStatusMessage: (msg) => this.setStatus(this.status, msg)
-    })
+    try {
+      // 2. Command intent resolution via dedicated VoiceCommandProcessor
+      const cmdResult = await voiceCommandProcessor.processCommand(text, {
+        navigate: (tab) => this.handlers.onNavigate?.(tab),
+        setVisionMode: (mode) => this.handlers.onVisionMode?.(mode),
+        setMuted: (muted) => this.setMuted(muted),
+        stopSpeaking: () => this.stopSpeaking(),
+        setStatusMessage: (msg) => this.setStatus(this.status, msg),
+        setKnowledgeOpen: (open) => this.handlers.onKnowledgeOpen?.(open)
+      })
 
-    const responseText = cmdResult.spokenResponse
+      const displayText =
+        cmdResult.displayText || cmdResult.spokenResponse || 'I processed your request.'
+      const spokenText = cmdResult.spokenResponse || displayText
 
-    // 3. Stream model response to conversation and speak
-    this.streamAndSpeakResponse(responseText, requestId)
+      // 3. Stream model response to conversation and speak
+      this.streamAndSpeakResponse(displayText, spokenText, requestId, inputType)
+    } catch (err: any) {
+      console.error('[IRIS Voice] Command processing error:', err)
+      const assistantMsgId = `msg_model_${requestId}`
+      const errorMsg = 'I encountered an issue processing that command. Please try again.'
+      if (typeof window !== 'undefined' && (window as any).iris?.emitTranscriptComplete) {
+        ;(window as any).iris.emitTranscriptComplete({
+          id: assistantMsgId,
+          messageId: assistantMsgId,
+          requestId,
+          role: 'model',
+          text: errorMsg,
+          content: errorMsg,
+          timestamp: Date.now(),
+          inputType,
+          status: 'failed'
+        })
+      }
+      this.speak(errorMsg, true)
+    }
   }
 
   /**
    * Stream response text to conversation HUD and speak aloud with TTS
    */
-  private streamAndSpeakResponse(fullText: string, requestId: string) {
+  private streamAndSpeakResponse(
+    displayText: string,
+    spokenText: string,
+    requestId: string,
+    inputType: 'voice' | 'text' = 'voice'
+  ) {
     if (typeof window === 'undefined') return
 
     const iris = (window as any).iris
@@ -413,8 +556,8 @@ class VoiceService {
       this.activeStreamInterval = null
     }
 
-    // Stream text in small chunks for high-tech terminal feel
-    const words = fullText.split(' ')
+    // Stream text in small chunks for responsive feel
+    const words = displayText.split(' ')
     let i = 0
 
     this.activeStreamInterval = setInterval(() => {
@@ -423,11 +566,13 @@ class VoiceService {
         if (iris?.emitTranscript) {
           iris.emitTranscript({
             id: assistantMsgId,
+            messageId: assistantMsgId,
             requestId,
             role: 'model',
             text: chunk,
             chunkIndex: i,
             mode: 'delta',
+            inputType,
             isFinal: false
           })
         }
@@ -437,28 +582,38 @@ class VoiceService {
           clearInterval(this.activeStreamInterval)
           this.activeStreamInterval = null
         }
-        this.isProcessing = false
         if (iris?.emitTranscriptComplete) {
           iris.emitTranscriptComplete({
             id: assistantMsgId,
+            messageId: assistantMsgId,
             requestId,
             role: 'model',
-            text: fullText
+            text: displayText,
+            content: displayText,
+            timestamp: Date.now(),
+            inputType,
+            status: 'success'
           })
         }
         if (iris?.addHistory) {
           iris.addHistory({
             id: assistantMsgId,
+            messageId: assistantMsgId,
             requestId,
             role: 'model',
-            text: fullText
+            text: displayText,
+            content: displayText,
+            timestamp: Date.now(),
+            inputType,
+            status: 'success'
           })
         }
       }
     }, 45)
 
-    // Synthesize Speech
-    this.speak(fullText, true)
+    // Synthesize Clean Speech (stripped of markdown / code blocks / URLs)
+    const cleanSpeech = cleanTextForSpeech(spokenText || displayText)
+    this.speak(cleanSpeech, true)
   }
 
   /**
@@ -471,11 +626,7 @@ class VoiceService {
       window.speechSynthesis.cancel()
 
       // Pause speech recognition while speaking to completely avoid mic feedback loop
-      if (this.recognition) {
-        try {
-          this.recognition.abort()
-        } catch (_e) {}
-      }
+      this.stopRecognition()
 
       if (this.speakingEndTimeout) {
         clearTimeout(this.speakingEndTimeout)
@@ -508,35 +659,48 @@ class VoiceService {
         }
       }
 
+      let hasEnded = false
       const handleSpeechEnd = () => {
+        if (hasEnded) return
+        hasEnded = true
+
+        if (this.speakingEndTimeout) {
+          clearTimeout(this.speakingEndTimeout)
+          this.speakingEndTimeout = null
+        }
+
         if (notifyState) {
-          // Acoustic echo buffer: wait 350ms before restarting STT
-          if (this.speakingEndTimeout) clearTimeout(this.speakingEndTimeout)
-          this.speakingEndTimeout = setTimeout(() => {
-            this.isSpeaking = false
-            if (this.handlers.onSpeakingChange) {
-              this.handlers.onSpeakingChange(false)
-            }
-            if (this.isRunning && !this.isMuted) {
-              this.setStatus('listening', 'Microphone active. IRIS is listening...')
-              try {
-                this.recognition?.start()
-              } catch (_e) {}
-            }
-          }, 350)
+          this.isSpeaking = false
+          this.isProcessing = false
+          if (this.handlers.onSpeakingChange) {
+            this.handlers.onSpeakingChange(false)
+          }
+          if (this.isRunning && !this.isMuted) {
+            this.setStatus('listening', 'Microphone active. IRIS is listening...')
+            this.startRecognition()
+          }
         }
       }
 
       utterance.onend = handleSpeechEnd
       utterance.onerror = handleSpeechEnd
 
+      // Safety fallback: Chrome speech synthesis sometimes drops onend event
+      const approxDuration = Math.max(3000, Math.min(25000, text.length * 80))
+      this.speakingEndTimeout = setTimeout(handleSpeechEnd, approxDuration)
+
       window.speechSynthesis.speak(utterance)
     } catch (e) {
       console.warn('[IRIS Voice] Speech synthesis error:', e)
       if (notifyState) {
         this.isSpeaking = false
+        this.isProcessing = false
         if (this.handlers.onSpeakingChange) {
           this.handlers.onSpeakingChange(false)
+        }
+        if (this.isRunning && !this.isMuted) {
+          this.setStatus('listening', 'Microphone active. IRIS is listening...')
+          this.startRecognition()
         }
       }
     }
@@ -555,6 +719,10 @@ class VoiceService {
       clearInterval(this.activeStreamInterval)
       this.activeStreamInterval = null
     }
+    if (this.speakingEndTimeout) {
+      clearTimeout(this.speakingEndTimeout)
+      this.speakingEndTimeout = null
+    }
     this.isSpeaking = false
     this.isProcessing = false
     if (this.handlers.onSpeakingChange) {
@@ -562,20 +730,18 @@ class VoiceService {
     }
     if (this.isRunning && !this.isMuted) {
       this.setStatus('listening', 'Microphone active. IRIS is listening...')
-      try {
-        this.recognition?.start()
-      } catch (_e) {}
+      this.startRecognition()
     }
   }
 
   /**
    * Test or simulate voice command execution
    */
-  public triggerVoiceInput(text: string) {
+  public triggerVoiceInput(text: string, inputType: 'voice' | 'text' = 'text') {
     if (!this.isRunning) {
       this.isRunning = true
     }
-    this.processUserSpeech(text)
+    this.processUserSpeech(text, undefined, inputType)
   }
 }
 

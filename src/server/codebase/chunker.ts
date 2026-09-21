@@ -284,7 +284,11 @@ function parsePythonFile(
     const rawLine = lines[i]
     const trimmed = rawLine.trim()
 
-    if (trimmed.startsWith('def ') || trimmed.startsWith('async def ') || trimmed.startsWith('class ')) {
+    if (
+      trimmed.startsWith('def ') ||
+      trimmed.startsWith('async def ') ||
+      trimmed.startsWith('class ')
+    ) {
       const isClass = trimmed.startsWith('class ')
       const nameMatch = trimmed.match(/(?:def|class)\s+([a-zA-Z0-9_]+)/)
       const name = nameMatch ? nameMatch[1] : `block_${i + 1}`
