@@ -258,14 +258,21 @@ function AIOrb({
 
 export default function AICore({
   isConnected = false,
-  isSpeaking = false
+  isSpeaking = false,
+  isListening = false,
+  micLevel = 0,
+  onClick
 }: {
   isConnected?: boolean
   isSpeaking?: boolean
+  isListening?: boolean
+  micLevel?: number
+  onClick?: () => void
 }) {
   const [coreConfig, setCoreConfig] = useState<ParticleCoreConfig>(() => {
     return coreSettingsService.getSettings().particleCore
   })
+  const [isHovered, setIsHovered] = useState(false)
 
   useEffect(() => {
     const unsub = coreSettingsService.subscribe((state) => {
@@ -275,7 +282,52 @@ export default function AICore({
   }, [])
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`absolute inset-0 flex items-center justify-center z-0 transition-all duration-500 ${
+        onClick ? 'cursor-pointer pointer-events-auto' : 'pointer-events-none'
+      }`}
+      title={
+        !isConnected
+          ? 'Click to Initialize IRIS Voice AI'
+          : isListening
+            ? 'IRIS is listening... Click to mute or speak'
+            : isSpeaking
+              ? 'Click to interrupt IRIS speech'
+              : 'Click to toggle IRIS voice'
+      }
+    >
+      {/* Ambient Pulsing Glow Halos with Spring Transitions */}
+      <div
+        className={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full blur-[100px] pointer-events-none transition-all duration-700 ease-out ${
+          isSpeaking
+            ? 'bg-cyan-500/25 scale-125 animate-pulse'
+            : isListening
+              ? 'bg-[#00ff41]/25 scale-110'
+              : isConnected
+                ? 'bg-[#00ff41]/10 scale-95'
+                : isHovered
+                  ? 'bg-[#00ff41]/15 scale-105'
+                  : 'bg-[#00ff41]/5 scale-75 opacity-40'
+        }`}
+      />
+
+      {/* Ripple Rings when Listening */}
+      {isConnected && (isListening || isSpeaking) && (
+        <div
+          className={`absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full border border-dashed pointer-events-none transition-all duration-500 ${
+            isSpeaking
+              ? 'border-cyan-400/30 animate-spin'
+              : 'border-[#00ff41]/30 animate-[spin_12s_linear_infinite]'
+          }`}
+          style={{
+            transform: `scale(${1 + (micLevel || 0) * 0.4})`
+          }}
+        />
+      )}
+
       <Canvas
         style={{ width: '100%', height: '100%' }}
         camera={{ position: [0, 0, 5], fov: 42 }}
@@ -289,7 +341,15 @@ export default function AICore({
         dpr={[1, 2]}
         frameloop="always"
       >
-        <AIOrb isConnected={isConnected} isSpeaking={isSpeaking} config={coreConfig} />
+        <AIOrb
+          isConnected={isConnected}
+          isSpeaking={isSpeaking}
+          config={{
+            ...coreConfig,
+            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.4 : isHovered ? 1.2 : 1),
+            intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.5 : isListening ? 1.25 : 1)
+          }}
+        />
       </Canvas>
     </div>
   )

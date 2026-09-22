@@ -199,12 +199,34 @@ ${contextText}
 User Query: ${query}`
 
     try {
-      const response = await gemini.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-      })
+      const candidateModels = [
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-2.5-pro'
+      ]
 
-      const answer = response.text || 'Unable to generate response from document context.'
+      let answer = ''
+      let lastErr: any = null
+
+      for (const modelCandidate of candidateModels) {
+        try {
+          const response = await gemini.models.generateContent({
+            model: modelCandidate,
+            contents: prompt
+          })
+          if (response.text) {
+            answer = response.text
+            break
+          }
+        } catch (mErr) {
+          lastErr = mErr
+        }
+      }
+
+      if (!answer) {
+        throw lastErr || new Error('Unable to generate response from document context.')
+      }
 
       return {
         answer,

@@ -327,6 +327,25 @@ class MemoryService {
   }
 
   /**
+   * Synchronous accessor for all user memories
+   */
+  public getAllMemories(userId?: string): MemoryItem[] {
+    const activeUid = this.getActiveUserId(userId)
+    return this.loadLocalMemories(activeUid)
+  }
+
+  /**
+   * Search memories alias
+   */
+  public async searchMemories(
+    query: string,
+    userId?: string,
+    limit: number = 5
+  ): Promise<MemoryItem[]> {
+    return this.searchMemory(query, userId, limit)
+  }
+
+  /**
    * 7. CLEAR USER MEMORY
    */
   public async clearUserMemory(userId?: string): Promise<boolean> {
@@ -334,6 +353,38 @@ class MemoryService {
     this.saveLocalMemories(activeUid, [])
     this.syncWithBackend('clear', { userId: activeUid }).catch(() => {})
     return true
+  }
+
+  public async clearAllMemories(userId?: string): Promise<boolean> {
+    return this.clearUserMemory(userId)
+  }
+
+  /**
+   * Builds formatted context block for LLM prompts
+   */
+  public async buildContextPrompt(
+    query: string,
+    userId?: string,
+    maxMemories: number = 5
+  ): Promise<string> {
+    const relevant = await this.getRelevantMemories(query, userId, maxMemories)
+    if (!relevant || relevant.length === 0) return ''
+
+    const lines = relevant.map((m, idx) => `[Memory ${idx + 1}] (${m.category || 'general'}): ${m.memory}`)
+    return `[MEM0 USER LONG-TERM MEMORY & PREFERENCES]:\n${lines.join('\n')}`
+  }
+
+  /**
+   * Processes dialogue turn to extract automatic long-term facts
+   */
+  public async processAutomaticMemoryExtraction(
+    text: string,
+    role: string = 'user',
+    userId?: string
+  ): Promise<MemoryItem[]> {
+    if (role !== 'user') return []
+    const extracted = await this.extractAndSaveAutomaticMemory(text, '', userId)
+    return extracted ? [extracted] : []
   }
 
   /**

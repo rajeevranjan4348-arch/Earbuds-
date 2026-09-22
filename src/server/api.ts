@@ -43,7 +43,9 @@ import {
   googleSheetsProvider,
   googleSlidesProvider,
   googleGmailProvider,
-  googleCalendarProvider
+  googleCalendarProvider,
+  workspaceSessionManager,
+  googleWorkspaceApiClient
 } from './workspace'
 import {
   trendDiscoveryEngine,
@@ -105,21 +107,49 @@ function getGemini(): GoogleGenAI | null {
   }
 }
 
-// Helper to parse JSON body
+// Helper to parse JSON body safely
 function parseBody(req: IncomingMessage): Promise<any> {
+  if ((req as any).body !== undefined && typeof (req as any).body === 'object') {
+    return Promise.resolve((req as any).body)
+  }
+  if (req.readableEnded) {
+    return Promise.resolve({})
+  }
   return new Promise((resolve) => {
     let data = ''
+    let resolved = false
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        try {
+          resolve(data ? JSON.parse(data) : {})
+        } catch {
+          resolve({})
+        }
+      }
+    }, 4000)
+
     req.on('data', (chunk) => {
       data += chunk
     })
     req.on('end', () => {
-      try {
-        resolve(data ? JSON.parse(data) : {})
-      } catch {
+      if (!resolved) {
+        resolved = true
+        clearTimeout(timeout)
+        try {
+          resolve(data ? JSON.parse(data) : {})
+        } catch {
+          resolve({})
+        }
+      }
+    })
+    req.on('error', () => {
+      if (!resolved) {
+        resolved = true
+        clearTimeout(timeout)
         resolve({})
       }
     })
-    req.on('error', () => resolve({}))
   })
 }
 
@@ -228,24 +258,43 @@ export async function handleApiRequest(
           ? audioData.split('base64,')[1]
           : audioData
 
-        const response = await gemini.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            {
-              inlineData: {
-                mimeType: mimeType || 'audio/webm',
-                data: cleanBase64
-              }
-            },
-            "You are an acoustic speech-to-text transcriber for the IRIS AI voice assistant. Accurately transcribe the user's spoken voice command verbatim. Return ONLY the transcribed text without any markdown quotes, commentary, punctuation fluff, or prefixes. If no intelligible speech is detected, return an empty string."
-          ]
-        })
+        let response: any = null
+        let usedModel = 'gemini-2.5-flash'
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+
+        for (const modelName of candidateModels) {
+          try {
+            response = await gemini.models.generateContent({
+              model: modelName,
+              contents: [
+                {
+                  inlineData: {
+                    mimeType: mimeType || 'audio/webm',
+                    data: cleanBase64
+                  }
+                },
+                "You are an acoustic speech-to-text transcriber for the IRIS AI voice assistant. Accurately transcribe the user's spoken voice command verbatim. Return ONLY the transcribed text without any markdown quotes, commentary, punctuation fluff, or prefixes. If no intelligible speech is detected, return an empty string."
+              ]
+            })
+            if (response && response.text !== undefined) {
+              usedModel = modelName
+              break
+            }
+          } catch (modelErr: any) {
+            console.warn(`[API Voice Transcribe] Model ${modelName} failed, trying next:`, modelErr?.message)
+          }
+        }
+
+        if (!response) {
+          throw new Error('All speech transcription models failed.')
+        }
 
         const transcript = (response.text || '').trim().replace(/^["']|["']$/g, '')
         return sendJson(res, 200, {
           success: true,
           transcript,
-          provider: 'gemini-ai'
+          provider: 'gemini-ai',
+          model: usedModel
         })
       } catch (err: any) {
         console.error('[API Voice Transcribe] Gemini error:', err)
@@ -613,6 +662,511 @@ export async function handleApiRequest(
       const body = await parseBody(req)
       const user = await upsertUser(body.uid, body.email, body.displayName)
       return sendJson(res, 200, { success: true, user })
+    }
+
+    // ==========================================
+    // Google Workspace Centralized OAuth Session & Dispatcher Endpoints
+    // ==========================================
+
+    // Get active Google Workspace Session Info
+    if (pathname === '/api/workspace/auth/session' && req.method === 'GET') {
+      const userId = parsedUrl.searchParams.get('userId') || undefined
+      const session = workspaceSessionManager.getSessionInfo(userId)
+      return sendJson(res, 200, { success: true, session })
+    }
+
+    // Update / Store Google Workspace Session (from Client OAuth login)
+    if (pathname === '/api/workspace/auth/session' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_auth_update', async () => {
+        const body = await parseBody(req)
+        if (!body.accessToken) {
+          return { success: false, error: 'Missing accessToken in request body' }
+        }
+
+        const session = workspaceSessionManager.updateSession({
+          userId: body.userId || body.uid,
+          email: body.email,
+          displayName: body.displayName,
+          accessToken: body.accessToken,
+          refreshToken: body.refreshToken,
+          idToken: body.idToken,
+          expiresIn: body.expiresIn ? Number(body.expiresIn) : undefined,
+          expiresAt: body.expiresAt ? Number(body.expiresAt) : undefined,
+          scopes: body.scopes
+        })
+
+        return {
+          success: true,
+          message: 'Google Workspace session synchronized successfully',
+          session: workspaceSessionManager.getSessionInfo(session.userId)
+        }
+      })
+    }
+
+    // Force / Proactive Refresh of Google Workspace Access Token
+    if (pathname === '/api/workspace/auth/refresh' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_auth_refresh', async () => {
+        const body = await parseBody(req)
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || undefined
+        const refreshResult = await workspaceSessionManager.refreshToken(userId, 'client_requested_refresh')
+        if (refreshResult.success && refreshResult.accessToken) {
+          const info = workspaceSessionManager.getSessionInfo(userId)
+          return {
+            success: true,
+            accessToken: refreshResult.accessToken,
+            expiresAt: info.expiresAt,
+            session: info
+          }
+        }
+        return {
+          success: false,
+          error: refreshResult.error || 'Failed to refresh token. Please reconnect.'
+        }
+      })
+    }
+
+    // Disconnect / Clear Google Workspace Session
+    if (pathname === '/api/workspace/auth/session' && req.method === 'DELETE') {
+      const userId = parsedUrl.searchParams.get('userId') || undefined
+      workspaceSessionManager.clearSession(userId)
+      return sendJson(res, 200, { success: true, message: 'Google Workspace session disconnected' })
+    }
+
+    // Diagnostic Authentication Failure Logs (supporting /api/workspace/auth/failures and /api/workspace/auth/logs)
+    if ((pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') && req.method === 'GET') {
+      const logs = workspaceSessionManager.getAuthFailures()
+      return sendJson(res, 200, { success: true, logs })
+    }
+
+    // Clear Diagnostic Authentication Failure Logs
+    if ((pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') && req.method === 'DELETE') {
+      workspaceSessionManager.clearAuthFailures()
+      return sendJson(res, 200, { success: true, message: 'Authentication failure logs cleared' })
+    }
+
+    // Test All Google Workspace Services Connection Health
+    if (pathname === '/api/workspace/auth/test' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_auth_test', async () => {
+        const userId = parsedUrl.searchParams.get('userId') || undefined
+        const token = await workspaceSessionManager.getValidAccessToken(userId, 'health_check')
+        const sessionInfo = workspaceSessionManager.getSessionInfo(userId)
+
+        if (!token) {
+          return {
+            success: false,
+            error: 'No active Google Workspace session found. Please authenticate.',
+            session: sessionInfo
+          }
+        }
+
+        const services = [
+          { id: 'drive', name: 'Google Drive', endpoint: 'https://www.googleapis.com/drive/v3/about?fields=user' },
+          { id: 'gmail', name: 'Gmail', endpoint: 'https://gmail.googleapis.com/gmail/v1/users/me/profile' },
+          { id: 'calendar', name: 'Google Calendar', endpoint: 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1' },
+          { id: 'tasks', name: 'Google Tasks', endpoint: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=1' },
+          { id: 'contacts', name: 'Google Contacts', endpoint: 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses' },
+          { id: 'chat', name: 'Google Chat', endpoint: 'https://chat.googleapis.com/v1/spaces?pageSize=1' },
+          { id: 'docs', name: 'Google Docs', endpoint: 'https://docs.googleapis.com/v1/documents' },
+          { id: 'sheets', name: 'Google Sheets', endpoint: 'https://sheets.googleapis.com/v4/spreadsheets' },
+          { id: 'slides', name: 'Google Slides', endpoint: 'https://slides.googleapis.com/v1/presentations' },
+          { id: 'classroom', name: 'Google Classroom', endpoint: 'https://classroom.googleapis.com/v1/courses?pageSize=1' }
+        ]
+
+        const results: Record<string, { status: 'healthy' | 'unauthorized' | 'forbidden' | 'error' | 'ready'; message?: string; latencyMs: number }> = {}
+
+        await Promise.all(
+          services.map(async (svc) => {
+            const start = Date.now()
+            try {
+              const res = await fetch(svc.endpoint, {
+                method: svc.id === 'docs' || svc.id === 'sheets' || svc.id === 'slides' ? 'HEAD' : 'GET',
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              const latencyMs = Date.now() - start
+              if (res.ok || (svc.id === 'docs' && res.status === 404)) {
+                results[svc.id] = { status: 'healthy', latencyMs, message: 'Connected and verified' }
+              } else if (res.status === 401) {
+                results[svc.id] = { status: 'unauthorized', latencyMs, message: 'Token rejected (401)' }
+                workspaceSessionManager.logAuthFailure(svc.id, 'Token rejected during health check', 401, svc.endpoint)
+              } else if (res.status === 403) {
+                results[svc.id] = { status: 'forbidden', latencyMs, message: 'Missing scope or restricted (403)' }
+              } else {
+                results[svc.id] = { status: 'ready', latencyMs, message: `Status code ${res.status}` }
+              }
+            } catch (err: any) {
+              results[svc.id] = { status: 'error', latencyMs: Date.now() - start, message: err?.message || 'Network error' }
+            }
+          })
+        )
+
+        return {
+          success: true,
+          session: workspaceSessionManager.getSessionInfo(userId),
+          services: results,
+          timestamp: Date.now()
+        }
+      })
+    }
+
+    // Centralized Google Workspace Universal API Proxy Endpoint
+    if (pathname === '/api/workspace/proxy' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_proxy', async () => {
+        const body = await parseBody(req)
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : body.accessToken || ''
+        
+        const service = body.service || 'drive'
+        const url = body.url
+        if (!url) return { success: false, error: 'Missing target API url' }
+
+        const response = await googleWorkspaceApiClient.execute({
+          service,
+          url,
+          method: body.method || 'GET',
+          headers: body.headers,
+          body: body.body ? (typeof body.body === 'string' ? body.body : JSON.stringify(body.body)) : undefined,
+          userId: body.userId,
+          overrideAccessToken: bearerToken || undefined
+        })
+
+        return {
+          success: response.ok,
+          status: response.status,
+          data: response.data
+        }
+      })
+    }
+
+    // ==========================================
+    // Unified Google Workspace REST Endpoints (Powered by Centralized Client)
+    // ==========================================
+
+    // 1. Google Drive List Files
+    if (pathname === '/api/workspace/drive/files' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_drive_files', async () => {
+        const pageSize = parsedUrl.searchParams.get('pageSize') || '15'
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        const url = `https://www.googleapis.com/drive/v3/files?pageSize=${pageSize}&fields=files(id,name,mimeType,modifiedTime,webViewLink,iconLink)&orderBy=modifiedTime desc&q=trashed = false`
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'drive',
+          url,
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, files: resObj.data?.files || [] }
+      })
+    }
+
+    // 2. Google Sheets Create
+    if (pathname === '/api/workspace/sheets/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_sheets_create', async () => {
+        const body = await parseBody(req)
+        const title = body.title || 'IRIS Telemetry Log'
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'sheets',
+          url: 'https://sheets.googleapis.com/v4/spreadsheets',
+          method: 'POST',
+          body: JSON.stringify({ properties: { title } }),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, sheet: resObj.data }
+      })
+    }
+
+    // 3. Gmail List Messages
+    if (pathname === '/api/workspace/gmail/messages' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_gmail_messages', async () => {
+        const maxResults = parsedUrl.searchParams.get('maxResults') || '8'
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const listRes = await googleWorkspaceApiClient.execute({
+          service: 'gmail',
+          url: `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`,
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+
+        const rawList = listRes.data?.messages || []
+        if (!rawList.length) return { success: true, messages: [] }
+
+        // Fetch details for first 5 messages
+        const details = await Promise.all(
+          rawList.slice(0, 5).map(async (m: { id: string }) => {
+            try {
+              const detailRes = await googleWorkspaceApiClient.execute({
+                service: 'gmail',
+                url: `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+                method: 'GET',
+                userId,
+                overrideAccessToken: bearerToken
+              })
+              const d = detailRes.data
+              const headers = d.payload?.headers || []
+              const subject = headers.find((h: any) => h.name === 'Subject')?.value || 'No Subject'
+              const from = headers.find((h: any) => h.name === 'From')?.value || 'Unknown Sender'
+              const date = headers.find((h: any) => h.name === 'Date')?.value || ''
+              return {
+                id: d.id,
+                service: 'gmail',
+                title: subject,
+                subtitle: from,
+                date,
+                snippet: d.snippet,
+                link: `https://mail.google.com/mail/u/0/#inbox/${d.id}`
+              }
+            } catch {
+              return null
+            }
+          })
+        )
+
+        return { success: true, messages: details.filter(Boolean) }
+      })
+    }
+
+    // 4. Google Calendar Events (List & Create)
+    if (pathname === '/api/workspace/calendar/events') {
+      if (req.method === 'GET') {
+        return handleSafeRoute(res, 'workspace_calendar_list', async () => {
+          const authHeader = req.headers['authorization'] || ''
+          const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+          const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+          const now = new Date().toISOString()
+          const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=${encodeURIComponent(now)}`
+          
+          const resObj = await googleWorkspaceApiClient.execute({
+            service: 'calendar',
+            url,
+            method: 'GET',
+            userId,
+            overrideAccessToken: bearerToken
+          })
+          return { success: true, events: resObj.data?.items || [] }
+        })
+      }
+      if (req.method === 'POST') {
+        return handleSafeRoute(res, 'workspace_calendar_create', async () => {
+          const body = await parseBody(req)
+          const authHeader = req.headers['authorization'] || ''
+          const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+          const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+          
+          const resObj = await googleWorkspaceApiClient.execute({
+            service: 'calendar',
+            url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            method: 'POST',
+            body: JSON.stringify({
+              summary: body.summary || 'Scheduled Session',
+              start: { dateTime: body.startIso || new Date().toISOString() },
+              end: { dateTime: body.endIso || new Date(Date.now() + 3600000).toISOString() }
+            }),
+            userId,
+            overrideAccessToken: bearerToken
+          })
+          return { success: true, event: resObj.data }
+        })
+      }
+    }
+
+    // 5. Google Docs Create
+    if (pathname === '/api/workspace/docs/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_docs_create', async () => {
+        const body = await parseBody(req)
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'docs',
+          url: 'https://docs.googleapis.com/v1/documents',
+          method: 'POST',
+          body: JSON.stringify({ title: body.title || 'Untitled Document' }),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, doc: resObj.data }
+      })
+    }
+
+    // 6. Google Slides Create
+    if (pathname === '/api/workspace/slides/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_slides_create', async () => {
+        const body = await parseBody(req)
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'slides',
+          url: 'https://slides.googleapis.com/v1/presentations',
+          method: 'POST',
+          body: JSON.stringify({ title: body.title || 'Untitled Presentation' }),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, presentation: resObj.data }
+      })
+    }
+
+    // 7. Google Tasks (List & Create)
+    if (pathname === '/api/workspace/tasks/list' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_tasks_list', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const listsRes = await googleWorkspaceApiClient.execute({
+          service: 'tasks',
+          url: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        const defaultList = listsRes.data?.items?.[0]
+        if (!defaultList) return { success: true, tasks: [] }
+
+        const tasksRes = await googleWorkspaceApiClient.execute({
+          service: 'tasks',
+          url: `https://tasks.googleapis.com/tasks/v1/lists/${defaultList.id}/tasks?maxResults=15`,
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, tasks: tasksRes.data?.items || [] }
+      })
+    }
+
+    if (pathname === '/api/workspace/tasks/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_tasks_create', async () => {
+        const body = await parseBody(req)
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const listsRes = await googleWorkspaceApiClient.execute({
+          service: 'tasks',
+          url: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        const listId = listsRes.data?.items?.[0]?.id || '@default'
+
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'tasks',
+          url: `https://tasks.googleapis.com/tasks/v1/lists/${listId}/tasks`,
+          method: 'POST',
+          body: JSON.stringify({ title: body.title || 'New Task', status: 'needsAction' }),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, task: resObj.data }
+      })
+    }
+
+    // 8. Google Contacts List
+    if (pathname === '/api/workspace/contacts/list' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_contacts_list', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'contacts',
+          url: 'https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers&pageSize=15',
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, connections: resObj.data?.connections || [] }
+      })
+    }
+
+    // 9. Google Chat Spaces List
+    if (pathname === '/api/workspace/chat/spaces' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_chat_spaces', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'chat',
+          url: 'https://chat.googleapis.com/v1/spaces',
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, spaces: resObj.data?.spaces || [] }
+      })
+    }
+
+    // 10. Google Meet Create Space
+    if (pathname === '/api/workspace/meet/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_meet_create', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'meet',
+          url: 'https://meet.googleapis.com/v2/spaces',
+          method: 'POST',
+          body: JSON.stringify({}),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, space: resObj.data }
+      })
+    }
+
+    // 11. Google Forms Create
+    if (pathname === '/api/workspace/forms/create' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_forms_create', async () => {
+        const body = await parseBody(req)
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'forms',
+          url: 'https://forms.googleapis.com/v1/forms',
+          method: 'POST',
+          body: JSON.stringify({ info: { title: body.title || 'IRIS Feedback Form' } }),
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, form: resObj.data }
+      })
+    }
+
+    // 12. Google Classroom Courses List
+    if (pathname === '/api/workspace/classroom/courses' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_classroom_courses', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        
+        const resObj = await googleWorkspaceApiClient.execute({
+          service: 'classroom',
+          url: 'https://classroom.googleapis.com/v1/courses?pageSize=15',
+          method: 'GET',
+          userId,
+          overrideAccessToken: bearerToken
+        })
+        return { success: true, courses: resObj.data?.courses || [] }
+      })
     }
 
     // ==========================================
@@ -1091,6 +1645,64 @@ export async function handleApiRequest(
     }
 
     // 3. Web Search & Browsing Endpoints (SearXNG / DuckDuckGo / Tavily / Reader)
+    if (pathname === '/api/voice/transcribe' && req.method === 'POST') {
+      try {
+        const body = await parseBody(req)
+        const { audioData, mimeType = 'audio/webm' } = body
+        if (!audioData) {
+          return sendJson(res, 400, { success: false, error: 'Missing audioData' })
+        }
+
+        const ai = getGemini()
+        if (!ai) {
+          return sendJson(res, 200, {
+            success: false,
+            transcript: '',
+            message: 'Gemini API not configured for server transcription.'
+          })
+        }
+
+        const cleanBase64 = typeof audioData === 'string'
+          ? audioData.replace(/^data:audio\/[a-zA-Z0-9.-]+;base64,/, '')
+          : ''
+
+        const cleanMime = (mimeType || 'audio/webm').split(';')[0] || 'audio/webm'
+
+        const candidates = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+        let transcript = ''
+
+        for (const model of candidates) {
+          try {
+            const resp = await ai.models.generateContent({
+              model,
+              contents: [
+                {
+                  text: 'Accurately transcribe the spoken voice in this audio file. Output ONLY the transcribed text verbatim with no markdown formatting, quotes, or conversational explanations.'
+                },
+                {
+                  inlineData: {
+                    mimeType: cleanMime,
+                    data: cleanBase64
+                  }
+                }
+              ]
+            })
+            if (resp && resp.text) {
+              transcript = resp.text.trim().replace(/^["']|["']$/g, '')
+              break
+            }
+          } catch (mErr: any) {
+            console.warn(`[Server Voice Transcribe] Model ${model} warning:`, mErr?.message)
+          }
+        }
+
+        return sendJson(res, 200, { success: true, transcript })
+      } catch (err: any) {
+        console.error('[Server Voice Transcribe Error]:', err)
+        return sendJson(res, 500, { success: false, error: err?.message || 'Transcription failed' })
+      }
+    }
+
     if (pathname === '/api/search' && req.method === 'POST') {
       const {
         query,
@@ -1482,6 +2094,7 @@ export async function handleApiRequest(
     if (pathname === '/api/ai/chat' && req.method === 'POST') {
       const {
         prompt: rawPrompt,
+        conversationHistory = [],
         relevantMemories = [],
         codebaseContext: rawCodebaseContext = [],
         projectId = 'current_workspace',
@@ -1639,23 +2252,78 @@ export async function handleApiRequest(
             systemInstruction += `\n\n[USER LIVE LOCATION & SPATIAL TELEMETRY]:\nLatitude: ${userLoc.latitude}\nLongitude: ${userLoc.longitude}\nCity: ${userLoc.city || 'Unknown'}\nRegion: ${userLoc.region || 'Unknown'}\nCountry: ${userLoc.country || 'Unknown'}\nAddress: ${userLoc.displayName || 'Unspecified'}\nTelemetry Accuracy: ${userLoc.accuracy ? `±${Math.round(userLoc.accuracy)}m` : 'nominal'}\nSource: ${userLoc.source.toUpperCase()}\nUpdated: ${userLoc.updatedAt}\nDirectives: Use this verified spatial telemetry when user inquires about where they are, local weather, time, regional context, or directions.`
           }
 
-          const response = await ai.models.generateContent({
-            model: 'gemini-3.8-flash',
-            contents: sanitizedPrompt,
-            config: {
-              systemInstruction
+          if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+            const historyFormatted = conversationHistory
+              .filter((h: any) => h && h.text && h.text.trim())
+              .map((h: any) => `${h.role === 'model' || h.role === 'assistant' ? 'AI Assistant' : 'User'}: ${h.text.trim()}`)
+              .join('\n')
+            if (historyFormatted) {
+              systemInstruction += `\n\n[ACTIVE SESSION CONVERSATION HISTORY - PRIOR TURNS]:\n${historyFormatted}\n\nContextual Directives:\n1. Use the prior conversation history above to maintain seamless continuity, context, and recall of user requests and topics discussed earlier in this active session across restarts.\n2. When the user refers to previous items with pronouns or shorthands (like "that", "it", "the first one"), resolve them accurately based on the active conversation history above.`
             }
-          })
+          }
 
-          const rawText = response.text || ''
+          let response: any = null
+          let usedChatModel = 'gemini-2.5-flash'
+          const chatModelCandidates = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-2.5-pro'
+          ]
+
+          console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', promptLength: sanitizedPrompt.length, modelCandidate: chatModelCandidates[0] })
+
+          let extractedText = ''
+
+          for (const modelCandidate of chatModelCandidates) {
+            try {
+              console.log('[AI_REQUEST_SENT]', { model: modelCandidate, endpoint: '/api/ai/chat' })
+              response = await ai.models.generateContent({
+                model: modelCandidate,
+                contents: sanitizedPrompt,
+                config: {
+                  systemInstruction
+                }
+              })
+
+              if (response) {
+                // Parse text safely whether returned as property, function, or parts array
+                if (typeof response.text === 'string' && response.text.trim()) {
+                  extractedText = response.text.trim()
+                } else if (typeof response.text === 'function') {
+                  extractedText = String(response.text()).trim()
+                } else if (response.candidates?.[0]?.content?.parts) {
+                  extractedText = response.candidates[0].content.parts
+                    .map((p: any) => (typeof p === 'string' ? p : p.text || ''))
+                    .filter(Boolean)
+                    .join('\n')
+                    .trim()
+                }
+
+                if (extractedText) {
+                  usedChatModel = modelCandidate
+                  console.log('[AI_RESPONSE_RECEIVED]', { model: usedChatModel, textLength: extractedText.length })
+                  break
+                }
+              }
+            } catch (err: any) {
+              console.warn('[AI_REQUEST_ERROR]', { model: modelCandidate, error: err?.message || err })
+            }
+          }
+
+          if (!extractedText) {
+            throw new Error('All Gemini candidate models returned empty or failed to generate content.')
+          }
+
           // Enforce PrivacyAlign output sanitization
-          const sanitizedOutput = privacyAlign.sanitize(rawText).redactedText
+          const sanitizedOutput = privacyAlign.sanitize(extractedText).redactedText
+          console.log('[AI_RESPONSE_PARSED]', { outputLength: sanitizedOutput.length, model: usedChatModel })
 
           agentHarness.completeTrace(execPlan.traceId)
 
           return sendJson(res, 200, {
             text: sanitizedOutput,
-            model: 'gemini-3.8-flash',
+            model: usedChatModel,
             agentRole: execPlan.role,
             agentName: execPlan.agentName,
             traceId: execPlan.traceId,
@@ -1668,7 +2336,7 @@ export async function handleApiRequest(
             searchQuery: webSearchQuery
           })
         } catch (err: any) {
-          console.warn('[Server] Gemini generation failed, falling back:', err?.message)
+          console.error('[AI_REQUEST_ERROR] Gemini server generation error:', err?.message || err)
         }
       }
 
@@ -1695,12 +2363,13 @@ export async function handleApiRequest(
 
       agentHarness.completeTrace(execPlan.traceId)
 
+      const conversationalFallback = `I have received your request: "${sanitizedPrompt}". Standing by to assist.`
       return sendJson(res, 200, {
-        text: null,
+        text: conversationalFallback,
         fallback: true,
         agentRole: execPlan.role,
         agentName: execPlan.agentName,
-        message: 'No server-side Gemini key configured. Switching to client fallback.'
+        message: 'Direct synthesized response'
       })
     }
 

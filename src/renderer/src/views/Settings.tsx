@@ -15,7 +15,9 @@ import {
   User,
   Check,
   Sliders,
-  MapPin
+  MapPin,
+  Keyboard,
+  Hand
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -25,12 +27,15 @@ import {
 } from '../services/coreSettingsService'
 import { memoryService, MemoryItem } from '../services/memoryService'
 import { firebaseAuthService, FirebaseUserContext } from '../services/firebaseAuth'
+import KeyboardShortcutsSettings from '../components/UI/KeyboardShortcutsSettings'
+import GestureSettings from '../components/UI/GestureSettings'
+import { soundEffects, SoundType } from '../services/soundEffectsService'
 
 interface SettingsProps {
   isSystemActive: boolean
 }
 
-type TabType = 'keys' | 'particles' | 'memory' | 'hardware'
+type TabType = 'keys' | 'shortcuts' | 'gestures' | 'audio' | 'particles' | 'memory' | 'hardware'
 
 function GlassPanel({
   children,
@@ -58,6 +63,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   const [mem0Key, setMem0Key] = useState('')
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
+  const [sfxEnabled, setSfxEnabled] = useState<boolean>(soundEffects.getIsEnabled())
+  const [sfxVolume, setSfxVolume] = useState<number>(soundEffects.getVolume())
 
   // Core settings & Mem0 state
   const [coreSettings, setCoreSettings] = useState<CoreSettings>(coreSettingsService.getSettings())
@@ -185,6 +192,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
   const tabConfigs = [
     { id: 'keys', label: 'API Keys', icon: <RiPlugLine size={18} /> },
+    { id: 'audio', label: 'Audio & Feedback', icon: <Volume2 size={18} /> },
+    { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={18} /> },
+    { id: 'gestures', label: 'Hands-Free Gestures', icon: <Hand size={18} /> },
     { id: 'particles', label: '3D Particle Core', icon: <Sparkles size={18} /> },
     { id: 'memory', label: `Mem0 Memory (${memories.length})`, icon: <Brain size={18} /> },
     { id: 'hardware', label: 'Hardware Permissions', icon: <Cpu size={18} /> }
@@ -346,6 +356,164 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                       automatic local resilient store if an external cloud key is not configured.
                     </p>
                   </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: AUDITORY FEEDBACK & WEB AUDIO */}
+            {activeTab === 'audio' && (
+              <motion.div
+                key="audio"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
+                  <div className="flex justify-between items-center pb-2">
+                    <span className={titleClass}>
+                      <Volume2 className="text-emerald-400 shrink-0" size={22} /> Auditory Feedback & UI Sound FX
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
+                    IRIS generates subtle, low-latency procedural sound waves with the Web Audio API for tactile feedback during button hovers, clicks, tab navigation, and AI state transitions.
+                  </p>
+
+                  <div className="flex flex-col gap-5 pt-2">
+                    {/* Master Auditory Feedback Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-xl">
+                      <div className="space-y-1">
+                        <span className="text-sm font-semibold text-zinc-200 block">
+                          UI Auditory Feedback
+                        </span>
+                        <span className="text-xs text-zinc-400 block">
+                          Enable delicate acoustic cues for hovers, clicks, and menu switches
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const next = !sfxEnabled
+                          setSfxEnabled(next)
+                          soundEffects.setEnabled(next)
+                          if (next) soundEffects.play('activate')
+                        }}
+                        className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                          sfxEnabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                        }`}
+                      >
+                        <div
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                            sfxEnabled ? 'translate-x-6' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Master Volume Slider */}
+                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-zinc-200">
+                          Feedback Volume
+                        </span>
+                        <span className="text-xs font-mono text-emerald-400">
+                          {Math.round(sfxVolume * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={sfxVolume}
+                        disabled={!sfxEnabled}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value)
+                          setSfxVolume(val)
+                          soundEffects.setVolume(val)
+                          soundEffects.play('click')
+                        }}
+                        className="w-full accent-emerald-400 bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer disabled:opacity-40"
+                      />
+                    </div>
+
+                    {/* Sound Effect Palette Previews */}
+                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-3">
+                      <span className="text-sm font-semibold text-zinc-200 block">
+                        Procedural Sound Palette Previews
+                      </span>
+                      <p className="text-xs text-zinc-400">
+                        Test each procedurally synthesized acoustic profile:
+                      </p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                        {(
+                          [
+                            { id: 'hover', label: 'Hover Chime' },
+                            { id: 'click', label: 'Tactile Click' },
+                            { id: 'tab', label: 'Tab Blip' },
+                            { id: 'toggle', label: 'Switch Chirp' },
+                            { id: 'activate', label: 'Voice Start' },
+                            { id: 'deactivate', label: 'Voice Stop' },
+                            { id: 'success', label: 'Success Triad' },
+                            { id: 'shortcut', label: 'Key Action' }
+                          ] as { id: SoundType; label: string }[]
+                        ).map((item) => (
+                          <button
+                            key={item.id}
+                            disabled={!sfxEnabled}
+                            onClick={() => soundEffects.play(item.id)}
+                            className="px-3 py-2 bg-zinc-900/90 border border-white/10 hover:border-emerald-500/50 hover:bg-emerald-950/30 text-zinc-200 hover:text-emerald-300 text-xs font-medium rounded-lg transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-1.5"
+                          >
+                            <Sparkles size={12} className="text-emerald-400" />
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: KEYBOARD SHORTCUTS */}
+            {activeTab === 'shortcuts' && (
+              <motion.div
+                key="shortcuts"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <KeyboardShortcutsSettings />
+              </motion.div>
+            )}
+
+            {/* TAB: HANDS-FREE CAMERA GESTURES */}
+            {activeTab === 'gestures' && (
+              <motion.div
+                key="gestures"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
+                  <div className="flex justify-between items-center pb-2">
+                    <span className={titleClass}>
+                      <Hand className="text-emerald-400 shrink-0" size={22} /> Hands-Free Camera Gesture Navigation
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
+                    Control tabs, trigger voice listening, scroll views, and command IRIS touchlessly using your webcam.
+                  </p>
+                  <GestureSettings
+                    onStatusChange={(msg) => {
+                      setSaveStatus(msg)
+                      setTimeout(() => setSaveStatus(null), 3000)
+                    }}
+                  />
                 </GlassPanel>
               </motion.div>
             )}
@@ -598,9 +766,11 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                                 {m.memory}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(m.createdAt).toLocaleDateString()}</span>
+                                <span>{new Date(m.createdAt || (m as any).created_at || Date.now()).toLocaleDateString()}</span>
                                 {m.category && (
-                                  <span className="text-emerald-400/80">• {m.category}</span>
+                                  <span className="text-emerald-400/80">
+                                    • {m.category}
+                                  </span>
                                 )}
                               </div>
                             </div>

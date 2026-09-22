@@ -7,7 +7,6 @@
  */
 
 import crypto from 'crypto'
-import { extractPdfText } from '../lib/pdf'
 import { ExtractedPage } from './types'
 import { GoogleGenAI } from '@google/genai'
 
@@ -43,45 +42,87 @@ export class PDFExtractor {
     const pages: ExtractedPage[] = []
 
     try {
-      // 1. Parse the PDF (pdf-parse v2 class API via the compatibility layer)
-      const parsed = await extractPdfText(buffer)
-      const rawText = parsed.text || ''
-      const numPages = parsed.numpages || parsed.pages.length || 1
+      let rawText = ''
+      let numPages = 1
+      let rawPagesList: Array<{ text: string; pageNumber: number }> = []
 
-      // Prefer the parser's own page segmentation, fall back to marker splitting
-      const pageSegments: string[] =
-        parsed.pages.length === numPages
-          ? parsed.pages.map((page) => page.text || '')
-          : rawText.split(/\n(?=Page\s+\d+|[\f])/i)
+      // 1. Attempt parsing using pdf-parse (supporting both v2 PDFParse class and v1 functional exports)
+      try {
+        const pdfModule: any = await import('pdf-parse')
+        const ParserClass = pdfModule.PDFParse || pdfModule.default?.PDFParse
+        
+        if (ParserClass && typeof ParserClass === 'function') {
+          const parser = new ParserClass({ data: buffer })
+          try {
+            const pdfResult = await parser.getText()
+            rawText = pdfResult.text || ''
+            numPages = pdfResult.total || (pdfResult.pages ? pdfResult.pages.length : 1)
+            if (pdfResult.pages && Array.isArray(pdfResult.pages)) {
+              rawPagesList = pdfResult.pages.map((p: any, idx: number) => ({
+                text: p.text || '',
+                pageNumber: p.num || idx + 1
+              }))
+            }
+          } finally {
+            if (typeof parser.destroy === 'function') {
+              await parser.destroy().catch(() => {})
+            }
+          }
+        } else if (typeof pdfModule === 'function') {
+          const pdfData = await pdfModule(buffer)
+          rawText = pdfData.text || ''
+          numPages = pdfData.numpages || 1
+        } else if (typeof pdfModule.default === 'function') {
+          const pdfData = await pdfModule.default(buffer)
+          rawText = pdfData.text || ''
+          numPages = pdfData.numpages || 1
+        }
+      } catch (parseErr: any) {
+        console.warn(`[PDFExtractor] Direct parser note for ${filename}:`, parseErr?.message)
+      }
 
       let currentSection = 'Introduction'
       let totalExtractedLength = 0
 
-      for (let i = 1; i <= numPages; i++) {
-        let pageText = pageSegments[i - 1] || ''
-        if (!pageText.trim() && numPages === 1) {
-          pageText = rawText
+      if (rawPagesList.length > 0) {
+        for (const rawPage of rawPagesList) {
+          const cleanedText = this.cleanPageText(rawPage.text, rawPage.pageNumber, filename)
+          const detectedSection = this.detectSectionHeader(cleanedText) || currentSection
+          if (detectedSection) currentSection = detectedSection
+
+          totalExtractedLength += cleanedText.length
+          pages.push({
+            pageNumber: rawPage.pageNumber,
+            text: cleanedText,
+            section: currentSection,
+            isOcr: false
+          })
         }
+      } else if (rawText.trim().length > 0) {
+        const rawPageSplits = rawText.split(/\n(?=Page\s+\d+|--\s*\d+\s+of\s+\d+\s*--|[\f])/i)
+        const count = Math.max(numPages, rawPageSplits.length)
+        for (let i = 1; i <= count; i++) {
+          let pageText = rawPageSplits[i - 1] || ''
+          if (!pageText.trim() && count === 1) {
+            pageText = rawText
+          }
+          const cleanedText = this.cleanPageText(pageText, i, filename)
+          const detectedSection = this.detectSectionHeader(cleanedText) || currentSection
+          if (detectedSection) currentSection = detectedSection
 
-        // Clean repeated headers/footers and normalize multi-column whitespace
-        const cleanedText = this.cleanPageText(pageText, i, filename)
-        const detectedSection = this.detectSectionHeader(cleanedText) || currentSection
-        if (detectedSection) currentSection = detectedSection
-
-        totalExtractedLength += cleanedText.length
-
-        pages.push({
-          pageNumber: i,
-          text: cleanedText,
-          section: currentSection,
-          isOcr: false
-        })
+          totalExtractedLength += cleanedText.length
+          pages.push({
+            pageNumber: i,
+            text: cleanedText,
+            section: currentSection,
+            isOcr: false
+          })
+        }
       }
 
-      // Check if document is scanned (average < 30 characters per page)
-      const avgCharsPerPage = totalExtractedLength / Math.max(1, numPages)
-      if (avgCharsPerPage < 35 && buffer.length > 1000) {
-        // Scanned PDF detected: Run Gemini Multimodal Document OCR
+      // Check if document is scanned (empty or average < 35 characters per page)
+      const avgCharsPerPage = totalExtractedLength / Math.max(1, pages.length || numPages)
+      if ((avgCharsPerPage < 35 || pages.length === 0) && buffer.length > 100) {
         console.log(
           `[PDFExtractor] Low text density (${avgCharsPerPage.toFixed(1)} c/p) in ${filename}. Invoking Gemini OCR...`
         )
@@ -97,18 +138,22 @@ export class PDFExtractor {
         }
       }
 
+      if (pages.length === 0) {
+        throw new Error('No readable text parsed from PDF')
+      }
+
       const title = this.deriveDocumentTitle(filename, pages)
       const fullText = pages.map((p) => p.text).join('\n\n')
 
       return {
         title,
-        pageCount: numPages,
+        pageCount: pages.length,
         pages,
         contentHash,
         fullText
       }
     } catch (err: any) {
-      console.warn(`[PDFExtractor] Standard PDF parse failed for ${filename}:`, err?.message)
+      console.warn(`[PDFExtractor] Standard PDF parse fallback for ${filename}:`, err?.message)
       // Fallback directly to Gemini OCR
       const ocrPages = await this.performGeminiOCR(buffer, filename, 1)
       if (ocrPages && ocrPages.length > 0) {
@@ -137,9 +182,15 @@ export class PDFExtractor {
     const gemini = getGemini()
     if (!gemini) return null
 
-    try {
-      const base64Data = buffer.toString('base64')
-      const prompt = `You are a high-accuracy document OCR extraction system. 
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.5-pro'
+    ]
+
+    const base64Data = buffer.toString('base64')
+    const prompt = `You are a high-accuracy document OCR extraction system. 
 Extract all readable text from this PDF file "${filename}".
 Format your output with clear page markers so pages can be separated accurately:
 --- PAGE 1 ---
@@ -148,51 +199,54 @@ Format your output with clear page markers so pages can be separated accurately:
 [Page 2 content]
 Preserve tables, lists, and headings. Remove arbitrary scanner artifacts.`
 
-      const response = await gemini.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          {
-            inlineData: {
-              mimeType: 'application/pdf',
-              data: base64Data
-            }
-          },
-          prompt
-        ]
-      })
+    for (const modelCandidate of candidateModels) {
+      try {
+        const response = await gemini.models.generateContent({
+          model: modelCandidate,
+          contents: [
+            {
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: base64Data
+              }
+            },
+            prompt
+          ]
+        })
 
-      const ocrText = response.text || ''
-      if (!ocrText.trim()) return null
+        const ocrText = response.text || ''
+        if (!ocrText.trim()) continue
 
-      const pageRegex = /---\s*PAGE\s*(\d+)\s*---/i
-      const parts = ocrText.split(pageRegex)
-      const pages: ExtractedPage[] = []
+        const pageRegex = /---\s*PAGE\s*(\d+)\s*---/i
+        const parts = ocrText.split(pageRegex)
+        const pages: ExtractedPage[] = []
 
-      if (parts.length > 1) {
-        for (let i = 1; i < parts.length; i += 2) {
-          const pageNum = parseInt(parts[i], 10) || Math.floor(i / 2) + 1
-          const text = (parts[i + 1] || '').trim()
+        if (parts.length > 1) {
+          for (let i = 1; i < parts.length; i += 2) {
+            const pageNum = parseInt(parts[i], 10) || Math.floor(i / 2) + 1
+            const text = (parts[i + 1] || '').trim()
+            pages.push({
+              pageNumber: pageNum,
+              text,
+              section: this.detectSectionHeader(text) || `Page ${pageNum}`,
+              isOcr: true
+            })
+          }
+        } else {
           pages.push({
-            pageNumber: pageNum,
-            text,
-            section: this.detectSectionHeader(text) || `Page ${pageNum}`,
+            pageNumber: 1,
+            text: ocrText.trim(),
+            section: 'Main Content',
             isOcr: true
           })
         }
-      } else {
-        pages.push({
-          pageNumber: 1,
-          text: ocrText.trim(),
-          section: 'Main Content',
-          isOcr: true
-        })
-      }
 
-      return pages
-    } catch (ocrErr) {
-      console.warn('[PDFExtractor] Gemini OCR fallback error:', ocrErr)
-      return null
+        return pages
+      } catch (ocrErr: any) {
+        console.warn(`[PDFExtractor] Gemini OCR attempt with ${modelCandidate} failed:`, ocrErr?.message)
+      }
     }
+    return null
   }
 
   /**

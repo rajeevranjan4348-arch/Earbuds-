@@ -1,5 +1,6 @@
 /**
  * Base Google Workspace Provider Interface
+ * Integrated with Centralized Session Manager and Google API Client
  */
 
 import {
@@ -8,8 +9,11 @@ import {
   WorkspaceExtractedContent,
   WorkspaceSearchResult
 } from '../types'
+import { googleWorkspaceApiClient } from '../googleApiClient'
+import { workspaceSessionManager } from '../sessionManager'
 
 export interface WorkspaceProviderOptions {
+  userId?: string
   accessToken?: string
   timeoutMs?: number
   retryCount?: number
@@ -29,7 +33,10 @@ export abstract class WorkspaceProvider {
   /**
    * Get metadata for a specific item/file
    */
-  public abstract getMetadata(itemId: string): Promise<WorkspaceFileMetadata>
+  public abstract getMetadata(
+    itemId: string,
+    options?: WorkspaceProviderOptions
+  ): Promise<WorkspaceFileMetadata>
 
   /**
    * Get extracted textual content of an item/file
@@ -40,58 +47,34 @@ export abstract class WorkspaceProvider {
   ): Promise<WorkspaceExtractedContent>
 
   /**
-   * Helper to perform authenticated Google API fetch with retry & timeout
+   * Helper to perform authenticated Google API fetch through centralized client
    */
   protected async fetchWithRetry(
     url: string,
-    options: RequestInit & { accessToken?: string },
+    options: RequestInit & { accessToken?: string; userId?: string },
     retries = 2,
     timeoutMs = 15000
   ): Promise<Response> {
-    const token = options.accessToken || process.env.GOOGLE_WORKSPACE_ACCESS_TOKEN || ''
+    const res = await googleWorkspaceApiClient.execute({
+      service: this.service,
+      url,
+      method: (options.method as any) || 'GET',
+      headers: (options.headers as any) || {},
+      body: options.body,
+      userId: options.userId,
+      overrideAccessToken: options.accessToken,
+      retries,
+      timeoutMs
+    })
 
-    const headers: Record<string, string> = {
-      ...((options.headers as Record<string, string>) || {})
+    // Return a standard fetch Response object for backwards compatibility with existing parsers
+    const responseInit: ResponseInit = {
+      status: res.status,
+      statusText: res.ok ? 'OK' : 'Error',
+      headers: res.headers
     }
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    let lastError: any = null
-
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-      try {
-        const res = await fetch(url, {
-          ...options,
-          headers,
-          signal: controller.signal
-        })
-        clearTimeout(timer)
-
-        if (res.status === 429 || (res.status >= 500 && res.status <= 599)) {
-          // Rate limit or server error - exponential backoff
-          const waitTime = Math.pow(2, attempt) * 500
-          await new Promise((r) => setTimeout(r, waitTime))
-          continue
-        }
-
-        return res
-      } catch (err: any) {
-        clearTimeout(timer)
-        lastError = err
-        if (attempt < retries) {
-          const waitTime = Math.pow(2, attempt) * 400
-          await new Promise((r) => setTimeout(r, waitTime))
-        }
-      }
-    }
-
-    throw (
-      lastError || new Error(`Failed request to Google Workspace API after ${retries + 1} attempts`)
-    )
+    const bodyString = typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+    return new Response(bodyString, responseInit)
   }
 }

@@ -258,14 +258,32 @@ Return valid JSON conforming to this schema:
   ]
 }`
 
-        const response = await gemini.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [{ text: prompt }],
-          config: { responseMimeType: 'application/json' }
-        })
+        const candidateModels = [
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-2.5-pro'
+        ]
 
-        if (response.text) {
-          const parsed = JSON.parse(response.text)
+        let responseText = ''
+        for (const modelCandidate of candidateModels) {
+          try {
+            const response = await gemini.models.generateContent({
+              model: modelCandidate,
+              contents: [{ text: prompt }],
+              config: { responseMimeType: 'application/json' }
+            })
+            if (response.text) {
+              responseText = response.text
+              break
+            }
+          } catch (_mErr) {
+            // Try next model candidate
+          }
+        }
+
+        if (responseText) {
+          const parsed = JSON.parse(responseText)
           if (Array.isArray(parsed.steps) && parsed.steps.length > 0) {
             const steps: PlanStep[] = parsed.steps.map((s: any, idx: number) => ({
               stepId: `${taskId}_step_${idx + 1}`,

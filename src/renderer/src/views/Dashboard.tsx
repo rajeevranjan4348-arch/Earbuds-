@@ -18,6 +18,7 @@ import RightPanel from '@renderer/components/UI/RightPanel'
 import LeftPanels from '@renderer/components/UI/LeftPanels'
 import AICore from '@renderer/components/UI/AICoreSphere'
 import { LiveLocationCard } from '@renderer/components/UI/LiveLocationCard'
+import { VoiceListeningWave } from '@renderer/components/UI/VoiceListeningWave'
 
 interface DashboardProps {
   isConnected: boolean
@@ -34,6 +35,7 @@ interface DashboardProps {
   voiceStatus?: string
   statusMessage?: string
   submitVoicePrompt?: (text: string) => void
+  stopSpeaking?: () => void
 }
 
 export default function Dashboard({
@@ -50,7 +52,8 @@ export default function Dashboard({
   micLevel = 0,
   voiceStatus = 'idle',
   statusMessage = '',
-  submitVoicePrompt
+  submitVoicePrompt,
+  stopSpeaking
 }: DashboardProps) {
   const [internalVisionMode, setInternalVisionMode] = useState<'off' | 'camera' | 'screen'>('off')
   const [showVisionMenu, setShowVisionMenu] = useState(false)
@@ -158,96 +161,39 @@ export default function Dashboard({
             mobileSection === 'core' ? 'flex' : 'hidden'
           } lg:flex col-span-12 lg:col-span-6 relative flex-col justify-end items-center pb-3 lg:pb-6 min-h-0 h-full`}
         >
-          <AICore isConnected={isConnected} isSpeaking={isSpeaking} />
+          <AICore
+            isConnected={isConnected}
+            isSpeaking={isSpeaking}
+            isListening={isListening}
+            micLevel={micLevel}
+            onClick={() => {
+              if (!isConnected) {
+                toggleConnection()
+              } else if (isSpeaking) {
+                stopSpeaking?.()
+              } else {
+                handleMicToggle()
+              }
+            }}
+          />
 
-          {/* Real-time Voice HUD & Speech Recognition Feedback */}
-          <div className="w-full max-w-lg mb-2.5 lg:mb-3 flex flex-col items-center gap-2 z-20 px-2 sm:px-0">
-            {voiceStatus === 'denied' && (
-              <div className="w-full px-3 py-2 bg-red-950/80 border border-red-500/30 rounded-xl flex items-center gap-2 text-[11px] text-red-200 backdrop-blur-md animate-in fade-in">
-                <AlertCircle size={14} className="text-red-400 shrink-0" />
-                <span>
-                  Microphone access was denied. Please allow microphone permissions in your browser.
-                </span>
-              </div>
-            )}
-
-            {isConnected && (
-              <div className="w-full px-3 sm:px-4 py-2 bg-black/70 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col gap-1.5 shadow-2xl">
-                <div className="flex items-center justify-between text-[10px] font-mono">
-                  <div className="flex items-center gap-2">
-                    {isSpeaking ? (
-                      <span className="flex items-center gap-1 text-cyan-400 font-bold tracking-wider">
-                        <Volume2 size={12} className="animate-pulse" /> IRIS SYNTHESIS
-                      </span>
-                    ) : isMuted ? (
-                      <span className="flex items-center gap-1 text-red-400 font-bold tracking-wider">
-                        <MicOff size={12} /> MIC MUTED
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-[#00ff41] font-bold tracking-wider">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00ff41] opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00ff41]"></span>
-                        </span>
-                        VOICE-TO-TEXT ACTIVE
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Equalizer Audio Level Indicator */}
-                  {!isMuted && isConnected && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-zinc-500 text-[9px] mr-1">INPUT</span>
-                      <div className="flex items-end gap-0.5 h-3">
-                        {[0.5, 1.2, 0.8, 1.5, 0.9, 1.1].map((scale, i) => {
-                          const h = isSpeaking
-                            ? 8
-                            : Math.max(3, Math.min(14, micLevel * 20 * scale))
-                          return (
-                            <span
-                              key={i}
-                              className={`w-0.5 rounded-full transition-all duration-75 ${
-                                isSpeaking ? 'bg-cyan-400' : 'bg-[#00ff41]'
-                              }`}
-                              style={{ height: `${h}px` }}
-                            />
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Live Speech Recognition Transcript Text */}
-                <div className="text-xs min-h-[20px] flex items-center text-zinc-300">
-                  {interimTranscript ? (
-                    <span className="text-[#00ff41] font-mono flex items-center gap-1.5 break-all">
-                      <span className="text-zinc-500">&gt;</span>
-                      <span>"{interimTranscript}"</span>
-                      <span className="inline-block w-1.5 h-3 bg-[#00ff41] animate-pulse" />
-                    </span>
-                  ) : lastFinalTranscript && !isSpeaking ? (
-                    <span className="text-zinc-400 font-mono text-[11px] truncate">
-                      <span className="text-zinc-600">&gt; Last query:</span> "{lastFinalTranscript}
-                      "
-                    </span>
-                  ) : isSpeaking ? (
-                    <span className="text-cyan-300 font-mono text-[11px] italic">
-                      Transmitting verbal neural telemetry...
-                    </span>
-                  ) : isMuted ? (
-                    <span className="text-zinc-500 text-[11px]">
-                      Microphone muted. Click the mic button to speak.
-                    </span>
-                  ) : (
-                    <span className="text-zinc-500 text-[11px] italic truncate">
-                      {statusMessage ||
-                        'Speak now — IRIS is listening for your command or question...'}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Real-time Voice Listening Wave & Speech Recognition Feedback */}
+          <div className="w-full max-w-xl mb-2 lg:mb-3 flex flex-col items-center gap-2 z-20 px-1 sm:px-0">
+            <VoiceListeningWave
+              isConnected={isConnected}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              isMuted={isMuted}
+              micLevel={micLevel}
+              interimTranscript={interimTranscript}
+              lastFinalTranscript={lastFinalTranscript}
+              voiceStatus={voiceStatus}
+              statusMessage={statusMessage}
+              onToggleConnect={toggleConnection}
+              onToggleMic={handleMicToggle}
+              onStopSpeaking={stopSpeaking}
+              onSubmitPrompt={submitVoicePrompt}
+            />
 
             {/* Quick Voice Command Chips */}
             {isConnected && (
@@ -255,7 +201,7 @@ export default function Dashboard({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25 }}
-                className="flex items-center gap-1.5 flex-wrap justify-center max-w-md"
+                className="flex items-center gap-1.5 flex-wrap justify-center max-w-lg mt-0.5"
               >
                 {quickVoicePrompts.map((item, idx) => (
                   <motion.button
@@ -263,11 +209,11 @@ export default function Dashboard({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.03, duration: 0.18 }}
-                    whileHover={{ scale: 1.05, y: -1.5 }}
+                    whileHover={{ scale: 1.05, y: -1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => submitVoicePrompt?.(item.prompt)}
-                    className="cursor-pointer px-2.5 py-1 rounded-full bg-zinc-900/60 hover:bg-[#00ff41]/10 border border-white/5 hover:border-[#00ff41]/30 text-zinc-400 hover:text-[#00ff41] text-[10px] font-mono transition-colors duration-200"
-                    title={`Speak: "${item.prompt}"`}
+                    className="cursor-pointer px-2.5 py-1 rounded-full bg-zinc-900/70 hover:bg-[#00ff41]/10 border border-white/10 hover:border-[#00ff41]/40 text-zinc-400 hover:text-[#00ff41] text-[10px] font-mono transition-all duration-200"
+                    title={`Speak or trigger: "${item.prompt}"`}
                   >
                     🎤 {item.label}
                   </motion.button>

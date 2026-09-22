@@ -32,8 +32,13 @@ import {
 } from '../lib/firebase'
 import { GoogleWorkspaceService, WorkspaceItem } from '../services/workspace'
 import { User } from 'firebase/auth'
+import WorkspaceHub from '../components/UI/WorkspaceHub'
+import AuthFailureView from '../components/UI/AuthFailureView'
+import { ShieldAlert } from 'lucide-react'
 
 type WorkspaceTab =
+  | 'HUB'
+  | 'DIAGNOSTICS'
   | 'DRIVE'
   | 'GMAIL'
   | 'CALENDAR'
@@ -51,7 +56,7 @@ type WorkspaceTab =
 export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => {
   const [user, setUser] = useState<User | null>(auth.currentUser)
   const [token, setToken] = useState<string | null>(getCachedAccessToken())
-  const [activeSubTab, setActiveSubTab] = useState<WorkspaceTab>('DRIVE')
+  const [activeSubTab, setActiveSubTab] = useState<WorkspaceTab>('HUB')
   const [items, setItems] = useState<WorkspaceItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -64,8 +69,32 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   const [sheetTitleInput, setSheetTitleInput] = useState('')
   const [calTitleInput, setCalTitleInput] = useState('')
 
-  // Listen to auth
+  // Listen to auth and synchronize with Centralized Session Manager
   useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/workspace/auth/session')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.session?.isConnected) {
+            // Check if we need to refresh token from backend
+            const refRes = await fetch('/api/workspace/auth/refresh', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            })
+            const refData = await refRes.json()
+            if (refData.success && refData.accessToken) {
+              setToken(refData.accessToken)
+              setCachedAccessToken(refData.accessToken)
+            }
+          }
+        }
+      } catch (_e) {}
+    }
+
+    checkSession()
+
     const unsub = auth.onAuthStateChanged((u) => {
       setUser(u)
       const currentToken = getCachedAccessToken()
@@ -113,7 +142,6 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
   // Load items for active sub-tab
   const loadTabItems = useCallback(async () => {
-    if (!token) return
     setIsLoading(true)
     const client = new GoogleWorkspaceService(token)
 
@@ -148,15 +176,67 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
     } catch (err: any) {
       console.warn(`Error loading ${activeSubTab}:`, err)
       const rawMsg = err?.message || ''
-      if (rawMsg.toLowerCase().includes('token expired') || rawMsg.toLowerCase().includes('unauthorized') || rawMsg.toLowerCase().includes('401')) {
-        setStatusMessage('Google session expired. Please click "Connect Google Workspace" to renew your access.')
+      const isAuthError =
+        rawMsg.toLowerCase().includes('token expired') ||
+        rawMsg.toLowerCase().includes('unauthorized') ||
+        rawMsg.toLowerCase().includes('401') ||
+        rawMsg.toLowerCase().includes('invalid authentication credentials') ||
+        rawMsg.toLowerCase().includes('expected oauth 2 access token')
+
+      if (isAuthError) {
+        // Attempt silent refresh via backend first
+        try {
+          const refRes = await fetch('/api/workspace/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+          const refData = await refRes.json()
+          if (refData.success && refData.accessToken) {
+            setToken(refData.accessToken)
+            setCachedAccessToken(refData.accessToken)
+            // Retry loading with fresh token
+            const freshClient = new GoogleWorkspaceService(refData.accessToken)
+            let retryResults: WorkspaceItem[] = []
+            switch (activeSubTab) {
+              case 'DRIVE':
+                retryResults = await freshClient.listDriveFiles()
+                break
+              case 'GMAIL':
+                retryResults = await freshClient.listGmailMessages()
+                break
+              case 'CALENDAR':
+                retryResults = await freshClient.listCalendarEvents()
+                break
+              case 'TASKS':
+                retryResults = await freshClient.listTasks()
+                break
+              case 'CONTACTS':
+                retryResults = await freshClient.listContacts()
+                break
+              case 'CHAT':
+                retryResults = await freshClient.listChatSpaces()
+                break
+              case 'CLASSROOM':
+                retryResults = await freshClient.listClassroomCourses()
+                break
+            }
+            setItems(retryResults)
+            return
+          }
+        } catch (_refreshErr) {}
+
+        setToken(null)
+        setCachedAccessToken(null)
+        setItems([])
+        setStatusMessage('Google Workspace connection required. Please connect your account below.')
       } else if (rawMsg.trim()) {
         setStatusMessage(rawMsg.startsWith('Notice:') ? rawMsg : `Notice: ${rawMsg}`)
       }
     } finally {
       setIsLoading(false)
     }
-  }, [token, activeSubTab])
+  }, [activeSubTab, token])
 
   useEffect(() => {
     if (token) {
@@ -329,6 +409,8 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   }
 
   const subTabs = [
+    { id: 'HUB', label: 'Hub & Status', icon: <RiShieldCheckLine size={15} /> },
+    { id: 'DIAGNOSTICS', label: 'Auth Failures', icon: <ShieldAlert size={15} className="text-red-400" /> },
     { id: 'DRIVE', label: 'Drive', icon: <RiDriveLine size={15} /> },
     { id: 'SHEETS', label: 'Sheets', icon: <RiFileExcelLine size={15} /> },
     { id: 'GMAIL', label: 'Gmail', icon: <RiMailLine size={15} /> },
@@ -412,9 +494,20 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       </div>
 
       {statusMessage && (
-        <div className="flex items-center gap-2 px-3 py-1.5 text-xs bg-zinc-900 border border-blue-500/30 text-blue-300 rounded-lg">
-          <RiShieldCheckLine size={14} />
-          <span>{statusMessage}</span>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs bg-zinc-900/90 border border-blue-500/30 text-blue-300 rounded-lg">
+          <div className="flex items-center gap-2">
+            <RiShieldCheckLine size={14} className="shrink-0" />
+            <span>{statusMessage}</span>
+          </div>
+          {!token && (
+            <button
+              onClick={handleSignIn}
+              className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[11px] shrink-0 transition-all shadow"
+            >
+              <RiGoogleFill size={12} />
+              <span>Connect Now</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -445,29 +538,41 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 bg-zinc-950/80 border border-white/10 rounded-xl p-4 flex flex-col overflow-hidden shadow-2xl">
-        {!token ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-              <RiGoogleFill size={26} />
+      {activeSubTab === 'HUB' ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <WorkspaceHub onSelectServiceTab={(tabId) => setActiveSubTab(tabId as WorkspaceTab)} />
+        </div>
+      ) : activeSubTab === 'DIAGNOSTICS' ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <AuthFailureView
+            onReauthenticate={handleSignIn}
+            onNavigateService={(tabId) => setActiveSubTab(tabId as WorkspaceTab)}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 bg-zinc-950/80 border border-white/10 rounded-xl p-4 flex flex-col overflow-hidden shadow-2xl">
+          {!token ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <RiGoogleFill size={26} />
+              </div>
+              <h3 className="text-sm font-bold tracking-wider text-zinc-100 uppercase">
+                Authentication Required
+              </h3>
+              <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
+                Connect your authorized Google Workspace account to unlock live bidirectional
+                synchronization with Drive, Gmail, Calendar, Sheets, Docs, Tasks, Meet, and Classroom.
+              </p>
+              <button
+                onClick={handleSignIn}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl tracking-wider uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+              >
+                <RiGoogleFill size={15} />
+                <span>Authenticate Workspace</span>
+              </button>
             </div>
-            <h3 className="text-sm font-bold tracking-wider text-zinc-100 uppercase">
-              Authentication Required
-            </h3>
-            <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
-              Connect your authorized Google Workspace account to unlock live bidirectional
-              synchronization with Drive, Gmail, Calendar, Sheets, Docs, Tasks, Meet, and Classroom.
-            </p>
-            <button
-              onClick={handleSignIn}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl tracking-wider uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95"
-            >
-              <RiGoogleFill size={15} />
-              <span>Authenticate Workspace</span>
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col h-full overflow-hidden">
+          ) : (
+            <div className="flex flex-col h-full overflow-hidden">
             {/* Context Header for Sub-Tab */}
             <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
               <div className="flex items-center gap-2 text-xs text-zinc-300">
@@ -670,6 +775,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }

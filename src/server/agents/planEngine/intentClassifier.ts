@@ -388,11 +388,21 @@ export class IntentClassifier {
     if (gemini && (ruleResult.category === 'multi_step' || ruleResult.confidence < 0.85)) {
       try {
         const toolsList = toolRegistry.getToolDefinitions().map((t) => `${t.name}: ${t.description}`).join('\n')
-        const response = await gemini.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            {
-              text: `You are the Intent Classification Engine for the IRIS Autonomous Agent.
+        const candidateModels = [
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-2.5-pro'
+        ]
+
+        let responseText = ''
+        for (const modelCandidate of candidateModels) {
+          try {
+            const response = await gemini.models.generateContent({
+              model: modelCandidate,
+              contents: [
+                {
+                  text: `You are the Intent Classification Engine for the IRIS Autonomous Agent.
 Analyze the user's request and determine the exact execution category and recommended tools.
 
 Available Tools:
@@ -409,15 +419,23 @@ Return JSON matching this schema:
   "clarificationQuestion": "string or null if not ambiguous",
   "entities": { ...extracted parameters }
 }`
+                }
+              ],
+              config: {
+                responseMimeType: 'application/json'
+              }
+            })
+            if (response.text) {
+              responseText = response.text
+              break
             }
-          ],
-          config: {
-            responseMimeType: 'application/json'
+          } catch (_mErr) {
+            // Try next model candidate
           }
-        })
+        }
 
-        if (response.text) {
-          const parsed = JSON.parse(response.text)
+        if (responseText) {
+          const parsed = JSON.parse(responseText)
           return {
             cleanedInput: resolvedText,
             category: parsed.category || ruleResult.category,

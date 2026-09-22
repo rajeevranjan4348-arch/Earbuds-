@@ -231,7 +231,7 @@ export class WorkspaceAgent {
       if (ai) {
         const prompt = `Compare the following two documents from Google Workspace:\n\n=== Document 1: "${file1.name}" ===\n${text1Excerpt}\n\n=== Document 2: "${file2.name}" ===\n${text2Excerpt}\n\nProvide a structured comparison highlighting key differences, additions, updates, or changes.`
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: prompt
         })
         answer = response.text || 'Comparison generated.'
@@ -347,7 +347,7 @@ Guidelines:
 4. Include exact page/section provenance: "Based on "${content.fileName}"${citationPage ? `, Page ${citationPage}` : ''}..."`
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: `[DOCUMENT EXCERPT - ${content.fileName}]:\n${targetedText}\n\n[USER PROMPT]:\n${intent.rawPrompt}`,
         config: {
           systemInstruction: systemPrompt

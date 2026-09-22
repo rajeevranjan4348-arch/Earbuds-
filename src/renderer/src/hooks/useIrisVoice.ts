@@ -16,12 +16,16 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
   const [interimTranscript, setInterimTranscript] = useState('')
   const [lastFinalTranscript, setLastFinalTranscript] = useState('')
   const [micLevel, setMicLevel] = useState(0)
+  const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null)
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>('idle')
   const [statusMessage, setStatusMessage] = useState('Standby')
 
   const optionsRef = useRef(options)
-  optionsRef.current = options
+  useEffect(() => {
+    optionsRef.current = options
+  })
   const lastSubmittedPromptRef = useRef<{ text: string; time: number }>({ text: '', time: 0 })
+  const lastFreqUpdateRef = useRef<number>(0)
 
   useEffect(() => {
     voiceService.setHandlers({
@@ -40,6 +44,13 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
       },
       onAudioLevel: (level) => {
         setMicLevel(level)
+      },
+      onFrequencyData: (data) => {
+        const now = performance.now()
+        if (now - lastFreqUpdateRef.current > 40) {
+          lastFreqUpdateRef.current = now
+          setFrequencyData(data)
+        }
       },
       onStatusChange: (status, message) => {
         setVoiceStatus(status)
@@ -94,14 +105,12 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
 
     setLastFinalTranscript(clean)
     setInterimTranscript('')
-    voiceService.triggerVoiceInput(clean)
+    voiceService.triggerVoiceInput(clean, 'text')
   }, [])
 
   const stopSpeaking = useCallback(() => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      setIsSpeaking(false)
-    }
+    voiceService.stopSpeaking()
+    setIsSpeaking(false)
   }, [])
 
   return {
@@ -112,6 +121,7 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
     interimTranscript,
     lastFinalTranscript,
     micLevel,
+    frequencyData,
     voiceStatus,
     statusMessage,
     toggleConnection,

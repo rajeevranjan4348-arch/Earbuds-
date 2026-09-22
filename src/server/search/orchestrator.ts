@@ -48,8 +48,8 @@ export class SearchOrchestrator {
     const explicitPatterns = [
       /^(?:search|google|browse|look up|find|check online|web search)\b/i,
       /\b(?:search the web|search online|search google|on the web|on the internet)\b/i,
-      /\b(?:latest news|current weather|live score|stock price)\b/i,
-      /\b(?:what is the latest|who won|release date of|current price of)\b/i
+      /\b(?:latest news|current weather|live score|stock price|gold price|price of gold)\b/i,
+      /\b(?:what is the latest|who won|release date of|current price of|price of|cost of|exchange rate of|spot price)\b/i
     ]
     if (explicitPatterns.some((pattern) => pattern.test(p))) {
       return true

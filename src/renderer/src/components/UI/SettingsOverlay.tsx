@@ -436,9 +436,11 @@ export default function SettingsOverlay({
                                 {m.memory}
                               </p>
                               <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(m.createdAt).toLocaleDateString()}</span>
+                                <span>{new Date(m.createdAt || (m as any).created_at || Date.now()).toLocaleDateString()}</span>
                                 {m.category && (
-                                  <span className="text-emerald-400/80">• {m.category}</span>
+                                  <span className="text-emerald-400/80">
+                                    • {m.category}
+                                  </span>
                                 )}
                               </div>
                             </div>

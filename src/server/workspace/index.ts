@@ -3,6 +3,8 @@
  */
 
 export * from './types'
+export * from './sessionManager'
+export * from './googleApiClient'
 export * from './intentRouter'
 export * from './contextMemory'
 export * from './parser'

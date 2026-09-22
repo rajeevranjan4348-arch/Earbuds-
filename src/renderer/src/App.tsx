@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react'
 import IndexRoot from './IRISRoot'
+import { Mem0Provider } from './context/Mem0Context'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -71,7 +72,9 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 const App = () => {
   return (
     <ErrorBoundary>
-      <IndexRoot />
+      <Mem0Provider>
+        <IndexRoot />
+      </Mem0Provider>
     </ErrorBoundary>
   )
 }

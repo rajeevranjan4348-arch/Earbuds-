@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -12,9 +12,14 @@ import {
   X,
   Search,
   Sparkles,
-  Mic
+  Mic,
+  AlertTriangle,
+  RotateCcw
 } from 'lucide-react'
+import { RiFlashlightFill } from 'react-icons/ri'
 import { chatHistoryService, Message, ChatSession } from '../../services/chatHistoryService'
+import { shortcutService } from '../../services/shortcutService'
+import { voiceService } from '../../services/voiceService'
 import MicrophoneInputButton from './MicrophoneInputButton'
 
 export type { Message, ChatSession }
@@ -87,6 +92,154 @@ function normalizeDuplicateTokens(text: string): string {
   return trimmed
 }
 
+/**
+ * Memoized Chat Message Item Component
+ * Avoids full list re-rendering and expensive markdown re-parsing during token streaming.
+ */
+interface ChatMessageItemProps {
+  msg: Message
+  isStreaming: boolean
+  onRetry: (msg: Message) => void
+}
+
+const ChatMessageItem = memo(
+  function ChatMessageItem({ msg, isStreaming, onRetry }: ChatMessageItemProps) {
+    const isFallbackOrError =
+      msg.role !== 'user' && (msg.status === 'failed' || msg.text.includes('⚠️'))
+
+    return (
+      <motion.div
+        layout="position"
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      >
+        <div
+          className={`max-w-[90%] sm:max-w-[85%] p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg break-words overflow-wrap-anywhere ${
+            msg.role === 'user'
+              ? 'bg-emerald-600/20 text-emerald-100 border border-emerald-500/25 rounded-br-md shadow-[0_0_15px_rgba(16,185,129,0.1)]'
+              : isFallbackOrError
+                ? 'bg-amber-950/25 text-amber-100 border border-amber-500/30 rounded-bl-md shadow-[0_0_15px_rgba(245,158,11,0.08)]'
+                : 'bg-white/5 text-gray-200 border border-white/5 rounded-bl-md'
+          }`}
+        >
+          {msg.role === 'user' ? (
+            <span>{msg.text}</span>
+          ) : (
+            <div className="text-xs sm:text-sm leading-relaxed space-y-2">
+              {isFallbackOrError && (
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-500/20 text-amber-300 text-[11px] font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+                    <span>AI Fallback Response</span>
+                  </div>
+                  <span className="text-[10px] text-amber-400/70 font-mono">Status: Error Handled</span>
+                </div>
+              )}
+
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  img: ({ node, ...props }) => (
+                    <img
+                      {...props}
+                      className="rounded-xl max-h-72 w-auto object-cover border border-white/10 my-2 shadow-lg"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
+                  ),
+                  a: ({ node, ...props }) => (
+                    <a
+                      {...props}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 break-all"
+                    />
+                  ),
+                  code: ({ node, inline, className, children, ...props }: any) => {
+                    return (
+                      <code
+                        className={`${className || ''} bg-black/40 px-1.5 py-0.5 rounded text-[11px] font-mono text-emerald-300 border border-white/5`}
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    )
+                  },
+                  pre: ({ node, children, ...props }: any) => {
+                    return (
+                      <pre
+                        className="bg-black/60 p-2.5 rounded-xl border border-white/10 my-2 overflow-x-auto text-[11px] font-mono text-zinc-200"
+                        {...props}
+                      >
+                        {children}
+                      </pre>
+                    )
+                  }
+                }}
+              >
+                {msg.text}
+              </ReactMarkdown>
+
+              {isFallbackOrError && (
+                <div className="pt-2 mt-1 border-t border-amber-500/15 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onRetry(msg)}
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Retry prompt"
+                  >
+                    <RotateCcw size={11} />
+                    <span>Retry Prompt</span>
+                  </button>
+                  <span className="text-[10px] text-zinc-500 italic">Fallback engaged</span>
+                </div>
+              )}
+            </div>
+          )}
+          {isStreaming && (
+            <span className="inline-block w-1.5 h-4 ml-1 bg-emerald-400 rounded-full animate-pulse align-middle"></span>
+          )}
+        </div>
+      </motion.div>
+    )
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.msg.id === nextProps.msg.id &&
+      prevProps.msg.text === nextProps.msg.text &&
+      prevProps.msg.status === nextProps.msg.status &&
+      prevProps.isStreaming === nextProps.isStreaming
+    )
+  }
+)
+
+/**
+ * Lightweight, GPU-friendly Thinking Capsule
+ */
+const AIThinkingIndicator = memo(function AIThinkingIndicator() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.98 }}
+      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+      className="flex justify-start"
+    >
+      <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-white/5 border border-emerald-500/20 text-xs sm:text-sm text-zinc-300 shadow-[0_0_15px_rgba(16,185,129,0.08)] flex items-center gap-2.5 animate-thinking-shimmer">
+        <Sparkles size={14} className="text-emerald-400 animate-pulse shrink-0" />
+        <span className="font-mono text-xs text-emerald-400/90 font-medium">IRIS is thinking</span>
+        <div className="flex items-center gap-1 ml-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-1" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-2" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-3" />
+        </div>
+      </div>
+    </motion.div>
+  )
+})
+
 export default function RightPanel({
   interimTranscript = '',
   isListening = false,
@@ -104,7 +257,10 @@ export default function RightPanel({
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null)
   const [inputVal, setInputVal] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isUserScrolledUpRef = useRef(false)
 
   // Tracking refs to ensure idempotency and deduplication
   const activeRequestIdRef = useRef<string | null>(null)
@@ -117,6 +273,14 @@ export default function RightPanel({
   // 1. Initial hydration of chat history from active session or memory
   useEffect(() => {
     let isMounted = true
+
+    // Restore uncommitted draft for the active session
+    const savedDraft = chatHistoryService.getDraft(activeSessionId)
+    if (savedDraft) {
+      setInputVal(savedDraft)
+    } else {
+      setInputVal('')
+    }
 
     const allSessions = chatHistoryService.getSessions()
     const currentSavedSession = allSessions.find((s) => s.id === activeSessionId)
@@ -212,6 +376,7 @@ export default function RightPanel({
             timestamp: (data as any).timestamp || Date.now(),
             inputType: (data as any).inputType || 'voice'
           }
+          console.log('[AI_STATE_UPDATED]', { messageId: userMsgId, role: 'user', textLength: cleanUserText.length })
           return [...prev, userMsg].slice(-50)
         })
       } else if (role === 'model') {
@@ -333,7 +498,24 @@ export default function RightPanel({
               content: cleaned,
               status: data?.status || 'success'
             }
+            console.log('[AI_STATE_UPDATED]', { messageId: assistantMsgId, role: 'model', status: data?.status || 'success' })
             return updated
+          } else if (data?.text) {
+            const cleaned = normalizeDuplicateTokens(data.text.trim())
+            const newAssistantMsg: Message = {
+              id: assistantMsgId,
+              messageId: assistantMsgId,
+              conversationId: activeSessionId,
+              requestId: reqId || undefined,
+              role: 'model',
+              text: cleaned,
+              content: cleaned,
+              timestamp: Date.now(),
+              inputType: (data as any).inputType || 'voice',
+              status: data?.status || 'success'
+            }
+            console.log('[AI_STATE_UPDATED]', { messageId: assistantMsgId, role: 'model', status: data?.status || 'success', createdOnComplete: true })
+            return [...prev, newAssistantMsg].slice(-50)
           }
           return prev
         })
@@ -414,12 +596,23 @@ export default function RightPanel({
     })
   }, [chatHistory, activeSessionId])
 
-  // 4. Auto-scroll on new messages
+  // 4. Auto-scroll on new messages and streaming updates with RAF and user scroll protection
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    isUserScrolledUpRef.current = !isNearBottom
+  }, [])
+
   useEffect(() => {
-    if (scrollRef.current && !showHistory) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (scrollRef.current && !showHistory && !isUserScrolledUpRef.current) {
+      const el = scrollRef.current
+      requestAnimationFrame(() => {
+        if (el) {
+          el.scrollTop = el.scrollHeight
+        }
+      })
     }
-  }, [chatHistory, showHistory])
+  }, [chatHistory, showHistory, activeStreamingId, interimTranscript, isSubmitting])
 
   // New Chat Handler
   const handleNewChat = () => {
@@ -441,6 +634,15 @@ export default function RightPanel({
       } catch (_e) {}
     }
   }
+
+  const quickActionShortcuts = [
+    { label: 'YouTube Trends', icon: '📈', prompt: "Find today's trending topics for YouTube." },
+    { label: 'Create Script', icon: '✍️', prompt: 'Draft a high-retention video script for YouTube Shorts.' },
+    { label: 'PDF Docs', icon: '📄', prompt: 'Search uploaded PDF documents for summary and key data.' },
+    { label: 'FLUX Image', icon: '🎨', prompt: 'Generate an ultra-realistic cinematic visual asset.' },
+    { label: 'Web Research', icon: '🌐', prompt: 'Search the web for latest AI breakthroughs.' },
+    { label: 'System Memory', icon: '🧠', prompt: 'What do you remember from our past interactions?' }
+  ]
 
   // External sync listeners (from IRISRoot sidebar or history actions)
   useEffect(() => {
@@ -531,28 +733,86 @@ export default function RightPanel({
     }
   }
 
+  // Retry prompt handler for fallback notices / failed messages
+  const handleRetry = (failedMsg: Message) => {
+    // Find the preceding user message in chatHistory
+    const msgIdx = chatHistory.findIndex((m) => m.id === failedMsg.id)
+    let promptToRetry = ''
+    if (msgIdx > 0) {
+      for (let i = msgIdx - 1; i >= 0; i--) {
+        if (chatHistory[i].role === 'user') {
+          promptToRetry = chatHistory[i].text
+          break
+        }
+      }
+    }
+
+    if (!promptToRetry) {
+      // Extract from message text if available (e.g. *"prompt"*)
+      const match = failedMsg.text.match(/\*"([^"]+)"\*/) || failedMsg.text.match(/> \*"([^"]+)"\*/)
+      if (match && match[1]) {
+        promptToRetry = match[1].trim()
+      }
+    }
+
+    if (promptToRetry) {
+      if (onSendPrompt) {
+        onSendPrompt(promptToRetry)
+      } else {
+        voiceService.triggerVoiceInput(promptToRetry, 'text')
+      }
+    }
+  }
+
+  // Safety watchdog: clear streaming if hanging for more than 14 seconds
+  useEffect(() => {
+    if (!activeStreamingId) return
+
+    const watchdog = setTimeout(() => {
+      console.warn('[AI_WATCHDOG] Streaming timed out, forcing completion cleanup.')
+      setActiveStreamingId(null)
+      activeRequestIdRef.current = null
+    }, 14000)
+
+    return () => clearTimeout(watchdog)
+  }, [activeStreamingId])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = inputVal.trim()
     if (!trimmed || isSubmitting) return
 
+    console.log('[AI_INPUT]', { text: trimmed, inputType: 'text', sessionId: activeSessionId })
+
     const now = Date.now()
-    if (trimmed === lastSubmissionRef.current.text && now - lastSubmissionRef.current.time < 1200) {
+    if (trimmed === lastSubmissionRef.current.text && now - lastSubmissionRef.current.time < 800) {
       return
     }
     lastSubmissionRef.current = { text: trimmed, time: now }
 
     setIsSubmitting(true)
+    chatHistoryService.clearDraft(activeSessionId)
     setInputVal('')
 
-    if (onSendPrompt) {
-      onSendPrompt(trimmed)
+    try {
+      if (onSendPrompt) {
+        onSendPrompt(trimmed)
+      } else {
+        voiceService.triggerVoiceInput(trimmed, 'text')
+      }
+    } catch (err: any) {
+      console.error('[AI_REQUEST_ERROR]', err)
+    } finally {
+      setTimeout(() => {
+        setIsSubmitting(false)
+      }, 400)
     }
-
-    setTimeout(() => {
-      setIsSubmitting(false)
-    }, 600)
   }
+
+  // Active session helper for status display
+  const activeSessionObj = useMemo(() => {
+    return sessions.find((s) => s.id === activeSessionId)
+  }, [sessions, activeSessionId])
 
   // Filtered sessions for History View
   const filteredSessions = useMemo(() => {
@@ -569,15 +829,23 @@ export default function RightPanel({
     <div className="h-full min-h-0 flex flex-col bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative">
       {/* Header with Conversation title, New Chat and History buttons */}
       <div className="px-4 py-3.5 sm:px-5 sm:py-3.5 border-b border-white/5 flex justify-between items-center shrink-0 bg-black/40">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-white/90 tracking-wide">Conversation</h2>
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono">
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-sm font-semibold text-white/90 tracking-wide shrink-0">Conversation</h2>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono shrink-0">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
             </span>
             <span className="font-medium">Live</span>
           </div>
+          {activeSessionObj && activeSessionObj.title !== 'New Conversation' && (
+            <span
+              className="text-[11px] text-zinc-400 truncate max-w-[120px] sm:max-w-[160px] hidden sm:inline-block font-mono border-l border-white/10 pl-2"
+              title={activeSessionObj.title}
+            >
+              {activeSessionObj.title}
+            </span>
+          )}
         </div>
 
         {/* Buttons in place of the live area - icon buttons only without names */}
@@ -754,7 +1022,8 @@ export default function RightPanel({
         /* Conversation Chat Messages Stream */
         <div
           ref={scrollRef}
-          className="flex-1 min-h-0 p-4 overflow-y-auto flex flex-col gap-4 scroll-smooth
+          onScroll={handleScroll}
+          className="flex-1 min-h-0 px-3 py-3 sm:px-4 sm:py-4 overflow-y-auto overscroll-contain flex flex-col gap-3 sm:gap-3.5 scroll-smooth smooth-scroll-container
             [&::-webkit-scrollbar]:w-1.5
             [&::-webkit-scrollbar-track]:bg-transparent
             [&::-webkit-scrollbar-thumb]:bg-white/10
@@ -762,11 +1031,11 @@ export default function RightPanel({
             hover:[&::-webkit-scrollbar-thumb]:bg-emerald-500/40"
         >
           {chatHistory.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-4 px-4 my-auto">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-                <Sparkles size={22} />
+            <div className="flex flex-col items-center justify-center my-auto text-center space-y-3 px-2 py-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                <Sparkles size={20} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-zinc-200">New Conversation</h3>
                 <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
                   Speak into your microphone or type a prompt below to communicate with IRIS.
@@ -774,7 +1043,7 @@ export default function RightPanel({
               </div>
 
               {/* Starter Suggestion Chips */}
-              <div className="flex flex-col gap-1.5 w-full max-w-xs pt-2">
+              <div className="flex flex-col gap-1.5 w-full max-w-xs pt-1.5">
                 {[
                   'What is IRIS and what can you do?',
                   'Search uploaded PDF documents for key insights',
@@ -786,12 +1055,12 @@ export default function RightPanel({
                 ].map((prompt, idx) => (
                   <motion.button
                     key={idx}
-                    whileHover={{ x: 3, scale: 1.01 }}
+                    whileHover={{ x: 2, scale: 1.005 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setInputVal(prompt)
                     }}
-                    className="w-full text-left px-3 py-2 text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"
+                    className="w-full text-left px-2.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"
                   >
                     &gt; {prompt}
                   </motion.button>
@@ -802,75 +1071,16 @@ export default function RightPanel({
 
           <AnimatePresence initial={false}>
             {chatHistory.map((msg) => (
-              <motion.div
+              <ChatMessageItem
                 key={msg.id}
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[90%] sm:max-w-[85%] p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg break-words overflow-wrap-anywhere ${
-                    msg.role === 'user'
-                      ? 'bg-emerald-600/20 text-emerald-100 border border-emerald-500/25 rounded-br-md shadow-[0_0_15px_rgba(16,185,129,0.1)]'
-                      : 'bg-white/5 text-gray-200 border border-white/5 rounded-bl-md'
-                  }`}
-                >
-                  {msg.role === 'user' ? (
-                    <span>{msg.text}</span>
-                  ) : (
-                    <div className="text-xs sm:text-sm leading-relaxed space-y-2">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          img: ({ node, ...props }) => (
-                            <img
-                              {...props}
-                              className="rounded-xl max-h-72 w-auto object-cover border border-white/10 my-2 shadow-lg"
-                              referrerPolicy="no-referrer"
-                              loading="lazy"
-                            />
-                          ),
-                          a: ({ node, ...props }) => (
-                            <a
-                              {...props}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2 break-all"
-                            />
-                          ),
-                          code: ({ node, inline, className, children, ...props }: any) => {
-                            return (
-                              <code
-                                className={`${className || ''} bg-black/40 px-1.5 py-0.5 rounded text-[11px] font-mono text-emerald-300 border border-white/5`}
-                                {...props}
-                              >
-                                {children}
-                              </code>
-                            )
-                          },
-                          pre: ({ node, children, ...props }: any) => {
-                            return (
-                              <pre
-                                className="bg-black/60 p-2.5 rounded-xl border border-white/10 my-2 overflow-x-auto text-[11px] font-mono text-zinc-200"
-                                {...props}
-                              >
-                                {children}
-                              </pre>
-                            )
-                          }
-                        }}
-                      >
-                        {msg.text}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                  {msg.id === activeStreamingId && (
-                    <span className="inline-block w-1.5 h-4 ml-1 bg-emerald-400 rounded-full animate-pulse align-middle"></span>
-                  )}
-                </div>
-              </motion.div>
+                msg={msg}
+                isStreaming={msg.id === activeStreamingId}
+                onRetry={handleRetry}
+              />
             ))}
+
+            {/* Premium AI Thinking Indicator while waiting for streaming tokens */}
+            {isSubmitting && !activeStreamingId && <AIThinkingIndicator key="iris-thinking" />}
           </AnimatePresence>
 
           {interimTranscript && (
@@ -885,55 +1095,125 @@ export default function RightPanel({
               </div>
             </motion.div>
           )}
+
+          {/* Bottom spacing anchor to guarantee last message is never covered */}
+          <div ref={messagesEndRef} className="h-2 shrink-0" />
         </div>
       )}
 
-      {/* Input Form at bottom */}
-      <form
-        onSubmit={handleSubmit}
-        className="p-2 sm:p-2.5 border-t border-white/5 bg-zinc-950/90 flex items-center gap-1.5 sm:gap-2 shrink-0 z-10"
-      >
-        <div className="relative flex-1 flex items-center">
-          <input
-            type="text"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            placeholder={
-              isListening ? 'Speak or type command...' : 'Type voice command or query...'
-            }
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm sm:text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
-          />
-        </div>
+      {/* Bottom Composer */}
+      <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]">
+        {/* Quick Actions Interactive Tray */}
+        <AnimatePresence>
+          {showQuickActions && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="flex flex-col gap-1.5 overflow-hidden pb-1"
+            >
+              <div className="flex items-center justify-between px-1 text-[10px] font-mono text-zinc-400">
+                <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                  <RiFlashlightFill size={11} />
+                  Quick Actions
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    shortcutService.triggerAction('TOGGLE_QUICK_MENU')
+                  }}
+                  className="hover:text-emerald-300 text-zinc-400 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Full Palette (Ctrl+K)</span>
+                </button>
+              </div>
 
-        {/* Dedicated Microphone Input Handler (Web Speech API & Gemini AI fallback) */}
-        <MicrophoneInputButton
-          size="md"
-          autoExecute={true}
-          onInterimText={(text) => {
-            // Display live voice interim text if desired
-          }}
-          onCommandTriggered={(cmd) => {
-            if (onSendPrompt) {
-              onSendPrompt(cmd)
-            }
-          }}
-        />
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
+                {quickActionShortcuts.map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setInputVal(chip.prompt)
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer shrink-0"
+                  >
+                    <span>{chip.icon}</span>
+                    <span>{chip.label}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <motion.button
-          whileHover={{ scale: 1.06 }}
-          whileTap={{ scale: 0.92 }}
-          type="submit"
-          disabled={!inputVal.trim() || isSubmitting}
-          className={`p-2.5 sm:p-2 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
-            inputVal.trim() && !isSubmitting
-              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-              : 'bg-white/5 text-zinc-600 border-transparent cursor-not-allowed'
-          }`}
-          title="Send query"
+        {/* Input Form at bottom */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-1.5 sm:gap-2 relative"
         >
-          <Send size={15} />
-        </motion.button>
-      </form>
+          {/* Quick Actions Trigger in Composer */}
+          <button
+            type="button"
+            onClick={() => setShowQuickActions((prev) => !prev)}
+            className={`p-2 sm:p-2 rounded-xl border transition-all cursor-pointer shrink-0 flex items-center justify-center ${
+              showQuickActions
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-emerald-400 border-white/10'
+            }`}
+            title="Toggle Quick Actions"
+            aria-label="Quick Actions"
+          >
+            <RiFlashlightFill size={15} />
+          </button>
+
+          <div className="relative flex-1 flex items-center min-w-0">
+            <input
+              type="text"
+              value={inputVal}
+              onChange={(e) => {
+                const nextVal = e.target.value
+                setInputVal(nextVal)
+                chatHistoryService.saveDraft(activeSessionId, nextVal)
+              }}
+              placeholder={
+                isListening ? 'Speak or type command...' : 'Type message or voice prompt...'
+              }
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+            />
+          </div>
+
+          {/* Dedicated Microphone Input Handler (Web Speech API & Gemini AI fallback) */}
+          <MicrophoneInputButton
+            size="md"
+            autoExecute={true}
+            onInterimText={(text) => {
+              // Display live voice interim text if desired
+            }}
+            onCommandTriggered={(cmd) => {
+              if (onSendPrompt) {
+                onSendPrompt(cmd)
+              }
+            }}
+          />
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            disabled={!inputVal.trim() || isSubmitting}
+            className={`p-2 sm:p-2 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
+              inputVal.trim() && !isSubmitting
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                : 'bg-white/5 text-zinc-600 border-transparent cursor-not-allowed'
+            }`}
+            title="Send query"
+          >
+            <Send size={15} />
+          </motion.button>
+        </form>
+      </div>
     </div>
   )
 }

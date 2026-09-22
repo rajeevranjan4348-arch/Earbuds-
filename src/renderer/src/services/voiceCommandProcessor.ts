@@ -14,6 +14,7 @@ import { agentLoop, execute_agent_task, confirm_pending_action } from './android
 import { webSearchService } from './webSearchService'
 import { locationService } from './locationService'
 import { agentClientService } from './agentClientService'
+import { chatHistoryService } from './chatHistoryService'
 
 export type VoiceCommandIntent =
   | 'PLAN_EXECUTION_AGENT'
@@ -1389,17 +1390,21 @@ class VoiceCommandProcessor {
   // ==========================================
   private checkHelp(cleaned: string): CommandProcessResult | null {
     if (
-      cleaned.includes('what can you do') ||
-      cleaned.includes('help') ||
-      cleaned.includes('capabilities') ||
-      cleaned.includes('voice commands') ||
-      cleaned.includes('list commands')
+      cleaned === 'what can you do' ||
+      cleaned === 'what can you do?' ||
+      cleaned === 'help' ||
+      cleaned === 'capabilities' ||
+      cleaned === 'voice commands' ||
+      cleaned === 'list commands' ||
+      cleaned === 'show commands'
     ) {
       return {
         handled: true,
         intent: 'HELP',
         spokenResponse:
-          'You can control IRIS hands-free. Say "System status" for telemetry, "Take note" to write ideas, "Turn on camera" or "Take a snapshot" for optics, "Open mobile" for ADB bridge, "Launch Chrome" to open apps, or ask any math and knowledge question.'
+          'You can control IRIS hands-free. Say "System status" for telemetry, "Take note" to write ideas, "Turn on camera" or "Take a snapshot" for optics, "Open mobile" for ADB bridge, "Launch Chrome" to open apps, or ask any math and knowledge question.',
+        displayText:
+          '**Here is what IRIS can do:**\n\n• **Voice & Navigation**: Hands-free control for system tabs, telemetry, and optics\n• **AI Chat & Reasoning**: Real-time Gemini AI with codebase context\n• **Web & Search**: Live web search grounding and research\n• **PDF & Documents**: Upload and query documents with semantic RAG\n• **Workspace & Tools**: Google Workspace integration, YouTube automation, and notes'
       }
     }
     return null
@@ -1410,16 +1415,18 @@ class VoiceCommandProcessor {
   // ==========================================
   private checkIdentity(cleaned: string): CommandProcessResult | null {
     if (
-      cleaned.includes('who are you') ||
-      cleaned.includes('what is iris') ||
-      cleaned.includes('who created you') ||
-      cleaned.includes('tell me about yourself')
+      cleaned === 'who are you' ||
+      cleaned === 'what is iris' ||
+      cleaned === 'who created you' ||
+      cleaned === 'tell me about yourself'
     ) {
       return {
         handled: true,
         intent: 'IRIS_IDENTITY',
         spokenResponse:
-          'I am IRIS, an intelligent Voice-First Operating Layer and desktop cognitive assistant. I monitor system telemetry, orchestrate peripheral optics and ADB mobile bridges, and execute your intent in real-time.'
+          'I am IRIS, an intelligent Voice-First Operating Layer and desktop cognitive assistant. I monitor system telemetry, orchestrate peripheral optics and ADB mobile bridges, and execute your intent in real-time.',
+        displayText:
+          '**I am IRIS** — an intelligent Voice-First Operating Layer and cognitive assistant.\n\nI monitor system telemetry, orchestrate peripheral optics, connect live web search & Gemini AI, manage document knowledge, and execute your commands in real time.'
       }
     }
     return null
@@ -1946,31 +1953,26 @@ class VoiceCommandProcessor {
   ): Promise<CommandProcessResult> {
     const currentUid = firebaseAuthService.getUserId()
 
-    // Conversational greetings
-    if (
-      cleaned === 'hello' ||
-      cleaned.startsWith('hello ') ||
-      cleaned === 'hi' ||
-      cleaned.startsWith('hi ') ||
-      cleaned.includes('hey iris') ||
-      cleaned.includes('good morning') ||
-      cleaned.includes('good evening') ||
-      cleaned.includes('good afternoon')
-    ) {
+    // Conversational greetings - only if it is strictly an isolated greeting
+    const exactGreetings = ['hello', 'hi', 'hey', 'hey iris', 'good morning', 'good evening', 'good afternoon']
+    if (exactGreetings.includes(cleaned)) {
       return {
         handled: true,
         intent: 'CONVERSATIONAL',
         spokenResponse:
-          'Hello. IRIS Neural Core is standing by. How can I assist your workflow today?'
+          'Hello. IRIS Neural Core is standing by. How can I assist your workflow today?',
+        displayText:
+          'Hello! IRIS Neural Core is standing by. How can I assist your workflow today?'
       }
     }
 
     // Thank you
-    if (cleaned.includes('thank you') || cleaned.includes('thanks')) {
+    if (cleaned === 'thank you' || cleaned === 'thanks' || cleaned === 'thank you iris') {
       return {
         handled: true,
         intent: 'CONVERSATIONAL',
-        spokenResponse: "You're welcome. Standing by for your next command."
+        spokenResponse: "You're welcome. Standing by for your next command.",
+        displayText: "You're welcome! Standing by for your next command."
       }
     }
 
@@ -2005,34 +2007,45 @@ class VoiceCommandProcessor {
       if (isPreferenceInquiry) {
         // Attempt AI server proxy with contextualized prompt
         try {
+          const conversationHistory = chatHistoryService.getConversationHistoryForContext(undefined, 8, currentUid)
+          console.log('[AI_REQUEST_START]', { stage: 'preference_memory_qa', prompt: originalText, historyTurns: conversationHistory.length })
+          console.log('[AI_REQUEST_SENT]', { endpoint: '/api/ai/chat', memoriesCount: relevantMemories.length, historyTurns: conversationHistory.length })
           const apiRes = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               prompt: originalText,
+              conversationHistory,
               relevantMemories
             })
           })
+          console.log('[AI_RESPONSE_RECEIVED]', { status: apiRes.status, ok: apiRes.ok })
           if (apiRes.ok) {
             const data = await apiRes.json()
+            console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(data?.text), textLength: data?.text?.length })
             if (data?.text) {
               return {
                 handled: true,
                 intent: 'MEMORY_RETRIEVAL_QA',
                 actionExecuted: 'MEM0_CONTEXT_ANSWER',
-                spokenResponse: data.text
+                spokenResponse: data.text,
+                displayText: data.text
               }
             }
           }
-        } catch (_e) {}
+        } catch (err: any) {
+          console.error('[AI_REQUEST_ERROR]', { stage: 'preference_memory_qa_fetch', error: err?.message || err })
+        }
 
         // Deterministic high-precision retrieval from top memory
         const top = relevantMemories[0].memory
+        const topAnswer = `Based on your saved preferences: ${top}.`
         return {
           handled: true,
           intent: 'MEMORY_RETRIEVAL_QA',
           actionExecuted: 'MEM0_LOCAL_ANSWER',
-          spokenResponse: `Based on your saved preferences: ${top}.`
+          spokenResponse: topAnswer,
+          displayText: topAnswer
         }
       }
     }
@@ -2148,17 +2161,26 @@ class VoiceCommandProcessor {
         } catch (_e) {}
       }
 
+      const conversationHistory = chatHistoryService.getConversationHistoryForContext(undefined, 8, currentUid)
+      console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', prompt: originalText, historyTurns: conversationHistory.length })
+      console.log('[AI_REQUEST_SENT]', { endpoint: '/api/ai/chat', hasMemories: relevantMemories.length > 0, hasCodebase: codebaseContext.length > 0, historyTurns: conversationHistory.length })
+
       const apiRes = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: originalText,
+          conversationHistory,
           relevantMemories,
           codebaseContext
         })
       })
+
+      console.log('[AI_RESPONSE_RECEIVED]', { status: apiRes.status, ok: apiRes.ok })
+
       if (apiRes.ok) {
         const data = await apiRes.json()
+        console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(data?.text), textLength: data?.text?.length, model: data?.model })
         if (data?.text) {
           const isWebGrounded = Boolean(
             (data.webSourcesCount && data.webSourcesCount > 0) ||
@@ -2181,6 +2203,7 @@ class VoiceCommandProcessor {
             intent,
             actionExecuted,
             spokenResponse: data.text,
+            displayText: data.text,
             metadata: {
               codebaseSnippets: codebaseContext.length,
               webSources: data.webSourcesCount || 0,
@@ -2189,14 +2212,38 @@ class VoiceCommandProcessor {
             }
           }
         }
+      } else {
+        const errorData = await apiRes.json().catch(() => ({}))
+        console.warn('[AI_REQUEST_ERROR] Server returned non-ok status:', apiRes.status, errorData)
+        return {
+          handled: true,
+          intent: 'CONVERSATIONAL_AI',
+          actionExecuted: 'FALLBACK_ERROR_NOTICE',
+          status: 'failed',
+          spokenResponse: `The AI service is currently unavailable. A fallback acknowledgement has been recorded for "${originalText}".`,
+          displayText: `⚠️ **AI Service Notice:** The API execution encountered an issue (Status ${apiRes.status}).\n\n**Fallback Mode:** I received your prompt: *" ${originalText} "*. Please retry your request in a moment.`,
+          isFallback: true
+        }
       }
-    } catch (_e) {}
+    } catch (err: any) {
+      console.error('[AI_REQUEST_ERROR]', { stage: 'conversational_fetch', error: err?.message || err })
+      return {
+        handled: true,
+        intent: 'CONVERSATIONAL_AI',
+        actionExecuted: 'FALLBACK_NETWORK_ERROR',
+        status: 'failed',
+        spokenResponse: `Connection error reaching AI service. Switched to fallback response.`,
+        displayText: `⚠️ **Connection Notice:** Unable to reach AI engine (${err?.message || 'Network request failed'}).\n\n**Fallback Mode:** Your query *" ${originalText} "* has been acknowledged. Please check your network or try again.`,
+        isFallback: true
+      }
+    }
 
     // Fallback intelligent natural response
     return {
       handled: true,
       intent: 'KNOWLEDGE_QA',
-      spokenResponse: `Acknowledged: "${originalText}". IRIS has logged this instruction. Say "Help" to review available system commands.`
+      spokenResponse: `Acknowledged: "${originalText}". IRIS has logged this instruction. Say "Help" to review available system commands.`,
+      displayText: `Acknowledged: "${originalText}". IRIS has logged this instruction. Say "Help" to review available system commands.`
     }
   }
 }

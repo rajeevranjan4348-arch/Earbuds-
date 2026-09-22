@@ -12,7 +12,6 @@ import {
   WorkspaceSearchResult
 } from '../types'
 import { workspaceDocumentParser } from '../parser'
-import { extractPdfText } from '../../lib/pdf'
 
 export class GoogleDriveProvider extends WorkspaceProvider {
   public readonly service: WorkspaceServiceType = 'drive'
@@ -222,8 +221,25 @@ export class GoogleDriveProvider extends WorkspaceProvider {
         const buffer = Buffer.from(arrayBuffer)
         try {
           // Attempt text extraction
-          const pdfData = await extractPdfText(buffer)
-          rawText = pdfData.text || ''
+          const pdfModule: any = await import('pdf-parse')
+          const ParserClass = pdfModule.PDFParse || pdfModule.default?.PDFParse
+          if (ParserClass && typeof ParserClass === 'function') {
+            const parser = new ParserClass({ data: buffer })
+            try {
+              const pdfResult = await parser.getText()
+              rawText = pdfResult.text || ''
+            } finally {
+              if (typeof parser.destroy === 'function') {
+                await parser.destroy().catch(() => {})
+              }
+            }
+          } else if (typeof pdfModule === 'function') {
+            const pdfData = await pdfModule(buffer)
+            rawText = pdfData.text || ''
+          } else if (typeof pdfModule.default === 'function') {
+            const pdfData = await pdfModule.default(buffer)
+            rawText = pdfData.text || ''
+          }
 
           if (!rawText.trim()) {
             isOcr = true

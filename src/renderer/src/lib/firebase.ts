@@ -61,13 +61,63 @@ export const WORKSPACE_SCOPES = [
 export const googleAuthProvider = new GoogleAuthProvider()
 // Request Workspace scopes
 WORKSPACE_SCOPES.forEach((scope) => googleAuthProvider.addScope(scope))
+googleAuthProvider.setCustomParameters({
+  prompt: 'select_account',
+  access_type: 'offline'
+})
 
-const TOKEN_STORAGE_KEY = 'iris_google_access_token_v2'
-
-// Token cache initialized from persistent storage
-let cachedAccessToken: string | null =
-  typeof window !== 'undefined' ? localStorage.getItem(TOKEN_STORAGE_KEY) : null
+// In-memory token cache (Do NOT store sensitive OAuth tokens/secrets in localStorage)
+let cachedAccessToken: string | null = null
 let isSigningIn = false
+
+/**
+ * Synchronize credentials with the centralized backend OAuth session manager
+ */
+export const syncSessionToBackend = async (params: {
+  accessToken: string
+  user: User
+  expiresIn?: number
+}) => {
+  try {
+    const res = await fetch('/api/workspace/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: params.user.uid,
+        email: params.user.email,
+        displayName: params.user.displayName,
+        accessToken: params.accessToken,
+        expiresIn: params.expiresIn || 3600,
+        expiresAt: Date.now() + (params.expiresIn || 3600) * 1000,
+        scopes: WORKSPACE_SCOPES
+      })
+    })
+    if (!res.ok) {
+      console.warn('[FirebaseAuth] Backend session sync notice:', res.statusText)
+    }
+  } catch (err) {
+    console.warn('[FirebaseAuth] Backend session sync exception:', err)
+  }
+}
+
+/**
+ * Check backend centralized session status
+ */
+export const fetchBackendSession = async (): Promise<{ isConnected: boolean; accessToken?: string; session?: any }> => {
+  try {
+    const res = await fetch('/api/workspace/auth/session')
+    if (res.ok) {
+      const data = await res.json()
+      return {
+        isConnected: Boolean(data.session?.isConnected),
+        session: data.session
+      }
+    }
+  } catch (err) {
+    console.warn('[FirebaseAuth] Failed to check backend session:', err)
+  }
+  return { isConnected: false }
+}
 
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
@@ -76,24 +126,32 @@ export const initAuth = (
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       if (cachedAccessToken) {
+        // Sync to backend to make sure backend session is warm
+        syncSessionToBackend({ accessToken: cachedAccessToken, user })
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken)
-      } else if (!isSigningIn) {
-        try {
-          const idToken = await user.getIdToken()
-          if (cachedAccessToken && onAuthSuccess) {
-            onAuthSuccess(user, cachedAccessToken)
-          } else if (onAuthSuccess && idToken) {
-            onAuthSuccess(user, idToken)
-          }
-        } catch {
-          if (onAuthFailure && !cachedAccessToken) onAuthFailure()
+      } else {
+        // Check if backend already has a valid restored session
+        const backendStatus = await fetchBackendSession()
+        if (backendStatus.isConnected) {
+          // Trigger a refresh to get fresh access token
+          try {
+            const refRes = await fetch('/api/workspace/auth/refresh', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.uid })
+            })
+            const refData = await refRes.json()
+            if (refData.success && refData.accessToken) {
+              setCachedAccessToken(refData.accessToken)
+              if (onAuthSuccess) onAuthSuccess(user, refData.accessToken)
+              return
+            }
+          } catch (_e) {}
         }
+        if (onAuthFailure) onAuthFailure()
       }
     } else {
       cachedAccessToken = null
-      try {
-        localStorage.removeItem(TOKEN_STORAGE_KEY)
-      } catch (_e) {}
       if (onAuthFailure) onAuthFailure()
     }
   })
@@ -107,10 +165,16 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     if (!credential?.accessToken) {
       throw new Error('Failed to get access token from Google Auth credential')
     }
+
     cachedAccessToken = credential.accessToken
-    try {
-      localStorage.setItem(TOKEN_STORAGE_KEY, credential.accessToken)
-    } catch (_e) {}
+
+    // Persist and synchronize to Centralized Backend Session Manager
+    await syncSessionToBackend({
+      accessToken: credential.accessToken,
+      user: result.user,
+      expiresIn: 3600
+    })
+
     return { user: result.user, accessToken: cachedAccessToken }
   } catch (error) {
     console.error('Sign in error:', error)
@@ -120,26 +184,26 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
   }
 }
 
+export const triggerWorkspaceOAuthPopup = async (): Promise<string | null> => {
+  const result = await signInWithGoogle()
+  return result?.accessToken || null
+}
+
 export const getCachedAccessToken = (): string | null => {
   return cachedAccessToken
 }
 
 export const setCachedAccessToken = (token: string | null) => {
   cachedAccessToken = token
-  try {
-    if (token) {
-      localStorage.setItem(TOKEN_STORAGE_KEY, token)
-    } else {
-      localStorage.removeItem(TOKEN_STORAGE_KEY)
-    }
-  } catch (_e) {}
 }
 
 export const logOutGoogle = async () => {
   await signOut(auth)
   cachedAccessToken = null
+  
+  // Clear centralized backend session
   try {
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    await fetch('/api/workspace/auth/session', { method: 'DELETE' })
   } catch (_e) {}
 }
 

@@ -7,9 +7,12 @@ import {
   Monitor,
   ArrowUp,
   ArrowDown,
-  Radio
+  Radio,
+  Activity,
+  BarChart3
 } from 'lucide-react'
 import { getSystemStatus } from '@renderer/services/system-info'
+import { SystemTelemetryRecharts } from './SystemTelemetryRecharts'
 
 function getHealthColor(value: number, type: 'cpu' | 'ram' | 'temp') {
   let ratio = Math.min(1, Math.max(0, value / 100))
@@ -479,9 +482,42 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
     return 'good'
   }
 
+  const [panelView, setPanelView] = useState<'telemetry' | 'optics'>('telemetry')
+
   return (
     <div className="flex h-full flex-col gap-3 p-0">
-      <PremiumGlassPanel accent="green" className="group" glow>
+      {/* Sub-panel Selector */}
+      <div className="flex items-center gap-1 bg-zinc-950/90 p-1 rounded-xl border border-white/10 shrink-0">
+        <button
+          onClick={() => setPanelView('telemetry')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase transition-all cursor-pointer ${
+            panelView === 'telemetry'
+              ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30 shadow-[0_0_10px_rgba(0,255,65,0.2)]'
+              : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Activity size={12} />
+          <span>Recharts Telemetry</span>
+        </button>
+        <button
+          onClick={() => setPanelView('optics')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase transition-all cursor-pointer ${
+            panelView === 'optics'
+              ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/30 shadow-[0_0_10px_rgba(0,255,65,0.2)]'
+              : 'text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          <Camera size={12} />
+          <span>Optics Feed</span>
+        </button>
+      </div>
+
+      {panelView === 'telemetry' && (
+        <SystemTelemetryRecharts compact={false} />
+      )}
+
+      {panelView === 'optics' && (
+        <PremiumGlassPanel accent="green" className="group" glow>
         <div className="p-3 flex flex-col h-full gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -564,6 +600,7 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           </div>
         </div>
       </PremiumGlassPanel>
+      )}
 
       <PremiumGlassPanel accent="cyan" glow className="group">
         <div className="p-3 flex flex-col gap-3">

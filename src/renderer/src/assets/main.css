@@ -9,13 +9,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Custom Ultra-Smooth Scrollbars */
+/* Custom Ultra-Smooth High-Performance Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -28,11 +29,11 @@ body {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
-  transition: background 0.25s ease-out;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.45);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -46,7 +47,7 @@ body {
 
 /* Smooth Fluid Container Transitions */
 .smooth-transition {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .smooth-spring {
@@ -59,6 +60,15 @@ body {
   backface-visibility: hidden;
   perspective: 1000px;
   will-change: transform, opacity;
+  contain: layout style paint;
+}
+
+/* Smooth Momentum Scroll Container */
+.smooth-scroll-container {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 @keyframes scan {
@@ -99,6 +109,45 @@ body {
   }
 }
 
+/* Premium AI Thinking Dot Animation (GPU-friendly, 0 layout shifts) */
+@keyframes thinkingDot {
+  0%, 80%, 100% {
+    transform: scale(0.6) translateY(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.1) translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@keyframes thinkingShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-thinking-dot-1 {
+  animation: thinkingDot 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-thinking-dot-2 {
+  animation: thinkingDot 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s infinite;
+}
+
+.animate-thinking-dot-3 {
+  animation: thinkingDot 1.4s cubic-bezier(0.4, 0, 0.2, 1) 0.4s infinite;
+}
+
+.animate-thinking-shimmer {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.25) 50%, rgba(16, 185, 129, 0.05) 100%);
+  background-size: 200% 100%;
+  animation: thinkingShimmer 2.2s linear infinite;
+}
+
 .animate-smooth-pulse {
   animation: smoothPulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
@@ -110,3 +159,29 @@ body {
 .animate-soft-glow {
   animation: softGlow 3s ease-in-out infinite;
 }
+
+/* Reduced Motion Mode Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse,
+  .animate-smooth-pulse,
+  .animate-subtle-float,
+  .animate-soft-glow,
+  .animate-thinking-dot-1,
+  .animate-thinking-dot-2,
+  .animate-thinking-dot-3,
+  .animate-thinking-shimmer {
+    animation: none !important;
+  }
+}
+

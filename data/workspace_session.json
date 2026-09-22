@@ -1,0 +1,29 @@
+{
+  "test_uid": {
+    "userId": "test_uid",
+    "email": "kumarimamta87565@gmail.com",
+    "displayName": "Mamta Kumari",
+    "accessToken": "test_access_token_123",
+    "expiresAt": 1790085775525,
+    "issuedAt": 1790082175525,
+    "tokenType": "Bearer",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive",
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://mail.google.com/",
+      "https://www.googleapis.com/auth/calendar",
+      "https://www.googleapis.com/auth/documents",
+      "https://www.googleapis.com/auth/presentations",
+      "https://www.googleapis.com/auth/tasks",
+      "https://www.googleapis.com/auth/chat.spaces",
+      "https://www.googleapis.com/auth/chat.messages",
+      "https://www.googleapis.com/auth/forms.body",
+      "https://www.googleapis.com/auth/meetings.space.created",
+      "https://www.googleapis.com/auth/contacts",
+      "https://www.googleapis.com/auth/classroom.courses.readonly"
+    ],
+    "isConnected": true,
+    "lastVerifiedAt": 1790082175525
+  }
+}

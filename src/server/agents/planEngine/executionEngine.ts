@@ -268,14 +268,32 @@ Provide two outputs in JSON format:
 1. "spokenText": A natural, concise verbal response suitable for voice speech synthesis (1-2 sentences, no markdown, no URLs).
 2. "displayText": A structured, polished markdown summary of the result.`
 
-        const res = await gemini.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [{ text: prompt }],
-          config: { responseMimeType: 'application/json' }
-        })
+        const candidateModels = [
+          'gemini-2.5-flash',
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-2.5-pro'
+        ]
 
-        if (res.text) {
-          const parsed = JSON.parse(res.text)
+        let responseText = ''
+        for (const modelCandidate of candidateModels) {
+          try {
+            const res = await gemini.models.generateContent({
+              model: modelCandidate,
+              contents: [{ text: prompt }],
+              config: { responseMimeType: 'application/json' }
+            })
+            if (res.text) {
+              responseText = res.text
+              break
+            }
+          } catch (_mErr) {
+            // Try next model candidate
+          }
+        }
+
+        if (responseText) {
+          const parsed = JSON.parse(responseText)
           return {
             spokenText: parsed.spokenText || `I completed your request with ${completedSteps} verified actions.`,
             displayText: parsed.displayText || stepSummaries.join('\n'),

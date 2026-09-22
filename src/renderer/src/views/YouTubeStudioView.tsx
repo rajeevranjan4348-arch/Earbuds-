@@ -83,7 +83,19 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 8000)
-    return () => clearInterval(interval)
+
+    const handleSubTabEvent = (e: any) => {
+      const sub = e?.detail
+      if (sub && ['PIPELINE', 'TRENDS', 'ANALYTICS', 'SETTINGS'].includes(sub)) {
+        setActiveSubTab(sub)
+      }
+    }
+    window.addEventListener('iris-youtube-subtab', handleSubTabEvent)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('iris-youtube-subtab', handleSubTabEvent)
+    }
   }, [])
 
   // Handle Natural Language Command Execution
@@ -195,15 +207,15 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
   }
 
   return (
-    <div className="flex flex-col h-full w-full max-w-7xl mx-auto space-y-4 text-zinc-100 font-sans select-none pb-8">
+    <div className="flex flex-col min-h-full w-full max-w-7xl mx-auto space-y-4 text-zinc-100 font-sans select-none pb-12">
       {/* 1. Header Banner & Publishing Mode Bar */}
-      <div className={`p-4 md:p-5 ${glassPanel} border border-white/10 bg-zinc-950/70 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xl relative overflow-hidden`}>
+      <div className={`shrink-0 p-4 md:p-5 ${glassPanel} border border-white/10 bg-zinc-950/80 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xl relative`}>
         <div className="flex items-center gap-3.5 z-10">
-          <div className="w-12 h-12 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+          <div className="w-12 h-12 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)] shrink-0">
             <RiYoutubeFill size={28} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg md:text-xl font-black tracking-wider uppercase text-white">
                 {profile?.channelName || 'IRIS Intelligence Labs'}
               </h1>
@@ -211,7 +223,7 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
                 LIVE PIPELINE
               </span>
             </div>
-            <p className="text-xs text-zinc-400 font-mono flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-zinc-400 font-mono flex items-center gap-2 mt-0.5 flex-wrap">
               <span>{profile?.handle || '@iris_intelligence'}</span>
               <span>•</span>
               <span className="text-zinc-300">{profile?.subscribers.toLocaleString() || '18,450'} subscribers</span>
@@ -243,7 +255,7 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
 
           <button
             onClick={fetchData}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-zinc-100 transition-colors"
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
             title="Refresh Pipeline Data"
           >
             <RiRefreshLine size={16} className={isProcessing ? 'animate-spin' : ''} />
@@ -252,7 +264,7 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
       </div>
 
       {/* 2. Natural Language AI Command Bar */}
-      <div className={`p-3 md:p-4 ${glassPanel} border border-white/10 bg-zinc-950/60 rounded-2xl`}>
+      <div className={`shrink-0 p-3 md:p-4 ${glassPanel} border border-white/10 bg-zinc-950/70 rounded-2xl`}>
         <form onSubmit={handleSendCommand} className="flex items-center gap-2">
           <div className="relative flex-1">
             <RiMagicLine className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400" size={16} />
@@ -295,7 +307,7 @@ export const YouTubeStudioView: React.FC<YouTubeStudioViewProps> = ({ glassPanel
       </div>
 
       {/* 3. Studio Sub-Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar relative">
+      <div className="shrink-0 flex items-center gap-1.5 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar relative">
         {[
           { id: 'PIPELINE', label: 'Production Queue', icon: <RiFilmLine size={15} /> },
           { id: 'TRENDS', label: 'Trend Discovery', icon: <RiMagicLine size={15} /> },
