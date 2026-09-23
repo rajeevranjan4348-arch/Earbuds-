@@ -177,6 +177,30 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   }
 
   const saveApiKeys = async () => {
+    // Persist to local storage
+    if (geminiKey) localStorage.setItem('gemini_api_key', geminiKey)
+    if (deepseekKey) localStorage.setItem('deepseek_api_key', deepseekKey)
+    if (mem0Key) localStorage.setItem('mem0_api_key', mem0Key)
+    if (groqKey) localStorage.setItem('groq_api_key', groqKey)
+
+    // Sync to backend key store
+    try {
+      await fetch('/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          geminiKey,
+          deepseekKey,
+          groqKey,
+          hfKey,
+          tavilyKey,
+          mem0Key
+        })
+      })
+    } catch (_err) {
+      // Non-fatal if offline
+    }
+
     if (window.electron?.ipcRenderer) {
       try {
         await window.electron.ipcRenderer.invoke('secure-save-keys', {
@@ -187,19 +211,14 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
           tavilyKey,
           mem0Key
         })
-        localStorage.setItem('deepseek_api_key', deepseekKey)
         setSaveStatus('API Keys securely encrypted and saved to Vault.')
         setTimeout(() => setSaveStatus(null), 3000)
       } catch (e) {
-        localStorage.setItem('deepseek_api_key', deepseekKey)
-        setSaveStatus('API Keys saved locally.')
+        setSaveStatus('API Keys saved locally and applied to server.')
         setTimeout(() => setSaveStatus(null), 3000)
       }
     } else {
-      localStorage.setItem('gemini_api_key', geminiKey)
-      localStorage.setItem('deepseek_api_key', deepseekKey)
-      localStorage.setItem('mem0_api_key', mem0Key)
-      setSaveStatus('API Keys saved locally.')
+      setSaveStatus('API Keys saved and applied successfully.')
       setTimeout(() => setSaveStatus(null), 3000)
     }
   }

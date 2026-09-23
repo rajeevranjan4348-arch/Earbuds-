@@ -139,6 +139,7 @@ class VoiceService {
   public isSpeaking: boolean = false
   public isProcessing: boolean = false
   public isConversationalMode: boolean = true
+  private voiceStarting: boolean = false
 
   private status: VoiceStatus = 'idle'
   private lastProcessedTranscript: string = ''
@@ -323,6 +324,70 @@ class VoiceService {
   }
 
   /**
+   * Request microphone permission using navigator.mediaDevices.getUserMedia
+   * with explicit noise suppression, auto gain control, and echo cancellation.
+   */
+  public async requestMicrophonePermission(): Promise<MediaStream | null> {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        console.warn('[VOICE] Microphone API unavailable')
+        console.warn('[VOICE] microphone unavailable')
+        this.setStatus('error', 'Microphone API unavailable in this browser.')
+        return null
+      }
+
+      console.log('[VOICE] requesting microphone')
+      this.setStatus('requesting-permission', 'Connecting microphone audio input...')
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+
+      console.log('[VOICE] microphone granted')
+      return stream
+    } catch (error: any) {
+      console.error('[VOICE] Microphone permission failed:', error)
+
+      if (
+        error.name === 'NotAllowedError' ||
+        error.name === 'PermissionDeniedError' ||
+        error.message?.includes('Permission denied')
+      ) {
+        console.warn('[VOICE] Microphone permission denied')
+        console.warn('[VOICE] microphone denied')
+        this.setStatus(
+          'denied',
+          'Microphone access is blocked. Please allow microphone permission and try again.'
+        )
+      } else if (error.name === 'NotFoundError') {
+        console.warn('[VOICE] No microphone found')
+        console.warn('[VOICE] microphone unavailable')
+        this.setStatus('error', 'No microphone hardware found on this device.')
+      } else if (error.name === 'NotReadableError') {
+        console.warn('[VOICE] Microphone is unavailable or being used')
+        console.warn('[VOICE] microphone unavailable')
+        this.setStatus('error', 'Microphone is unavailable or already in use by another application.')
+      } else if (error.name === 'SecurityError') {
+        console.warn('[VOICE] Microphone blocked by security policy')
+        console.warn('[VOICE] microphone unavailable')
+        this.setStatus(
+          'denied',
+          'Microphone access is blocked. Please allow microphone permission and try again.'
+        )
+      } else {
+        console.warn('[VOICE] microphone unavailable')
+        this.setStatus('error', error?.message || 'Audio input hardware unavailable.')
+      }
+
+      return null
+    }
+  }
+
+  /**
    * Initializes Web Speech API Recognition with mobile and Android reliability
    */
   private initSpeechRecognition(): boolean {
@@ -354,7 +419,7 @@ class VoiceService {
       const rec = new SpeechRecognitionClass()
       rec.continuous = true
       rec.interimResults = true
-      rec.lang = this.selectedLanguage || navigator.language || 'en-US'
+      rec.lang = this.selectedLanguage || navigator.language || 'en-IN'
       rec.maxAlternatives = 1
 
       rec.onstart = () => {
@@ -447,30 +512,56 @@ class VoiceService {
         const err = event.error || event.type
         console.warn('[VOICE] recognition error:', err)
 
-        if (err === 'no-speech') {
-          // Benign silence timeout, smoothly continue
-          return
-        }
-        if (err === 'not-allowed' || err === 'service-not-allowed') {
-          this.setStatus('denied', 'Microphone or Speech Recognition permission was denied.')
-          return
-        }
-        if (err === 'network') {
-          console.warn('[VOICE] Speech recognition network warning. Attempting fallback.')
-          if (this.mediaStream) {
-            this.startFallbackRecorder()
-          }
-          return
-        }
-        if (err === 'aborted') {
-          // Normal abort upon user action or speak transition
-          return
+        switch (err) {
+          case 'not-allowed':
+            console.warn('[VOICE] Microphone permission denied')
+            console.warn('[VOICE] microphone denied')
+            this.setStatus(
+              'denied',
+              'Microphone access is blocked. Please allow microphone permission and try again.'
+            )
+            this.stop()
+            break
+
+          case 'audio-capture':
+            console.warn('[VOICE] Microphone hardware unavailable')
+            console.warn('[VOICE] microphone unavailable')
+            this.setStatus('error', 'Microphone hardware unavailable.')
+            break
+
+          case 'service-not-allowed':
+            console.warn('[VOICE] Speech service not allowed')
+            this.setStatus(
+              'denied',
+              'Microphone access is blocked. Please allow microphone permission and try again.'
+            )
+            break
+
+          case 'network':
+            console.warn('[VOICE] Speech recognition network error')
+            if (this.mediaStream && !this.isFallbackRecording) {
+              this.startFallbackRecorder()
+            }
+            break
+
+          case 'no-speech':
+            // Benign silence timeout, smoothly continue
+            break
+
+          case 'aborted':
+            // Normal abort upon user action or speak transition
+            break
+
+          default:
+            console.warn('[VOICE] Unknown recognition error:', err)
+            break
         }
       }
 
       rec.onend = () => {
         this.isRecognitionActive = false
-        console.log('[VOICE] recognition ended')
+        console.log('[VOICE] recognition stopped')
+        console.log('[VOICE] Recognition ended')
 
         // If fallback recorder is active, let it handle audio capture
         if (this.isFallbackRecording) {
@@ -560,6 +651,8 @@ class VoiceService {
   public startRecognition() {
     if (!this.isRunning || this.isMuted || this.isSpeaking || this.isProcessing) return
     if (this.isRecognitionActive) return
+
+    console.log('[VOICE] recognition starting')
 
     if (!this.recognition) {
       const initialized = this.initSpeechRecognition()
@@ -723,46 +816,41 @@ class VoiceService {
    */
   public async start(): Promise<boolean> {
     if (this.isRunning) return true
+    if (this.voiceStarting) return false
 
-    console.log('[VOICE] microphone permission: requesting')
-    this.setStatus('requesting-permission', 'Connecting microphone audio input...')
+    this.voiceStarting = true
 
     try {
-      // 1. Attempt to request live microphone stream
-      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
-        try {
-          this.mediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true
-            }
-          })
-        } catch (_constrainedErr) {
-          try {
-            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-          } catch (_basicErr) {
-            console.warn('[VOICE] MediaStream hardware stream unavailable or restricted:', _basicErr)
-          }
-        }
+      // 1. Request microphone permission using getUserMedia
+      const stream = await this.requestMicrophonePermission()
+      if (!stream) {
+        console.warn('[VOICE] Recognition cancelled: microphone unavailable')
+        this.voiceStarting = false
+        this.isRunning = false
+        return false
       }
 
+      // Cleanup prior stream if any
+      if (this.mediaStream) {
+        this.mediaStream.getTracks().forEach((track) => track.stop())
+        this.mediaStream = null
+      }
+
+      this.mediaStream = stream
       this.isRunning = true
       this.isMuted = false
       this.isSpeaking = false
       this.isProcessing = false
 
-      // 2. Setup AudioContext and Analyser for visual waves and VAD if stream exists
-      if (this.mediaStream) {
-        this.setupAudioAnalyser()
-      }
+      // 2. Setup AudioContext and Analyser for visual waves and VAD
+      this.setupAudioAnalyser()
 
       // Resume AudioContext if suspended
       if (this.audioContext && this.audioContext.state === 'suspended') {
         this.audioContext.resume().catch(() => {})
       }
 
-      // 3. Start Speech Recognition (or fallback recorder if recognition not supported)
+      // 3. Start Speech Recognition ONLY after microphone permission is granted
       if (this.isSpeechRecognitionSupported()) {
         this.startRecognition()
       } else if (this.mediaStream) {
@@ -775,29 +863,12 @@ class VoiceService {
       this.setStatus('listening', 'Microphone active. IRIS is listening for commands.')
       this.playAcousticFeedback('activate')
 
+      this.voiceStarting = false
       return true
     } catch (err: any) {
       console.warn('[VOICE] microphone permission: handled fallback', err)
-      if (this.isSpeechRecognitionSupported()) {
-        this.isRunning = true
-        this.isMuted = false
-        this.isSpeaking = false
-        this.isProcessing = false
-        this.startRecognition()
-        this.startWatchdog()
-        this.setStatus('listening', 'IRIS is listening for commands.')
-        return true
-      }
-
-      if (
-        err.name === 'NotAllowedError' ||
-        err.name === 'PermissionDeniedError' ||
-        err.message?.includes('Permission denied')
-      ) {
-        this.setStatus('denied', 'Microphone access denied. Please allow microphone in browser.')
-      } else {
-        this.setStatus('error', err?.message || 'Audio input hardware unavailable.')
-      }
+      this.voiceStarting = false
+      this.stop()
       return false
     }
   }
@@ -807,6 +878,7 @@ class VoiceService {
    */
   public stop() {
     this.isRunning = false
+    this.voiceStarting = false
     this.isMuted = false
     this.isSpeaking = false
     this.isProcessing = false
@@ -841,6 +913,7 @@ class VoiceService {
       this.audioContext = null
     }
 
+    console.log('[VOICE] recognition stopped')
     this.setStatus('idle', 'Microphone and Voice interface disconnected.')
   }
 

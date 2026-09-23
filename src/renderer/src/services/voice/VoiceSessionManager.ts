@@ -314,16 +314,22 @@ export class VoiceSessionManager {
   // ==========================================
 
   public async startSession(): Promise<boolean> {
+    this.errorMessage = ''
+    if (this.activeAbortController) {
+      this.activeAbortController.abort()
+      this.activeAbortController = null
+    }
+
     if (this.formalState !== 'IDLE' && this.formalState !== 'LISTENING_FOR_WAKE_WORD') {
+      this.transitionTo('LISTENING')
       return true
     }
 
-    this.errorMessage = ''
     this.notify('state_change', { state: 'requesting-permission' })
 
     const started = await this.audioManager.start()
     if (!started) {
-      this.handleError('Failed to access microphone')
+      this.handleError('Failed to access microphone. Please check permissions.')
       return false
     }
 
@@ -340,7 +346,13 @@ export class VoiceSessionManager {
     this.audioManager.stop()
     this.currentInterim = ''
     this.currentResponse = ''
+    this.errorMessage = ''
     this.transitionTo('IDLE')
+  }
+
+  public submitManualPrompt(text: string): void {
+    if (!text || !text.trim()) return
+    this.handleTurnSubmission(text.trim())
   }
 
   public stopMicrophoneImmediately(): void {
@@ -521,7 +533,8 @@ export class VoiceSessionManager {
     const personality = getPersonality(this.config.personality)
     const recentHistory = this.conversationHistory.slice(-6).map((m) => ({
       role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.text
+      content: m.text,
+      text: m.text
     }))
 
     try {
@@ -531,6 +544,7 @@ export class VoiceSessionManager {
         signal: this.activeAbortController.signal,
         body: JSON.stringify({
           prompt,
+          conversationHistory: recentHistory,
           messages: recentHistory,
           systemInstruction: `You are ${personality.name}, an intelligent real-time conversational voice assistant. ${personality.systemInstructionModifier} Always reply in natural, articulate, concise spoken language. Avoid long markdown lists or raw URLs. If the user spoke in Hindi or Hinglish, reply naturally in Hindi or Hinglish.`
         })
@@ -574,6 +588,13 @@ export class VoiceSessionManager {
 
       // Convert response progressively to speech
       this.audioManager.tts.speakFullResponse(answerText)
+
+      // Fallback state recovery in case TTS does not fire onSpeakingStart/End
+      setTimeout(() => {
+        if (this.formalState === 'PROCESSING') {
+          this.transitionTo(this.config.continuousConversation ? 'LISTENING' : 'IDLE')
+        }
+      }, 1200)
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         console.log('[VoiceSessionManager] AI generation aborted by user.')
@@ -581,7 +602,30 @@ export class VoiceSessionManager {
       }
       console.warn('[VoiceSessionManager] AI generation error:', err)
       const fallback = "I'm standing by. How can I assist you?"
+      this.lastSpokenAnswer = fallback
+      this.currentResponse = fallback
+
+      const fallbackMsg: VoiceTurnMessage = {
+        id: `turn_a_${Date.now()}`,
+        role: 'assistant',
+        text: fallback,
+        timestamp: Date.now(),
+        metadata: {
+          inputMode: 'voice',
+          voiceMode: this.config.personality,
+          timestamp: new Date().toISOString()
+        }
+      }
+
+      this.conversationHistory.push(fallbackMsg)
+      this.notify('transcript_updated', { message: fallbackMsg, history: this.conversationHistory })
+
       this.audioManager.tts.speakFullResponse(fallback)
+      setTimeout(() => {
+        if (this.formalState === 'PROCESSING') {
+          this.transitionTo(this.config.continuousConversation ? 'LISTENING' : 'IDLE')
+        }
+      }, 1000)
     } finally {
       this.activeAbortController = null
     }

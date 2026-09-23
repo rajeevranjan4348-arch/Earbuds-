@@ -873,12 +873,18 @@ export default function RightPanel({
             }
           ].slice(-50))
 
+          const dsApiKey = localStorage.getItem('deepseek_api_key') || undefined
+
           const response = await fetch('/api/ai/deepseek/chat', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(dsApiKey ? { 'x-deepseek-api-key': dsApiKey } : {})
+            },
             body: JSON.stringify({
               prompt: trimmed,
               model: dsModel,
+              apiKey: dsApiKey,
               stream: true,
               messages: chatHistory.slice(-8).map((m) => ({
                 role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',

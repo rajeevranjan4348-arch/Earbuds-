@@ -2380,6 +2380,7 @@ export async function handleApiRequest(
 
     // 13h. DeepSeek API Chat Completions Endpoint (V3 & Reasoner R1)
     if (pathname === '/api/ai/deepseek/chat' && req.method === 'POST') {
+      const body = await parseBody(req)
       const {
         messages = [],
         prompt,
@@ -2388,7 +2389,14 @@ export async function handleApiRequest(
         temperature,
         max_tokens = 8192,
         citations = []
-      } = await parseBody(req)
+      } = body
+
+      const customApiKey =
+        body.apiKey ||
+        (req.headers['x-deepseek-api-key'] as string) ||
+        (req.headers['authorization']?.startsWith('Bearer sk-')
+          ? req.headers['authorization'].slice(7)
+          : undefined)
 
       let formattedMessages = Array.isArray(messages) && messages.length > 0 ? messages : []
       if (formattedMessages.length === 0 && prompt) {
@@ -2408,7 +2416,8 @@ export async function handleApiRequest(
               messages: formattedMessages,
               temperature,
               max_tokens,
-              citations
+              citations,
+              apiKey: customApiKey
             },
             (chunk, reasoningChunk) => {
               res.write(
@@ -2431,7 +2440,8 @@ export async function handleApiRequest(
             messages: formattedMessages,
             temperature,
             max_tokens,
-            citations
+            citations,
+            apiKey: customApiKey
           })
 
           const aiqResult = aiqCitationEngine.annotateResponse(
@@ -2463,9 +2473,12 @@ export async function handleApiRequest(
 
     // 14. Unified AI Core Engine (Mem0 + Letta + Agency Agents + Web Search + Codebase)
     if (pathname === '/api/ai/chat' && req.method === 'POST') {
+      const parsedBody = await parseBody(req)
       const {
         prompt: rawPrompt,
-        conversationHistory = [],
+        conversationHistory: rawConversationHistory,
+        messages: rawMessages,
+        systemInstruction: customSystemInstruction,
         relevantMemories = [],
         codebaseContext: rawCodebaseContext = [],
         projectId = 'current_workspace',
@@ -2475,7 +2488,17 @@ export async function handleApiRequest(
         agentRole: requestedRole,
         provider: requestedProvider,
         model: requestedModel
-      } = await parseBody(req)
+      } = parsedBody
+
+      const conversationHistory =
+        Array.isArray(rawConversationHistory) && rawConversationHistory.length > 0
+          ? rawConversationHistory
+          : Array.isArray(rawMessages) && rawMessages.length > 0
+          ? rawMessages.map((m: any) => ({
+              role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
+              text: m.text || m.content || ''
+            }))
+          : []
 
       if (!rawPrompt) {
         return sendJson(res, 400, { error: 'Missing prompt' })
@@ -2528,7 +2551,9 @@ export async function handleApiRequest(
       const ai = getGemini()
       if (ai) {
         try {
-          let systemInstruction = execPlan.systemInstruction
+          let systemInstruction = customSystemInstruction
+            ? `${customSystemInstruction}\n\n${execPlan.systemInstruction}`
+            : execPlan.systemInstruction
 
           if (relevantMemories.length > 0) {
             const memoryList = relevantMemories

@@ -1,12 +1,12 @@
 /**
- * SpeechRecognitionManager - Streaming Multi-Language STT Engine
- * 
+ * SpeechRecognitionManager - Streaming Multi-Language STT Engine with Safe Restart
+ *
  * Rules:
  * - Real-time streaming partial transcript updates.
- * - Finalize command when speech ends.
- * - Deduplicate duplicate transcripts.
+ * - Differentiate interim vs final results cleanly.
+ * - Safe restart mechanism for unexpected terminations without infinite loops.
  * - Support Hindi + English + Hinglish with auto-detection.
- * - Handle errors and reconnect automatically.
+ * - Deduplicate duplicate transcripts.
  * - Fallback MediaRecorder when Web Speech API is absent or restricted.
  */
 
@@ -23,13 +23,21 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
   private recognition: any = null
   private isListening: boolean = false
   private isPaused: boolean = false
+  private shouldRestart: boolean = false
   private language: SupportedLanguage = 'auto'
   private handlers: SpeechRecognitionManagerHandlers
   private currentInterimText: string = ''
   private lastFinalText: string = ''
   private lastFinalTime: number = 0
 
-  // Fallback MediaRecorder
+  // Safe restart tracking to prevent runaway restart loops
+  private restartTimer: any = null
+  private consecutiveRestarts: number = 0
+  private lastRestartTimestamp: number = 0
+  private sessionStartTime: number = 0
+  private maxConsecutiveRestarts: number = 8
+
+  // Fallback MediaRecorder for environments without Web Speech API
   private mediaRecorder: MediaRecorder | null = null
   private recordedChunks: Blob[] = []
   private isFallbackActive: boolean = false
@@ -43,7 +51,9 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
   public setLanguage(lang: SupportedLanguage): void {
     this.language = lang
     if (this.recognition) {
-      this.recognition.lang = this.resolveBrowserLang(lang)
+      try {
+        this.recognition.lang = this.resolveBrowserLang(lang)
+      } catch (_e) {}
     }
   }
 
@@ -87,10 +97,17 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
   }
 
   public start(stream?: MediaStream): boolean {
-    if (this.isListening) return true
+    if (this.isListening && this.recognition) return true
     this.isPaused = false
+    this.shouldRestart = true
     this.activeStream = stream || null
+    this.consecutiveRestarts = 0
+    this.sessionStartTime = Date.now()
 
+    return this.initRecognition(stream)
+  }
+
+  private initRecognition(stream?: MediaStream): boolean {
     const SpeechRecognitionClass =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition ||
@@ -118,10 +135,15 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
 
       rec.onstart = () => {
         this.isListening = true
+        // If session ran stably for > 4 seconds, reset consecutive restarts counter
+        if (Date.now() - this.sessionStartTime > 4000) {
+          this.consecutiveRestarts = 0
+        }
       }
 
       rec.onresult = (event: any) => {
         if (this.isPaused) return
+        this.consecutiveRestarts = 0 // Successful recognition resets error counters
 
         let interim = ''
         let final = ''
@@ -146,6 +168,7 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
         if (trimmedFinal) {
           this.currentInterimText = ''
           const now = Date.now()
+
           // Deduplicate exact duplicate transcripts received within 1000ms
           if (
             trimmedFinal.toLowerCase() === this.lastFinalText.toLowerCase() &&
@@ -168,14 +191,19 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
 
       rec.onerror = (event: any) => {
         const err = event.error || event.type
+
         if (err === 'no-speech' || err === 'aborted') {
+          // Benign pause in vocal activity, let onend handle graceful keepalive
           return
         }
+
         if (err === 'not-allowed' || err === 'service-not-allowed') {
+          this.shouldRestart = false
           this.isListening = false
           this.handlers.onError('Microphone permission was denied.')
           return
         }
+
         if (err === 'network') {
           console.warn('[SpeechRecognitionManager] Network issue with speech recognition, trying fallback.')
           if (this.activeStream) {
@@ -183,6 +211,7 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
           }
           return
         }
+
         this.handlers.onError(`Speech recognition error: ${err}`)
       }
 
@@ -190,6 +219,7 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
         const wasActive = this.isListening
         this.isListening = false
 
+        // 1. Commit any remaining interim words as final transcript before restarting or exiting
         if (this.currentInterimText) {
           const text = this.currentInterimText
           this.currentInterimText = ''
@@ -197,7 +227,10 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
           this.handlers.onFinalTranscript(text, this.detectLanguageHeuristic(text))
         }
 
-        if (wasActive && !this.isPaused) {
+        // 2. Safe Auto-Restart for unexpected terminations
+        if (this.shouldRestart && !this.isPaused) {
+          this.scheduleSafeRestart()
+        } else if (wasActive && !this.isPaused) {
           this.handlers.onEnd()
         }
       }
@@ -207,7 +240,7 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
       this.isListening = true
       return true
     } catch (err: any) {
-      console.warn('[SpeechRecognitionManager] Failed to start native recognition:', err)
+      console.warn('[SpeechRecognitionManager] Native recognition error:', err)
       if (stream) {
         this.startFallbackRecorder(stream)
         return true
@@ -215,6 +248,43 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
       this.handlers.onError(err?.message || 'Failed to start speech recognition')
       return false
     }
+  }
+
+  /**
+   * Schedules a safe restart with rate limiting and exponential backoff to prevent infinite loops.
+   */
+  private scheduleSafeRestart(): void {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer)
+      this.restartTimer = null
+    }
+
+    const now = Date.now()
+    if (now - this.lastRestartTimestamp < 15000) {
+      this.consecutiveRestarts++
+    } else {
+      this.consecutiveRestarts = 1
+    }
+    this.lastRestartTimestamp = now
+
+    if (this.consecutiveRestarts > this.maxConsecutiveRestarts) {
+      console.warn('[SpeechRecognitionManager] Maximum consecutive restarts reached. Stopping recognition loop.')
+      this.shouldRestart = false
+      this.handlers.onEnd()
+      return
+    }
+
+    // Adaptive backoff: 200ms -> 400ms -> 800ms
+    const backoffMs = Math.min(200 * Math.pow(1.5, Math.max(0, this.consecutiveRestarts - 1)), 2500)
+
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null
+      if (this.shouldRestart && !this.isListening && !this.isPaused) {
+        try {
+          this.initRecognition(this.activeStream || undefined)
+        } catch (_err) {}
+      }
+    }, backoffMs)
   }
 
   public commitInterimNow(): void {
@@ -228,16 +298,32 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
 
   public pause(): void {
     this.isPaused = true
+    if (this.recognition && this.isListening) {
+      try {
+        this.recognition.stop()
+      } catch (_e) {}
+    }
   }
 
   public resume(): void {
     this.isPaused = false
+    if (!this.isListening && this.shouldRestart) {
+      this.initRecognition(this.activeStream || undefined)
+    }
   }
 
   public stop(): void {
+    this.shouldRestart = false
     this.isListening = false
     this.isPaused = false
     this.currentInterimText = ''
+    this.consecutiveRestarts = 0
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer)
+      this.restartTimer = null
+    }
+
     this.destroyRecognition()
     this.stopFallbackRecorder()
   }

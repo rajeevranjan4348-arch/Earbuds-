@@ -11,9 +11,10 @@ import {
   ShieldCheck,
   Zap,
   Globe,
-  CheckCircle2,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Send,
+  RefreshCw
 } from 'lucide-react'
 import {
   voiceSessionManager,
@@ -43,6 +44,7 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
   const [wakeWordEnabled, setWakeWordEnabled] = useState<boolean>(false)
   const [pendingConfirmation, setPendingConfirmation] = useState<SensitiveActionPayload | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [manualInput, setManualInput] = useState<string>('')
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animFrameRef = useRef<number | null>(null)
@@ -53,10 +55,11 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
   // Synchronize state with VoiceSessionManager
   useEffect(() => {
     if (!isOpen) {
-      voiceSessionManager.stopSpeaking()
+      voiceSessionManager.stopSession()
       return
     }
 
+    setErrorMessage('')
     setSessionState(voiceSessionManager.getState())
     setHistory(voiceSessionManager.getHistory())
     setIsMuted(voiceSessionManager.isMuted())
@@ -65,9 +68,7 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
     setWakeWordEnabled(voiceSessionManager.getConfig().wakeWordEnabled)
 
     // Automatically start voice session on opening modal
-    if (voiceSessionManager.getState() === 'idle') {
-      voiceSessionManager.startSession()
-    }
+    voiceSessionManager.startSession()
 
     const unsubscribe = voiceSessionManager.subscribe((state, payload) => {
       setSessionState(state)
@@ -101,6 +102,7 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
 
     return () => {
       unsubscribe()
+      voiceSessionManager.stopSession()
     }
   }, [isOpen])
 
@@ -433,6 +435,33 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
             </AnimatePresence>
           </div>
 
+          {/* Error Banner with Retry Button */}
+          <AnimatePresence>
+            {(sessionState === 'error' || errorMessage) && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="px-6 py-3 bg-red-500/15 border-b border-red-500/30 flex items-center justify-between text-xs"
+              >
+                <div className="flex items-center gap-2 text-red-200">
+                  <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                  <span>{errorMessage || 'Voice connection issue. Check mic access.'}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setErrorMessage('')
+                    voiceSessionManager.startSession()
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Retry</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Sensitive Action Confirmation Safety Banner */}
           <AnimatePresence>
             {pendingConfirmation && (
@@ -514,6 +543,33 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
             )}
           </div>
 
+          {/* Fallback Text Input Bar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!manualInput.trim()) return
+              voiceSessionManager.submitManualPrompt(manualInput.trim())
+              setManualInput('')
+            }}
+            className="px-6 py-2 bg-zinc-950/80 border-t border-white/5 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              placeholder="Type a message or command..."
+              className="flex-1 bg-zinc-900/90 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+            />
+            <button
+              type="submit"
+              disabled={!manualInput.trim()}
+              className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+              title="Send text prompt"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+
           {/* Controls Footer */}
           <div className="p-4 sm:p-5 border-t border-white/10 bg-black/50 flex items-center justify-between">
             {/* Privacy & Status Tag */}
@@ -524,6 +580,18 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({ isOpen, onClose,
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Restart / Reconnect Button */}
+              {sessionState === 'idle' && (
+                <button
+                  onClick={() => voiceSessionManager.startSession()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-medium hover:bg-emerald-500/30 transition-colors cursor-pointer"
+                  title="Start listening"
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                  <span>Start Listening</span>
+                </button>
+              )}
+
               {/* Stop Speaking / Interrupt Button */}
               {sessionState === 'speaking' && (
                 <motion.button

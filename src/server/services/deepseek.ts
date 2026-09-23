@@ -25,6 +25,7 @@ export interface DeepSeekCompletionOptions {
   temperature?: number
   max_tokens?: number
   stream?: boolean
+  apiKey?: string
   citations?: Array<{ title: string; url: string; snippet?: string; domain?: string }>
 }
 
@@ -78,7 +79,7 @@ export class DeepSeekService {
   public async generateCompletion(
     options: DeepSeekCompletionOptions
   ): Promise<DeepSeekCompletionResult> {
-    const apiKey = this.getApiKey()
+    const apiKey = (options.apiKey && options.apiKey.trim()) || this.getApiKey()
     const model = options.model || this.defaultModel
     const messages = [...options.messages]
 
@@ -149,7 +150,7 @@ export class DeepSeekService {
     options: DeepSeekCompletionOptions,
     onChunk: (chunk: string, reasoningChunk?: string) => void
   ): Promise<void> {
-    const apiKey = this.getApiKey()
+    const apiKey = (options.apiKey && options.apiKey.trim()) || this.getApiKey()
     const model = options.model || this.defaultModel
     const messages = [...options.messages]
 

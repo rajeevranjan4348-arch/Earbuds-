@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { voiceService } from '../services/voiceService'
 
 export interface VoiceCommandEvent {
   raw: string
@@ -17,6 +18,7 @@ export interface UseVoiceOptions {
   onWakeWord?: (wakeWord: string, fullTranscript: string) => void
   onCommand?: (event: VoiceCommandEvent) => void
   onTranscript?: (transcript: string, isFinal: boolean) => void
+  onAiResponse?: (response: string, isComplete: boolean) => void
   onNavigate?: (
     tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
   ) => void
@@ -29,8 +31,11 @@ export interface UseVoiceOptions {
 export interface UseVoiceReturn {
   isListening: boolean
   isWakeWordDetected: boolean
+  isProcessing: boolean
+  isSpeaking: boolean
   transcript: string
   interimTranscript: string
+  aiResponse: string
   lastCommand: VoiceCommandEvent | null
   commandHistory: VoiceCommandEvent[]
   audioLevel: number
@@ -41,6 +46,7 @@ export interface UseVoiceReturn {
   stopListening: () => void
   toggleListening: () => Promise<void>
   clearTranscript: () => void
+  submitPrompt: (promptText: string, inputType?: 'voice' | 'text') => void
   simulateCommand: (commandString: string) => void
 }
 
@@ -122,6 +128,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     onWakeWord,
     onCommand,
     onTranscript,
+    onAiResponse,
     onNavigate,
     onVisionMode,
     onKnowledgeOpen,
@@ -131,8 +138,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
   const [isListening, setIsListening] = useState(false)
   const [isWakeWordDetected, setIsWakeWordDetected] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [interimTranscript, setInterimTranscript] = useState('')
+  const [aiResponse, setAiResponse] = useState('')
   const [lastCommand, setLastCommand] = useState<VoiceCommandEvent | null>(null)
   const [commandHistory, setCommandHistory] = useState<VoiceCommandEvent[]>([])
   const [audioLevel, setAudioLevel] = useState(0)
@@ -154,6 +164,84 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   // Detect Web Speech API support
   const isSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
+  // Listen to the unified single conversation bus (window.iris) for streaming AI responses
+  useEffect(() => {
+    let isMounted = true
+
+    const handleTranscriptEvent = (data: {
+      id?: string
+      requestId?: string
+      role?: string
+      text?: string
+      content?: string
+      isFinal?: boolean
+    }) => {
+      if (!isMounted || !data) return
+      const role = ((data.role || 'assistant') as string).toLowerCase()
+      const text = data.text || data.content || ''
+
+      if (role === 'model' || role === 'assistant') {
+        setIsProcessing(false)
+        setAiResponse(text)
+        optionsRef.current.onAiResponse?.(text, false)
+      } else if (role === 'user') {
+        setIsProcessing(true)
+      }
+    }
+
+    const handleTranscriptCompleteEvent = (data?: {
+      id?: string
+      requestId?: string
+      role?: string
+      text?: string
+      content?: string
+      status?: 'success' | 'failed'
+    }) => {
+      if (!isMounted) return
+      setIsProcessing(false)
+      const text = data?.text || data?.content || ''
+      if (text) {
+        setAiResponse(text)
+        optionsRef.current.onAiResponse?.(text, true)
+      }
+    }
+
+    let unsubTranscript: any
+    let unsubComplete: any
+
+    if (typeof window !== 'undefined' && (window as any).iris) {
+      unsubTranscript = (window as any).iris.onTranscript?.(handleTranscriptEvent)
+      unsubComplete = (window as any).iris.onTranscriptComplete?.(handleTranscriptCompleteEvent)
+    }
+
+    return () => {
+      isMounted = false
+      if (typeof unsubTranscript === 'function') {
+        unsubTranscript()
+      } else if (typeof window !== 'undefined' && (window as any).iris?.offTranscript) {
+        ;(window as any).iris.offTranscript(handleTranscriptEvent)
+      }
+
+      if (typeof unsubComplete === 'function') {
+        unsubComplete()
+      } else if (typeof window !== 'undefined' && (window as any).iris?.offTranscriptComplete) {
+        ;(window as any).iris.offTranscriptComplete(handleTranscriptCompleteEvent)
+      }
+    }
+  }, [])
+
+  // Submit prompt through unified pipeline
+  const submitPrompt = useCallback((promptText: string, inputType: 'voice' | 'text' = 'voice') => {
+    const clean = promptText?.trim()
+    if (!clean) return
+
+    setIsProcessing(true)
+    setAiResponse('')
+
+    // Dispatches to the single conversation state and AI execution engine
+    voiceService.triggerVoiceInput(clean, inputType)
+  }, [])
+
   // Execute parsed command
   const executeCommand = useCallback(
     (event: VoiceCommandEvent) => {
@@ -172,13 +260,27 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         case 'TOGGLE_KNOWLEDGE':
           optionsRef.current.onKnowledgeOpen?.(event.payload)
           break
+        case 'STOP_SPEAKING':
+          voiceService.stopSpeaking()
+          setIsSpeaking(false)
+          break
+        case 'MUTE_MIC':
+          voiceService.setMuted(true)
+          break
+        case 'UNMUTE_MIC':
+          voiceService.setMuted(false)
+          break
         case 'AI_QUERY':
         default:
-          optionsRef.current.onSystemAction?.(event.action, event.payload)
+          if (optionsRef.current.onSystemAction) {
+            optionsRef.current.onSystemAction(event.action, event.payload)
+          } else {
+            submitPrompt(event.commandText || event.raw, 'voice')
+          }
           break
       }
     },
-    []
+    [submitPrompt]
   )
 
   // Process raw text for wake word and commands
@@ -214,66 +316,111 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
         executeCommand(event)
       } else {
-        // Evaluate direct system commands without explicit wake word if recognizable
+        // Evaluate direct system commands or general AI query
         const { action, payload } = parseCommand(rawText)
-        if (action !== 'AI_QUERY') {
-          const event: VoiceCommandEvent = {
-            raw: rawText,
-            wakeWordDetected: false,
-            commandText: rawText,
-            action,
-            payload,
-            confidence,
-            timestamp: Date.now()
-          }
-          executeCommand(event)
+        const event: VoiceCommandEvent = {
+          raw: rawText,
+          wakeWordDetected: false,
+          commandText: rawText,
+          action,
+          payload,
+          confidence,
+          timestamp: Date.now()
         }
+        executeCommand(event)
       }
     },
     [wakeWord, executeCommand]
   )
 
-  // Setup live audio meter analyzer
-  const startAudioMeter = useCallback(async () => {
+  // Setup live audio meter analyzer with explicit getUserMedia permission acquisition
+  const startAudioMeter = useCallback(async (): Promise<MediaStream | null> => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) return
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+        throw new Error('Microphone access is not supported by your browser environment.')
+      }
+
+      // Reuse existing active stream if available
+      if (mediaStreamRef.current && mediaStreamRef.current.active) {
+        setMicPermission('granted')
+        return mediaStreamRef.current
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      }).catch(async () => {
+        // Fallback to basic unconstrained audio
+        return await navigator.mediaDevices.getUserMedia({ audio: true })
+      })
+
+      // Validate stream tracks
+      const tracks = stream.getAudioTracks()
+      if (!tracks || tracks.length === 0 || tracks[0].readyState !== 'live') {
+        stream.getTracks().forEach((t) => t.stop())
+        throw new Error('Microphone did not provide an active live audio track.')
+      }
+
       mediaStreamRef.current = stream
       setMicPermission('granted')
       console.log('[VOICE] microphone permission: granted')
 
       const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext
-      if (!AudioCtxClass) return
-
-      const ctx = new AudioCtxClass()
-      audioContextRef.current = ctx
-      const source = ctx.createMediaStreamSource(stream)
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 256
-      analyser.smoothingTimeConstant = 0.8
-      source.connect(analyser)
-      analyserRef.current = analyser
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount)
-
-      const updateLevel = () => {
-        if (!analyserRef.current || !shouldListenRef.current) return
-        analyserRef.current.getByteFrequencyData(dataArray)
-        let sum = 0
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i]
+      if (AudioCtxClass) {
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          try {
+            audioContextRef.current.close().catch(() => {})
+          } catch (_e) {}
         }
-        const avg = sum / dataArray.length
-        setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)))
+        const ctx = new AudioCtxClass()
+        audioContextRef.current = ctx
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {})
+        }
+        const source = ctx.createMediaStreamSource(stream)
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        analyser.smoothingTimeConstant = 0.8
+        source.connect(analyser)
+        analyserRef.current = analyser
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+        const updateLevel = () => {
+          if (!analyserRef.current || !shouldListenRef.current) return
+          analyserRef.current.getByteFrequencyData(dataArray)
+          let sum = 0
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i]
+          }
+          const avg = sum / dataArray.length
+          setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)))
+          animFrameRef.current = requestAnimationFrame(updateLevel)
+        }
+
         animFrameRef.current = requestAnimationFrame(updateLevel)
       }
 
-      animFrameRef.current = requestAnimationFrame(updateLevel)
+      return stream
     } catch (err: any) {
       console.warn('[useVoice] Audio meter setup error:', err)
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      const errName = err?.name || ''
+      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
         setMicPermission('denied')
+        setError('Microphone permission denied. Please allow microphone access in your browser.')
+      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+        setMicPermission('denied')
+        setError('No microphone hardware detected on this device.')
+      } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
+        setError('Microphone is currently in use by another application.')
+      } else {
+        setError(err?.message || 'Failed to acquire microphone stream.')
       }
+      return null
     }
   }, [])
 
@@ -283,19 +430,25 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       animFrameRef.current = null
     }
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((t) => t.stop())
+      mediaStreamRef.current.getTracks().forEach((t) => {
+        try {
+          t.stop()
+        } catch (_e) {}
+      })
       mediaStreamRef.current = null
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close().catch(() => {})
       audioContextRef.current = null
     }
+    analyserRef.current = null
     setAudioLevel(0)
   }, [])
 
-  // Start listening method
+  // Start listening method - Requests microphone permission first, then initializes SpeechRecognition
   const startListening = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) {
+    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognitionClass) {
       setError('Web Speech Recognition is not supported in this browser.')
       return false
     }
@@ -304,8 +457,15 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       setError(null)
       shouldListenRef.current = true
 
-      // Initialize SpeechRecognition instance
-      const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      // 1. Request microphone permission first using getUserMedia
+      const stream = await startAudioMeter()
+      if (!stream) {
+        shouldListenRef.current = false
+        setIsListening(false)
+        return false
+      }
+
+      // 2. Initialize SpeechRecognition instance ONLY after mic permission is granted
       const recognition = new SpeechRecognitionClass()
       recognition.continuous = continuous
       recognition.interimResults = true
@@ -323,10 +483,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const item = event.results[i]
-          const transcriptChunk = item[0].transcript
+          const transcriptChunk = item[0]?.transcript || ''
           if (item.isFinal) {
             final += transcriptChunk
-            const conf = item[0].confidence || 0.95
+            const conf = item[0]?.confidence || 0.95
             processTranscript(final, conf)
           } else {
             interim += transcriptChunk
@@ -351,7 +511,6 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         const err = evt.error
         console.warn('[VOICE] recognition error:', err)
         if (err === 'no-speech') {
-          // Benign timeout, normal for speech recognition pauses
           return
         }
         if (err === 'not-allowed' || err === 'service-not-allowed') {
@@ -373,30 +532,26 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
             if (shouldListenRef.current && recognitionRef.current) {
               try {
                 recognitionRef.current.start()
-              } catch (_e) {
-                // Already started or restarting
-              }
+              } catch (_e) {}
             }
-          }, 150)
+          }, 200)
         } else {
           setIsListening(false)
         }
       }
 
-      recognitionRef.current = recognition
       recognition.start()
-
-      // Start audio level visualizer
-      await startAudioMeter()
+      recognitionRef.current = recognition
 
       return true
     } catch (err: any) {
       console.error('[useVoice] Failed to start voice listener:', err)
       setError(err?.message || 'Failed to initialize voice recognition.')
       setIsListening(false)
+      shouldListenRef.current = false
       return false
     }
-  }, [isSupported, continuous, lang, processTranscript, startAudioMeter])
+  }, [continuous, lang, processTranscript, startAudioMeter])
 
   // Stop listening method
   const stopListening = useCallback(() => {
@@ -404,9 +559,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
-      } catch (e) {
-        // Ignore
-      }
+      } catch (_e) {}
       recognitionRef.current = null
     }
     stopAudioMeter()
@@ -426,6 +579,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const clearTranscript = useCallback(() => {
     setTranscript('')
     setInterimTranscript('')
+    setAiResponse('')
   }, [])
 
   // Manual simulation helper for programmatic or UI testing
@@ -447,7 +601,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop()
-        } catch (e) {}
+        } catch (_e) {}
       }
       stopAudioMeter()
     }
@@ -456,8 +610,11 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   return {
     isListening,
     isWakeWordDetected,
+    isProcessing,
+    isSpeaking,
     transcript,
     interimTranscript,
+    aiResponse,
     lastCommand,
     commandHistory,
     audioLevel,
@@ -468,6 +625,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     stopListening,
     toggleListening,
     clearTranscript,
+    submitPrompt,
     simulateCommand
   }
 }
