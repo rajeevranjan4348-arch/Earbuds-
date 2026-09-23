@@ -25,6 +25,20 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>(microphoneHandler.getStatusMessage())
   const isHoldingRef = useRef(false)
 
+  const callbacksRef = useRef({
+    onTranscript,
+    onCommandTriggered,
+    onInterimText
+  })
+
+  useEffect(() => {
+    callbacksRef.current = {
+      onTranscript,
+      onCommandTriggered,
+      onInterimText
+    }
+  })
+
   useEffect(() => {
     microphoneHandler.configure({
       autoExecute,
@@ -36,21 +50,16 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
         setAudioLevel(level)
       },
       onInterimTranscript: (text) => {
-        onInterimText?.(text)
+        callbacksRef.current.onInterimText?.(text)
       },
       onFinalTranscript: (text) => {
-        onTranscript?.(text)
+        callbacksRef.current.onTranscript?.(text)
       },
       onCommandTriggered: (cmd) => {
-        onCommandTriggered?.(cmd)
+        callbacksRef.current.onCommandTriggered?.(cmd)
       }
     })
-
-    return () => {
-      // Don't kill audio on unmount if global listening is desired, but ensure level reset
-      setAudioLevel(0)
-    }
-  }, [autoExecute, onTranscript, onCommandTriggered, onInterimText])
+  }, [autoExecute])
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -69,13 +78,28 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
   }
 
   const handleMouseUp = () => {
-    if (isHoldingRef.current && micState === 'recording-ai') {
+    if (isHoldingRef.current) {
       microphoneHandler.stopPushToTalk()
     }
     isHoldingRef.current = false
   }
 
-  const isListening = micState === 'listening' || micState === 'recording-ai'
+  const handleTouchStart = async (e: React.TouchEvent) => {
+    isHoldingRef.current = true
+    if (micState === 'idle') {
+      await microphoneHandler.startPushToTalk()
+    }
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault()
+    handleMouseUp()
+  }
+
+  const isListening =
+    micState === 'listening' ||
+    micState === 'recording-ai' ||
+    micState === 'streaming-live'
   const isProcessing = micState === 'transcribing' || micState === 'processing'
   const isDenied = micState === 'denied'
 
@@ -127,6 +151,8 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className={`relative flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer select-none z-10 ${buttonPaddings[size]} ${
           isListening
             ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] font-bold'

@@ -69,10 +69,22 @@ export class EmbeddingsEngine {
           const globalIdx = i + subIdx
           try {
             const cleanText = text.slice(0, 3000)
-            const resp = await gemini.models.embedContent({
-              model: 'text-embedding-004',
-              contents: cleanText
-            })
+            let resp: any = null
+            try {
+              resp = await gemini.models.embedContent({
+                model: 'gemini-embedding-2-preview',
+                contents: cleanText
+              })
+            } catch {
+              try {
+                resp = await gemini.models.embedContent({
+                  model: 'text-embedding-004',
+                  contents: cleanText
+                })
+              } catch {
+                resp = null
+              }
+            }
 
             // The GenAI SDK returns an `embeddings[]` array (one entry per
             // embedded content part).
@@ -84,10 +96,6 @@ export class EmbeddingsEngine {
               results[globalIdx] = this.fallbackTfIdfVector(text)
             }
           } catch (err: any) {
-            console.warn(
-              `[EmbeddingsEngine] Single embed error for item ${globalIdx}:`,
-              err?.message
-            )
             results[globalIdx] = this.fallbackTfIdfVector(text)
           }
         })

@@ -1,0 +1,310 @@
+[
+  {
+    "graphId": "graph_1790150994174_cuklx",
+    "userId": "default_user",
+    "originalRequest": "Research the James Webb Space Telescope discoveries in 2024",
+    "understanding": {
+      "intent": "Research the James Webb Space Telescope discoveries in 2024",
+      "category": "RESEARCH",
+      "urgency": "NORMAL",
+      "detectedEntities": {},
+      "estimatedComplexity": "SIMPLE"
+    },
+    "tasks": [
+      {
+        "taskId": "graph_1790150994174_cuklx_t1",
+        "description": "Gather factual sources and data for: Research the James Webb Space Telescope discoveries in 2024",
+        "priority": "HIGH",
+        "dependencies": [],
+        "status": "COMPLETED",
+        "assignedAgent": "Research Agent",
+        "requiredTools": [
+          "search_web"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "createdAt": 1790150994496,
+        "updatedAt": 1790150997363,
+        "executionDurationMs": 2866,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Gather factual sources and data for: Research the James Webb Space Telescope discoveries in 2024",
+          "resultsCount": 5,
+          "results": [
+            {
+              "id": "ddg_1_k363",
+              "title": "James Webb Space Telescope Archives - NASA Science",
+              "url": "https://science.nasa.gov/blogs/webb/",
+              "snippet": "Editor&#x27;s Note: This post highlights data from Webb science in progress, which has not yet been through the peer-review process. Using NASA&#x27;s James Webb Space Telescope, a team led by the Southwest Research Institute (SwRI) has identified a previously unknown moon orbiting Uranus, expanding the planet&#x27;s known satellite family to 29.",
+              "engine": "duckduckgo",
+              "domain": "science.nasa.gov",
+              "score": 0.3535714285714286
+            },
+            {
+              "id": "ddg_2_whpf",
+              "title": "NASA&#x27;s James Webb Space Telescope - STScI",
+              "url": "https://www.stsci.edu/jwst/",
+              "snippet": "The James Webb Space Telescope (JWST), NASA&#x27;s flagship infrared observatory, developed in partnership with ESA and CSA, successfully launched on December 25, 2021. After deploying in space and alignment and calibration of the mirrors and instruments, JWST began science operations in July 2022. Accessible to the worldwide scientific community, JWST offers scientists the opportunity to observe ...",
+              "engine": "duckduckgo",
+              "domain": "stsci.edu",
+              "score": 0.2928571428571428
+            },
+            {
+              "id": "ddg_4_k5i4",
+              "title": "James Webb&#x27;s Biggest Discoveries So Far - cosmicherald.com",
+              "url": "https://cosmicherald.com/article/james-webbs-biggest-discoveries-so-far",
+              "snippet": "Four years into science operations, Webb&#x27;s real legacy so far isn&#x27;t any single image — it&#x27;s a research program producing results precise enough to be wrong in interesting, checkable ways, which is exactly what good science is supposed to do. Sources NASA&#x27;s James Webb Space Telescope Finds Most Distant Known Galaxy — NASA Science",
+              "engine": "duckduckgo",
+              "domain": "cosmicherald.com",
+              "score": 0.28928571428571426
+            },
+            {
+              "id": "ddg_0_i8of",
+              "title": "Science with Webb - NASA Science",
+              "url": "https://science.nasa.gov/mission/webb/science-overview/science-explainers/science-with-webb/",
+              "snippet": "Science discoveries made by the James Webb Space Telescope are expected to revolutionize our understanding of the cosmos and our origins within the universe.",
+              "engine": "duckduckgo",
+              "domain": "science.nasa.gov",
+              "score": 0.2214285714285714
+            },
+            {
+              "id": "ddg_3_uzge",
+              "title": "Press Releases - ESA/Webb",
+              "url": "https://esawebb.org/news/",
+              "snippet": "An international team of astronomers have used the NASA/ESA/CSA James Webb Space Telescope to watch the Jupiter-sized exoplanet WD 1856 b transit its host star, measuring the planet&#x27;s mass and temperature and even detecting its atmosphere. They found that the planet is significantly warmer than expected and determined how it most likely reached its very tight orbit around the star, a white ...",
+              "engine": "duckduckgo",
+              "domain": "esawebb.org",
+              "score": 0.19642857142857142
+            }
+          ],
+          "citations": [
+            {
+              "index": 1,
+              "title": "James Webb Space Telescope Archives - NASA Science",
+              "url": "https://science.nasa.gov/blogs/webb/",
+              "domain": "science.nasa.gov",
+              "snippet": "Editor&#x27;s Note: This post highlights data from Webb science in progress, which has not yet been through the peer-review process. Using NASA&#x27;s James Webb Space Telescope, a team led by the Southwest Research Institute (SwRI) has identified a previously unknown moon orbiting Uranus, expanding the planet&#x27;s known satellite family to 29."
+            },
+            {
+              "index": 2,
+              "title": "NASA&#x27;s James Webb Space Telescope - STScI",
+              "url": "https://www.stsci.edu/jwst/",
+              "domain": "stsci.edu",
+              "snippet": "The James Webb Space Telescope (JWST), NASA&#x27;s flagship infrared observatory, developed in partnership with ESA and CSA, successfully launched on December 25, 2021. After deploying in space and alignment and calibration of the mirrors and instruments, JWST began science operations in July 2022. Accessible to the worldwide scientific community, JWST offers scientists the opportunity to observe ..."
+            },
+            {
+              "index": 3,
+              "title": "James Webb&#x27;s Biggest Discoveries So Far - cosmicherald.com",
+              "url": "https://cosmicherald.com/article/james-webbs-biggest-discoveries-so-far",
+              "domain": "cosmicherald.com",
+              "snippet": "Four years into science operations, Webb&#x27;s real legacy so far isn&#x27;t any single image — it&#x27;s a research program producing results precise enough to be wrong in interesting, checkable ways, which is exactly what good science is supposed to do. Sources NASA&#x27;s James Webb Space Telescope Finds Most Distant Known Galaxy — NASA Science"
+            },
+            {
+              "index": 4,
+              "title": "Science with Webb - NASA Science",
+              "url": "https://science.nasa.gov/mission/webb/science-overview/science-explainers/science-with-webb/",
+              "domain": "science.nasa.gov",
+              "snippet": "Science discoveries made by the James Webb Space Telescope are expected to revolutionize our understanding of the cosmos and our origins within the universe."
+            },
+            {
+              "index": 5,
+              "title": "Press Releases - ESA/Webb",
+              "url": "https://esawebb.org/news/",
+              "domain": "esawebb.org",
+              "snippet": "An international team of astronomers have used the NASA/ESA/CSA James Webb Space Telescope to watch the Jupiter-sized exoplanet WD 1856 b transit its host star, measuring the planet&#x27;s mass and temperature and even detecting its atmosphere. They found that the planet is significantly warmer than expected and determined how it most likely reached its very tight orbit around the star, a white ..."
+            }
+          ]
+        },
+        "completedAt": 1790150997363
+      },
+      {
+        "taskId": "graph_1790150994174_cuklx_t2",
+        "description": "Synthesize research findings into comprehensive answer for user",
+        "priority": "NORMAL",
+        "dependencies": [
+          "graph_1790150994174_cuklx_t1"
+        ],
+        "status": "COMPLETED",
+        "assignedAgent": "Voice Agent",
+        "requiredTools": [
+          "voice_dialogue"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "createdAt": 1790150994496,
+        "updatedAt": 1790150997364,
+        "executionDurationMs": 0,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "spokenText": "Synthesize research findings into comprehensive answer for user",
+          "displayText": "Synthesize research findings into comprehensive answer for user",
+          "characterCount": 63,
+          "estimatedDurationSec": 3
+        },
+        "completedAt": 1790150997364
+      }
+    ],
+    "priority": "NORMAL",
+    "status": "COMPLETED",
+    "createdAt": 1790150994174,
+    "updatedAt": 1790150997640,
+    "contextMemory": {},
+    "retrievedMemories": [],
+    "finalSynthesis": "Completed Gather factual sources and data for: Research the James Webb Space Telescope discoveries in 2024\n\nCompleted Synthesize research findings into comprehensive answer for user",
+    "completedAt": 1790150997640
+  },
+  {
+    "graphId": "graph_1790152000776_hxyei",
+    "userId": "test_voice_user",
+    "originalRequest": "Research latest multi-agent architectures and write an implementation summary",
+    "understanding": {
+      "intent": "Research latest multi-agent architectures and write an implementation summary",
+      "category": "RESEARCH",
+      "urgency": "NORMAL",
+      "detectedEntities": {},
+      "estimatedComplexity": "SIMPLE"
+    },
+    "tasks": [
+      {
+        "taskId": "graph_1790152000776_hxyei_t1",
+        "description": "Gather factual sources and data for: Research latest multi-agent architectures and write an implementation summary",
+        "priority": "HIGH",
+        "dependencies": [],
+        "status": "COMPLETED",
+        "assignedAgent": "Research Agent",
+        "requiredTools": [
+          "search_web"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "createdAt": 1790152001129,
+        "updatedAt": 1790152004708,
+        "executionDurationMs": 2996,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Gather factual sources and data for: Research latest multi-agent architectures and write an implementation summary",
+          "resultsCount": 5,
+          "results": [
+            {
+              "id": "ddg_0_5a95",
+              "title": "PDF Multi-Agentic Platforms: Architectures, Applications, and Emerging ...",
+              "url": "https://www.researchgate.net/profile/Paul-Pajo/publication/392728233_Multi-Agentic_Platforms_Architectures_Applications_and_Emerging_Research_Frontiers_in_Collaborative_AI_Systems/links/68504d3cdf3fa4286a40fa2b/Multi-Agentic-Platforms-Architectures-Applications-and-Emerging-Research-Frontiers-in-Collaborative-AI-Systems.pdf",
+              "snippet": "This paper surveys multi-agentic platforms, clas-sifying their architectures, evaluating their applications, and charting future research directions. multi-agent system (MAS)",
+              "engine": "duckduckgo",
+              "domain": "researchgate.net",
+              "score": 0.3214285714285714
+            },
+            {
+              "id": "ddg_1_1640",
+              "title": "(PDF) Multi-Agentic Platforms: Architectures, Applications, and ...",
+              "url": "https://www.researchgate.net/publication/392728233_Multi-Agentic_Platforms_Architectures_Applications_and_Emerging_Research_Frontiers_in_Collaborative_AI_Systems",
+              "snippet": "PDF | This paper surveys multi-agentic platforms, where multiple AI agents collaborate to tackle complex tasks across domains including enterprise... | Find, read and cite all the research you ...",
+              "engine": "duckduckgo",
+              "domain": "researchgate.net",
+              "score": 0.2964285714285714
+            },
+            {
+              "id": "ddg_3_inn0",
+              "title": "The Orchestration of Multi-Agent Systems: Architectures, Protocols, and ...",
+              "url": "https://arxiv.org/html/2601.13671v1",
+              "snippet": "By synthesizing these elements into a cohesive technical blueprint, this paper provides comprehensive treatments of orchestrated multi-agent systems—bridging conceptual architectures with implementation-ready design principles for enterprise-scale AI ecosystems.",
+              "engine": "duckduckgo",
+              "domain": "arxiv.org",
+              "score": 0.2367857142857143
+            },
+            {
+              "id": "ddg_4_vn7v",
+              "title": "Advancing Multi-Agent Systems Through Model Context Protocol ...",
+              "url": "https://arxiv.org/html/2504.21030v1",
+              "snippet": "Abstract Multi-agent systems represent a significant advancement in artificial intelligence, enabling complex problem-solving through coordinated specialized agents. However, these systems face fundamental challenges in context management, coordination efficiency, and scalable operation. This paper introduces a comprehensive framework for advancing multi-agent systems through Model Context ...",
+              "engine": "duckduckgo",
+              "domain": "arxiv.org",
+              "score": 0.0975
+            },
+            {
+              "id": "ddg_2_m5ch",
+              "title": "Multi-Agent LLM Systems: Frameworks, Architecture &amp; Examples (2026)",
+              "url": "https://sourcebae.com/blog/multi-agent-llm/",
+              "snippet": "Master multi-agent LLM systems: top frameworks (LangChain, CrewAI, AutoGen), architectures, real-world examples &amp; 2026 best practices.",
+              "engine": "duckduckgo",
+              "domain": "sourcebae.com",
+              "score": 0.024999999999999998
+            }
+          ],
+          "citations": [
+            {
+              "index": 1,
+              "title": "PDF Multi-Agentic Platforms: Architectures, Applications, and Emerging ...",
+              "url": "https://www.researchgate.net/profile/Paul-Pajo/publication/392728233_Multi-Agentic_Platforms_Architectures_Applications_and_Emerging_Research_Frontiers_in_Collaborative_AI_Systems/links/68504d3cdf3fa4286a40fa2b/Multi-Agentic-Platforms-Architectures-Applications-and-Emerging-Research-Frontiers-in-Collaborative-AI-Systems.pdf",
+              "domain": "researchgate.net",
+              "snippet": "This paper surveys multi-agentic platforms, clas-sifying their architectures, evaluating their applications, and charting future research directions. multi-agent system (MAS)"
+            },
+            {
+              "index": 2,
+              "title": "(PDF) Multi-Agentic Platforms: Architectures, Applications, and ...",
+              "url": "https://www.researchgate.net/publication/392728233_Multi-Agentic_Platforms_Architectures_Applications_and_Emerging_Research_Frontiers_in_Collaborative_AI_Systems",
+              "domain": "researchgate.net",
+              "snippet": "PDF | This paper surveys multi-agentic platforms, where multiple AI agents collaborate to tackle complex tasks across domains including enterprise... | Find, read and cite all the research you ..."
+            },
+            {
+              "index": 3,
+              "title": "The Orchestration of Multi-Agent Systems: Architectures, Protocols, and ...",
+              "url": "https://arxiv.org/html/2601.13671v1",
+              "domain": "arxiv.org",
+              "snippet": "By synthesizing these elements into a cohesive technical blueprint, this paper provides comprehensive treatments of orchestrated multi-agent systems—bridging conceptual architectures with implementation-ready design principles for enterprise-scale AI ecosystems."
+            },
+            {
+              "index": 4,
+              "title": "Advancing Multi-Agent Systems Through Model Context Protocol ...",
+              "url": "https://arxiv.org/html/2504.21030v1",
+              "domain": "arxiv.org",
+              "snippet": "Abstract Multi-agent systems represent a significant advancement in artificial intelligence, enabling complex problem-solving through coordinated specialized agents. However, these systems face fundamental challenges in context management, coordination efficiency, and scalable operation. This paper introduces a comprehensive framework for advancing multi-agent systems through Model Context ..."
+            },
+            {
+              "index": 5,
+              "title": "Multi-Agent LLM Systems: Frameworks, Architecture &amp; Examples (2026)",
+              "url": "https://sourcebae.com/blog/multi-agent-llm/",
+              "domain": "sourcebae.com",
+              "snippet": "Master multi-agent LLM systems: top frameworks (LangChain, CrewAI, AutoGen), architectures, real-world examples &amp; 2026 best practices."
+            }
+          ]
+        },
+        "completedAt": 1790152004708
+      },
+      {
+        "taskId": "graph_1790152000776_hxyei_t2",
+        "description": "Synthesize research findings into comprehensive answer for user",
+        "priority": "NORMAL",
+        "dependencies": [
+          "graph_1790152000776_hxyei_t1"
+        ],
+        "status": "COMPLETED",
+        "assignedAgent": "Voice Agent",
+        "requiredTools": [
+          "voice_dialogue"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "createdAt": 1790152001129,
+        "updatedAt": 1790152005264,
+        "executionDurationMs": 0,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "spokenText": "Synthesize research findings into comprehensive answer for user",
+          "displayText": "Synthesize research findings into comprehensive answer for user",
+          "characterCount": 63,
+          "estimatedDurationSec": 3
+        },
+        "completedAt": 1790152005264
+      }
+    ],
+    "priority": "NORMAL",
+    "status": "COMPLETED",
+    "createdAt": 1790152000776,
+    "updatedAt": 1790152005605,
+    "contextMemory": {},
+    "retrievedMemories": [],
+    "finalSynthesis": "Completed Gather factual sources and data for: Research latest multi-agent architectures and write an implementation summary\n\nCompleted Synthesize research findings into comprehensive answer for user",
+    "completedAt": 1790152005605
+  }
+]

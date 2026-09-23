@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import IRIS from './UI/IRIS'
 import { useIrisVoice } from './hooks/useIrisVoice'
-import { QuickActionsMenu } from './components/UI/QuickActionsMenu'
 import { shortcutService, ShortcutConfig, formatKeyCombo } from './services/shortcutService'
 import { gestureRecognitionService } from './services/gestureRecognitionService'
 import { soundEffects } from './services/soundEffectsService'
-import GestureNavigationOverlay from './components/UI/GestureNavigationOverlay'
+import { LauncherModal, launchManager } from './launcher'
+import { VoiceChatModal } from './components/Voice/VoiceChatModal'
 import { Zap } from 'lucide-react'
 
 export type VisionMode = 'off' | 'camera' | 'screen'
@@ -39,6 +39,7 @@ const IndexRoot = () => {
   const [visionMode, setVisionMode] = useState<VisionMode>('off')
   const [isDocOverlayOpen, setIsDocOverlayOpen] = useState(false)
   const [isCoreUiMinimal, setIsCoreUiMinimal] = useState(false)
+  const [isVoiceChatModalOpen, setIsVoiceChatModalOpen] = useState(false)
 
   // Live shortcut toast banner
   const [toast, setToast] = useState<{ shortcut: ShortcutConfig; timestamp: number } | null>(null)
@@ -68,6 +69,43 @@ const IndexRoot = () => {
     soundEffects.initGlobalListeners()
   }, [])
 
+  // Hook up LaunchManager navigation callback
+  useEffect(() => {
+    launchManager.setNavigateCallback((tab) => {
+      setActiveTab(tab as ActiveTab)
+    })
+
+    const handleNavEvent = (e: any) => {
+      if (e.detail?.tab) {
+        setActiveTab(e.detail.tab as ActiveTab)
+      }
+    }
+    const handleVisionEvent = (e: any) => {
+      if (e.detail?.mode) {
+        setVisionMode(e.detail.mode as VisionMode)
+      }
+    }
+
+    window.addEventListener('iris:navigate', handleNavEvent)
+    window.addEventListener('iris:vision-mode', handleVisionEvent)
+
+    const handleOpenVoice = () => setIsVoiceChatModalOpen(true)
+    const handleCloseVoice = () => setIsVoiceChatModalOpen(false)
+    const handleToggleVoice = () => setIsVoiceChatModalOpen((prev) => !prev)
+
+    window.addEventListener('iris:open-voice-modal', handleOpenVoice)
+    window.addEventListener('iris:close-voice-modal', handleCloseVoice)
+    window.addEventListener('iris:toggle-voice-modal', handleToggleVoice)
+
+    return () => {
+      window.removeEventListener('iris:navigate', handleNavEvent)
+      window.removeEventListener('iris:vision-mode', handleVisionEvent)
+      window.removeEventListener('iris:open-voice-modal', handleOpenVoice)
+      window.removeEventListener('iris:close-voice-modal', handleCloseVoice)
+      window.removeEventListener('iris:toggle-voice-modal', handleToggleVoice)
+    }
+  }, [])
+
   // Register all system shortcut action handlers
   useEffect(() => {
     const unregVoice = shortcutService.registerActionHandler('TRIGGER_VOICE', () => {
@@ -85,6 +123,10 @@ const IndexRoot = () => {
 
     const unregCoreUI = shortcutService.registerActionHandler('TOGGLE_CORE_UI', () => {
       setIsCoreUiMinimal((prev) => !prev)
+    })
+
+    const unregLauncher = shortcutService.registerActionHandler('OPEN_LAUNCHER', () => {
+      window.dispatchEvent(new CustomEvent('iris:toggle-launcher'))
     })
 
     const unregMute = shortcutService.registerActionHandler('TOGGLE_MUTE', () => {
@@ -178,6 +220,7 @@ const IndexRoot = () => {
     return () => {
       unregVoice()
       unregCoreUI()
+      unregLauncher()
       unregMute()
       unregStopSpeech()
       unregVision()
@@ -224,13 +267,6 @@ const IndexRoot = () => {
           setIsCoreUiMinimal={setIsCoreUiMinimal}
         />
 
-        {/* Quick Actions Floating Menu for Rapid Navigation & Common Tasks */}
-        <QuickActionsMenu
-          onNavigate={(tab) => setActiveTab(tab as ActiveTab)}
-          onSubmitPrompt={(prompt) => submitVoicePrompt(prompt)}
-          onOpenKnowledge={() => setIsDocOverlayOpen(true)}
-        />
-
         {/* Floating HUD Shortcut Trigger Banner Toast */}
         <AnimatePresence>
           {toast && (
@@ -264,8 +300,17 @@ const IndexRoot = () => {
           )}
         </AnimatePresence>
 
-        {/* Hands-Free Camera Gesture Navigation Overlay */}
-        <GestureNavigationOverlay onOpenSettings={() => setActiveTab('SETTINGS')} />
+        {/* Universal AI App Launcher & Interactive Command Palette Modal */}
+        <LauncherModal
+          currentTab={activeTab}
+          onNavigate={(tab) => setActiveTab(tab as ActiveTab)}
+        />
+
+        {/* Dedicated Real-Time Voice Chat Modal (ChatGPT / JARVIS Style) */}
+        <VoiceChatModal
+          isOpen={isVoiceChatModalOpen}
+          onClose={() => setIsVoiceChatModalOpen(false)}
+        />
       </main>
     </div>
   )

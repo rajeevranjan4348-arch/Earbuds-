@@ -23,6 +23,7 @@ export type ShortcutActionId =
   | 'TRIGGER_VOICE'
   | 'TOGGLE_CORE_UI'
   | 'TOGGLE_QUICK_MENU'
+  | 'OPEN_LAUNCHER'
   | 'TOGGLE_MUTE'
   | 'STOP_SPEECH'
   | 'TOGGLE_VISION'
@@ -102,6 +103,19 @@ export const DEFAULT_SHORTCUTS: ShortcutItem[] = [
     metaKey: false,
     shiftKey: false,
     defaultCombo: { key: 'k', ctrlKey: true },
+    enabled: true
+  },
+  {
+    id: 'OPEN_LAUNCHER',
+    name: 'AI App Launcher',
+    description: 'Open the universal application launcher and interactive command palette',
+    category: 'ui',
+    key: 'Space',
+    ctrlKey: true,
+    altKey: false,
+    metaKey: false,
+    shiftKey: false,
+    defaultCombo: { key: 'Space', ctrlKey: true },
     enabled: true
   },
   {

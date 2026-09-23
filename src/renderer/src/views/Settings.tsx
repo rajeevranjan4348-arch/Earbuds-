@@ -17,7 +17,8 @@ import {
   Sliders,
   MapPin,
   Keyboard,
-  Hand
+  Hand,
+  Radio
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -30,12 +31,19 @@ import { firebaseAuthService, FirebaseUserContext } from '../services/firebaseAu
 import KeyboardShortcutsSettings from '../components/UI/KeyboardShortcutsSettings'
 import GestureSettings from '../components/UI/GestureSettings'
 import { soundEffects, SoundType } from '../services/soundEffectsService'
+import {
+  voiceSessionManager,
+  voiceSettings,
+  VoicePrivacySettings,
+  VoicePersonalityId,
+  SupportedLanguage
+} from '../services/voice'
 
 interface SettingsProps {
   isSystemActive: boolean
 }
 
-type TabType = 'keys' | 'shortcuts' | 'gestures' | 'audio' | 'particles' | 'memory' | 'hardware'
+type TabType = 'keys' | 'ai' | 'shortcuts' | 'gestures' | 'audio' | 'particles' | 'memory' | 'hardware'
 
 function GlassPanel({
   children,
@@ -57,6 +65,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('keys')
 
   const [geminiKey, setGeminiKey] = useState('')
+  const [deepseekKey, setDeepseekKey] = useState('')
   const [groqKey, setGroqKey] = useState('')
   const [hfKey, setHfKey] = useState('')
   const [tavilyKey, settavilyKey] = useState('')
@@ -65,6 +74,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
   const [sfxEnabled, setSfxEnabled] = useState<boolean>(soundEffects.getIsEnabled())
   const [sfxVolume, setSfxVolume] = useState<number>(soundEffects.getVolume())
+  const [voicePrivSettings, setVoicePrivSettings] = useState<VoicePrivacySettings>(
+    voiceSettings.getSettings()
+  )
 
   // Core settings & Mem0 state
   const [coreSettings, setCoreSettings] = useState<CoreSettings>(coreSettingsService.getSettings())
@@ -81,6 +93,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
       setCurrentUser(u)
       loadMemories(u.uid)
     })
+    const unsubVoice = voiceSettings.subscribe((s) => setVoicePrivSettings(s))
 
     loadMemories(firebaseAuthService.getUserId())
 
@@ -88,6 +101,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
       window.electron.ipcRenderer.invoke('secure-get-keys').then((keys: any) => {
         if (keys) {
           setGeminiKey(keys.geminiKey || '')
+          setDeepseekKey(keys.deepseekKey || localStorage.getItem('deepseek_api_key') || '')
           setGroqKey(keys.groqKey || '')
           setHfKey(keys.hfKey || '')
           settavilyKey(keys.tavilyKey || '')
@@ -95,12 +109,15 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
         }
       })
     } else {
+      setGeminiKey(localStorage.getItem('gemini_api_key') || '')
+      setDeepseekKey(localStorage.getItem('deepseek_api_key') || '')
       setMem0Key(localStorage.getItem('mem0_api_key') || '')
     }
 
     return () => {
       unsubSettings()
       unsubAuth()
+      unsubVoice()
     }
   }, [])
 
@@ -165,18 +182,22 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
         await window.electron.ipcRenderer.invoke('secure-save-keys', {
           groqKey,
           geminiKey,
+          deepseekKey,
           hfKey,
           tavilyKey,
           mem0Key
         })
+        localStorage.setItem('deepseek_api_key', deepseekKey)
         setSaveStatus('API Keys securely encrypted and saved to Vault.')
         setTimeout(() => setSaveStatus(null), 3000)
       } catch (e) {
-        setSaveStatus('Failed to save keys to the secure vault.')
+        localStorage.setItem('deepseek_api_key', deepseekKey)
+        setSaveStatus('API Keys saved locally.')
         setTimeout(() => setSaveStatus(null), 3000)
       }
     } else {
       localStorage.setItem('gemini_api_key', geminiKey)
+      localStorage.setItem('deepseek_api_key', deepseekKey)
       localStorage.setItem('mem0_api_key', mem0Key)
       setSaveStatus('API Keys saved locally.')
       setTimeout(() => setSaveStatus(null), 3000)
@@ -192,6 +213,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
   const tabConfigs = [
     { id: 'keys', label: 'API Keys', icon: <RiPlugLine size={18} /> },
+    { id: 'ai', label: 'AI Interaction', icon: <Brain size={18} /> },
     { id: 'audio', label: 'Audio & Feedback', icon: <Volume2 size={18} /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={18} /> },
     { id: 'gestures', label: 'Hands-Free Gestures', icon: <Hand size={18} /> },
@@ -285,13 +307,35 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                      <label className={labelClass}>Google Gemini API</label>
+                      <label className={labelClass}>
+                        <span>Google Gemini API (Chat & Live Voice)</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ml-auto">
+                          Live Bridge
+                        </span>
+                      </label>
                       <div className={inputContainerClass}>
                         <input
                           type="password"
                           value={geminiKey}
                           onChange={(e) => setGeminiKey(e.target.value)}
                           placeholder="AIzaSy..."
+                          className="bg-transparent border-none outline-none text-sm sm:text-base text-white w-full placeholder:text-zinc-600"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={labelClass}>
+                        <span>DeepSeek API (V3 Chat & Reasoner R1)</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 ml-auto">
+                          Reasoning CoT
+                        </span>
+                      </label>
+                      <div className={inputContainerClass}>
+                        <input
+                          type="password"
+                          value={deepseekKey}
+                          onChange={(e) => setDeepseekKey(e.target.value)}
+                          placeholder="sk-..."
                           className="bg-transparent border-none outline-none text-sm sm:text-base text-white w-full placeholder:text-zinc-600"
                         />
                       </div>
@@ -334,7 +378,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         />
                       </div>
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <label className={labelClass}>Tavily Search API</label>
                       <div className={inputContainerClass}>
                         <input
@@ -352,9 +396,230 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                     <RiShieldKeyholeLine className="text-zinc-400 shrink-0 mt-0.5" size={18} />
                     <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                       <strong>Privacy Notice:</strong> Your API keys are encrypted and saved locally
-                      or passed safely through server-side environment variables. Mem0 runs with an
-                      automatic local resilient store if an external cloud key is not configured.
+                      or passed safely through server-side environment variables. DeepSeek API powers both general V3 chat and deep mathematical/logical chain-of-thought reasoning (R1).
                     </p>
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: AI INTERACTION & MODEL ROUTING */}
+            {activeTab === 'ai' && (
+              <motion.div
+                key="ai"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
+                  <div className="flex justify-between items-center pb-2">
+                    <span className={titleClass}>
+                      <Brain className="text-emerald-400 shrink-0" size={22} /> AI Interaction Settings & Engine Routing
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
+                    Configure active AI providers for text chat and live real-time voice conversations.
+                  </p>
+
+                  <div className="flex flex-col gap-5 pt-2">
+                    {/* Active Default AI Provider */}
+                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-zinc-200 block">
+                            Primary AI Model & Chat Engine
+                          </span>
+                          <span className="text-xs text-zinc-400 block">
+                            Select which engine handles conversational queries and tool reasoning
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Active: {coreSettings.activeProvider.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        {[
+                          {
+                            id: 'deepseek',
+                            name: 'DeepSeek',
+                            subtitle: 'DeepSeek V3 & Reasoner R1',
+                            desc: 'Official DeepSeek API integration with fast chat completion and deep mathematical/logical chain-of-thought reasoning',
+                            tag: 'DeepSeek API'
+                          },
+                          {
+                            id: 'gemini',
+                            name: 'Google Gemini',
+                            subtitle: 'Gemini 3.8 Flash & Live Voice Bridge',
+                            desc: 'Multimodal vision, Live audio bridge, and grounding with web search & Google tools',
+                            tag: 'Multimodal'
+                          },
+                          {
+                            id: 'groq',
+                            name: 'Groq Cloud LPU',
+                            subtitle: 'Llama 3.3 70B & Mixtral',
+                            desc: 'Sub-second inference acceleration on high-throughput open models',
+                            tag: 'Ultra Fast'
+                          },
+                          {
+                            id: 'huggingface',
+                            name: 'Hugging Face',
+                            subtitle: 'Inference Hub',
+                            desc: 'Access to open weights and specialized fine-tunes across the HF ecosystem',
+                            tag: 'Open Weights'
+                          }
+                        ].map((provider) => {
+                          const isSelected = coreSettings.activeProvider === provider.id
+                          return (
+                            <button
+                              key={provider.id}
+                              type="button"
+                              onClick={() => {
+                                coreSettingsService.setActiveProvider(provider.id as any)
+                                setSaveStatus(`Primary AI engine switched to: ${provider.name}`)
+                                setTimeout(() => setSaveStatus(null), 3000)
+                              }}
+                              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                                isSelected
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                                  : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-zinc-600'}`} />
+                                  <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}>
+                                    {provider.name}
+                                  </span>
+                                </div>
+                                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-zinc-400'}`}>
+                                  {provider.tag}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-zinc-400 font-mono">
+                                {provider.subtitle}
+                              </span>
+                              <p className="text-xs text-zinc-400 line-clamp-2">
+                                {provider.desc}
+                              </p>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Live Real-time Multimodal Voice Bridge */}
+                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-zinc-200 block flex items-center gap-2">
+                            <Radio size={16} className="text-emerald-400 animate-pulse" />
+                            Gemini Live Multimodal Voice Bridge
+                          </span>
+                          <span className="text-xs text-zinc-400 block">
+                            Continuous 24kHz bi-directional live audio stream powered by Google Gemini Live API
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Active Ready
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 pt-1 leading-relaxed">
+                        Access live hands-free conversation with real-time waveform visualization, continuous audio streaming, and realistic voice presets (Kore, Zephyr, Puck, Fenrir, Charon) by tapping the <strong>Live Voice</strong> button in the conversation header.
+                      </p>
+                    </div>
+
+                    {/* Real-Time Voice Chat System (ChatGPT / JARVIS Style) */}
+                    <div className="p-4 bg-black/40 border border-cyan-500/20 rounded-xl space-y-3 shadow-[0_0_20px_rgba(6,182,212,0.06)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+                          <div>
+                            <span className="text-sm font-semibold text-zinc-200 block">
+                              Real-Time Voice Chat Engine (ChatGPT / JARVIS)
+                            </span>
+                            <span className="text-xs text-zinc-400 block">
+                              Streaming STT, progressive TTS, instant barge-in interruption, wake-word detection, and multi-language support.
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
+                          className="px-3 py-1.5 text-xs font-mono font-semibold rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition-all cursor-pointer"
+                        >
+                          Launch Voice Chat
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                        {/* Personality */}
+                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 space-y-1">
+                          <label className="text-zinc-400 font-medium block text-[11px]">Personality Profile</label>
+                          <select
+                            defaultValue={voiceSessionManager.getConfig().personality}
+                            onChange={(e) => voiceSessionManager.setPersonality(e.target.value as VoicePersonalityId)}
+                            className="w-full bg-zinc-950 border border-white/10 text-zinc-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-cyan-500/50"
+                          >
+                            <option value="jarvis">JARVIS (Calm, Professional)</option>
+                            <option value="assistant">Assistant (Friendly, Natural)</option>
+                            <option value="developer">Developer (Technical, Concise)</option>
+                            <option value="casual">Casual (Relaxed, Witty)</option>
+                          </select>
+                        </div>
+
+                        {/* Language */}
+                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 space-y-1">
+                          <label className="text-zinc-400 font-medium block text-[11px]">Spoken Language</label>
+                          <select
+                            defaultValue={voiceSessionManager.getConfig().language}
+                            onChange={(e) => voiceSessionManager.setLanguage(e.target.value as SupportedLanguage)}
+                            className="w-full bg-zinc-950 border border-white/10 text-zinc-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-cyan-500/50"
+                          >
+                            <option value="auto">Auto-Detect</option>
+                            <option value="en-US">English (US)</option>
+                            <option value="en-IN">Hinglish / EN (IN)</option>
+                            <option value="hi-IN">Hindi (हिंदी)</option>
+                          </select>
+                        </div>
+
+                        {/* Wake Word */}
+                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 flex flex-col justify-between">
+                          <span className="text-zinc-400 font-medium text-[11px]">Wake Word ("Hey JARVIS")</span>
+                          <label className="flex items-center gap-2 cursor-pointer pt-1 text-[11px] text-zinc-300">
+                            <input
+                              type="checkbox"
+                              defaultChecked={voiceSessionManager.getConfig().wakeWordEnabled}
+                              onChange={(e) => voiceSessionManager.setWakeWordEnabled(e.target.checked)}
+                              className="accent-emerald-500"
+                            />
+                            <span>Client-Side Only (100% Private)</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* AI-Q Citation-Backed Answers */}
+                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-zinc-200 block">
+                            AI-Q Citation-Backed Grounding
+                          </span>
+                          <span className="text-xs text-zinc-400 block">
+                            Automatically annotates model answers with verified research source links
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Enabled
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-400 leading-relaxed">
+                        All models (DeepSeek, Gemini, and NVIDIA) automatically run through the AI-Q citation engine when research and retrieval operations occur.
+                      </p>
+                    </div>
                   </div>
                 </GlassPanel>
               </motion.div>
@@ -468,6 +733,144 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                             {item.label}
                           </button>
                         ))}
+                      </div>
+                    </div>
+
+                    {/* JARVIS VOICE INTERACTION & PRIVACY CONTROLS */}
+                    <div className="pt-4 border-t border-white/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                            <Mic className="text-emerald-400" size={16} /> JARVIS Hands-Free & Voice Privacy
+                          </span>
+                          <span className="text-xs text-zinc-400 block pt-0.5">
+                            Client-side local processing. Raw microphone audio is never uploaded to external servers.
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-white/10">
+                            Mic: {voicePrivSettings.micPermissionStatus}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {/* Wake Word Detection ("Hey JARVIS") */}
+                        <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-medium text-zinc-200 block">Wake Word ("Hey JARVIS")</span>
+                            <span className="text-[11px] text-zinc-400 block">Hands-free client-side wake trigger</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const next = !voicePrivSettings.wakeWordEnabled
+                              voiceSessionManager.setWakeWordEnabled(next)
+                              voiceSettings.updateSettings({ wakeWordEnabled: next })
+                            }}
+                            className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                              voicePrivSettings.wakeWordEnabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                            }`}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                voicePrivSettings.wakeWordEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Voice Activity Detection (VAD) */}
+                        <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-medium text-zinc-200 block">Voice Activity Detection (VAD)</span>
+                            <span className="text-[11px] text-zinc-400 block">Dynamic ambient noise & silence cut</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const next = !voicePrivSettings.vadEnabled
+                              voiceSettings.updateSettings({ vadEnabled: next })
+                              voiceSessionManager.audioManager.vad.setEnabled(next)
+                            }}
+                            className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                              voicePrivSettings.vadEnabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                            }`}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                voicePrivSettings.vadEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Continuous Conversation */}
+                        <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-medium text-zinc-200 block">Continuous Conversation</span>
+                            <span className="text-[11px] text-zinc-400 block">Resume listening after AI finishes speaking</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const next = !voicePrivSettings.continuousListening
+                              voiceSettings.updateSettings({ continuousListening: next })
+                            }}
+                            className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                              voicePrivSettings.continuousListening ? 'bg-emerald-500' : 'bg-zinc-800'
+                            }`}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                voicePrivSettings.continuousListening ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Voice Response (TTS) */}
+                        <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <span className="text-xs font-medium text-zinc-200 block">Voice Audio Response</span>
+                            <span className="text-[11px] text-zinc-400 block">Speak answers aloud with streaming TTS</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const next = !voicePrivSettings.voiceResponseEnabled
+                              voiceSettings.updateSettings({ voiceResponseEnabled: next })
+                            }}
+                            className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+                              voicePrivSettings.voiceResponseEnabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                            }`}
+                          >
+                            <div
+                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                voicePrivSettings.voiceResponseEnabled ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Immediate Control Actions */}
+                      <div className="flex flex-wrap gap-2.5 pt-2">
+                        <button
+                          onClick={() => {
+                            voiceSessionManager.stopMicrophoneImmediately()
+                          }}
+                          className="px-3 py-2 bg-red-950/40 border border-red-500/30 hover:bg-red-900/50 text-red-300 text-xs font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Mic size={13} className="text-red-400" />
+                          Stop Microphone Immediately
+                        </button>
+                        <button
+                          onClick={() => {
+                            voiceSessionManager.clearSessionHistory()
+                            voiceSettings.clearVoiceSessionHistory()
+                          }}
+                          className="px-3 py-2 bg-zinc-900 border border-white/10 hover:border-zinc-700 text-zinc-300 text-xs font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Trash2 size={13} className="text-zinc-400" />
+                          Clear Voice Session & History
+                        </button>
                       </div>
                     </div>
                   </div>

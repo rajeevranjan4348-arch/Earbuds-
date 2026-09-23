@@ -182,36 +182,35 @@ function IconBadge({
 }
 
 function BootSequence({ isActive, osType }: { isActive: boolean; osType: string }) {
-  const [bootPhase, setBootPhase] = useState(true)
+  const [bootPhase, setBootPhase] = useState(false)
   const [bootLogs, setBootLogs] = useState<string[]>([])
 
   useEffect(() => {
     if (!isActive) {
-      setBootPhase(true)
+      setBootPhase(false)
       setBootLogs([])
       return
     }
 
-    if (bootPhase) {
-      const logs = [
-        '› HW_TELEM_LINK ..... SYNC',
-        '› OPTICS_DRIVER ... READY',
-        '› SYSTEM_READY ........ ✓'
-      ]
-      let i = 0
-      const bootInterval = setInterval(() => {
-        if (i < logs.length) {
-          setBootLogs((p) => [...p, logs[i]])
-          i++
-        } else {
-          clearInterval(bootInterval)
-          setTimeout(() => setBootPhase(false), 100)
-        }
-      }, 100)
-      return () => clearInterval(bootInterval)
-    }
-    return undefined
-  }, [isActive, bootPhase])
+    setBootPhase(true)
+    setBootLogs([])
+    const logs = [
+      '› HW_TELEM_LINK ..... SYNC',
+      '› OPTICS_DRIVER ... READY',
+      '› SYSTEM_READY ........ ✓'
+    ]
+    let i = 0
+    const bootInterval = setInterval(() => {
+      if (i < logs.length) {
+        setBootLogs((p) => [...p, logs[i]])
+        i++
+      } else {
+        clearInterval(bootInterval)
+        setTimeout(() => setBootPhase(false), 100)
+      }
+    }, 100)
+    return () => clearInterval(bootInterval)
+  }, [isActive])
 
   if (bootPhase && isActive) {
     return (

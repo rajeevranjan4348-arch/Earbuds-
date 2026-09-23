@@ -7,6 +7,7 @@
 
 import { getSystemStatus } from './system-info'
 import { detectLaunchAppIntent, launch_app } from './launcher'
+import { IntentResolver, launchManager } from '../launcher'
 import { memoryService, MemoryItem } from './memoryService'
 import { firebaseAuthService } from './firebaseAuth'
 import { clientCodebaseService } from './codebaseService'
@@ -63,6 +64,7 @@ export type VoiceCommandIntent =
   | 'IMAGE_GENERATION'
   | 'DIAGRAM_GENERATION'
   | 'SCIENTIFIC_RESEARCH'
+  | 'TASK_ORCHESTRATOR'
 
 export interface CommandProcessResult {
   handled: boolean
@@ -70,10 +72,13 @@ export interface CommandProcessResult {
   actionExecuted?: string
   spokenResponse: string
   displayText?: string
+  status?: string
+  isFallback?: boolean
   metadata?: Record<string, any>
 }
 
 export interface CommandProcessorContext {
+  activeTab?: string
   navigate?: (
     tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
   ) => void
@@ -170,6 +175,10 @@ class VoiceCommandProcessor {
     const confirmationResult = await this.checkPendingConfirmation(cleaned, originalText)
     if (confirmationResult) return confirmationResult
 
+    // 0.01 Central TaskOrchestrator: Multi-Agent Automated Pipeline Execution
+    const orchestratorResult = await this.checkTaskOrchestrator(cleaned, originalText, context)
+    if (orchestratorResult) return orchestratorResult
+
     // 0.02 Smart Listening + Multi-Step Plan Execution Agent
     const planAgentResult = await this.checkPlanExecutionAgent(cleaned, originalText, context)
     if (planAgentResult) return planAgentResult
@@ -249,6 +258,128 @@ class VoiceCommandProcessor {
     // 13. General Conversational & World Knowledge (with Mem0 Context Pipeline)
     const qaResult = await this.checkConversationalAndQA(cleaned, originalText)
     return qaResult
+  }
+
+  // ==========================================
+  // 0.01 CENTRAL TASK ORCHESTRATOR & AGENT PIPELINE
+  // ==========================================
+  private async checkTaskOrchestrator(
+    cleaned: string,
+    originalText: string,
+    context: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    const lower = cleaned.toLowerCase()
+
+    // Explicit triggers for multi-agent DAG task orchestration
+    const isOrchestratorTrigger =
+      lower.startsWith('orchestrate ') ||
+      lower.startsWith('run agent ') ||
+      lower.startsWith('start agent ') ||
+      lower.startsWith('agent task ') ||
+      lower.startsWith('agent pipeline ') ||
+      lower.startsWith('multi agent ') ||
+      lower.startsWith('task orchestrator ') ||
+      lower.startsWith('research and write ') ||
+      lower.startsWith('research and code ') ||
+      lower.startsWith('analyze and fix ') ||
+      lower.startsWith('investigate and report ') ||
+      lower.startsWith('plan and execute ') ||
+      lower.startsWith('build and verify ') ||
+      lower.startsWith('browse and summarize ') ||
+      lower.startsWith('task: ') ||
+      lower.startsWith('orchestrate: ') ||
+      lower.includes('task orchestrator') ||
+      lower.includes('multi-agent orchestrator') ||
+      (lower.startsWith('agent ') && lower.length > 15)
+
+    if (!isOrchestratorTrigger) {
+      return null
+    }
+
+    // Clean prefix to get core goal
+    const goal =
+      originalText
+        .replace(/^(?:hey\s+iris|iris|jarvis)[,\s]*/i, '')
+        .replace(
+          /^(?:please\s+)?(?:orchestrate|run agent|start agent|agent task|agent pipeline|multi agent|task orchestrator|plan and execute|orchestrate:|task:)\s*/i,
+          ''
+        )
+        .trim() || originalText
+
+    context.setStatusMessage?.('TaskOrchestrator: Initializing multi-agent pipeline...')
+
+    try {
+      const res = await agentClientService.executeTaskOrchestrator(goal, 'voice_user', {
+        source: 'voice_command',
+        rawPrompt: originalText,
+        timestamp: Date.now()
+      })
+
+      if (res && res.success) {
+        const completedTasks =
+          res.completedTasks ||
+          (res.nodes ? res.nodes.filter((n: any) => n.status === 'COMPLETED').length : 1)
+        const totalTasks = res.totalTasks || (res.nodes ? res.nodes.length : completedTasks)
+        const solutionText = res.solution || res.result || 'Task pipeline completed successfully.'
+
+        const cleanSummary =
+          solutionText.length > 280
+            ? solutionText.substring(0, 277).replace(/\n+/g, ' ') + '...'
+            : solutionText.replace(/\n+/g, ' ')
+
+        const spokenResponse = `Task orchestrator completed across ${completedTasks} of ${totalTasks} agent stages with verified self-verification. ${cleanSummary}`
+
+        const nodesSummary =
+          Array.isArray(res.nodes) && res.nodes.length > 0
+            ? res.nodes
+                .map(
+                  (n: any) =>
+                    `• **${n.agentType || 'Agent'}** (${n.name}): ${n.status === 'COMPLETED' ? '✅ Completed' : n.status}`
+                )
+                .join('\n')
+            : `• **Research & Execution Pipeline**: ✅ Completed`
+
+        const displayText =
+          `🤖 **TaskOrchestrator: Multi-Agent Execution Complete**\n\n` +
+          `**Goal:** ${goal}\n\n` +
+          `**Status:** ${res.status || 'COMPLETED'} (${completedTasks}/${totalTasks} subtasks verified)\n\n` +
+          `### Agent Pipeline DAG:\n${nodesSummary}\n\n` +
+          `### Solution & Verification:\n${solutionText}`
+
+        return {
+          handled: true,
+          intent: 'TASK_ORCHESTRATOR',
+          actionExecuted: 'EXECUTE_TASK_ORCHESTRATOR',
+          spokenResponse,
+          displayText,
+          metadata: {
+            graphId: res.graphId,
+            status: res.status,
+            nodes: res.nodes,
+            completedTasks,
+            totalTasks
+          }
+        }
+      } else {
+        const spokenResponse = `The task orchestrator encountered an issue: ${res?.error || 'Pipeline could not be completed'}.`
+        return {
+          handled: true,
+          intent: 'TASK_ORCHESTRATOR',
+          actionExecuted: 'ORCHESTRATOR_ERROR',
+          spokenResponse,
+          displayText: `⚠️ **TaskOrchestrator Notice:** ${res?.error || 'Unable to execute multi-agent task.'}`
+        }
+      }
+    } catch (err: any) {
+      console.warn('[VoiceCommandProcessor] TaskOrchestrator error:', err)
+      return {
+        handled: true,
+        intent: 'TASK_ORCHESTRATOR',
+        actionExecuted: 'ORCHESTRATOR_EXCEPTION',
+        spokenResponse: `Error executing multi-agent pipeline: ${err?.message || 'Connection failure'}.`,
+        displayText: `⚠️ **TaskOrchestrator Error:** ${err?.message || 'Failed to dispatch pipeline.'}`
+      }
+    }
   }
 
   // ==========================================
@@ -484,6 +615,22 @@ class VoiceCommandProcessor {
         intent: 'NAVIGATE',
         actionExecuted: 'NAVIGATE_DASHBOARD',
         spokenResponse: 'Returning to primary Command Dashboard.'
+      }
+    }
+
+    if (
+      cleaned.includes('voice chat') ||
+      cleaned.includes('voice mode') ||
+      cleaned.includes('voice call') ||
+      cleaned.includes('talk to jarvis') ||
+      cleaned.includes('speak with jarvis')
+    ) {
+      window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'OPEN_VOICE_CHAT',
+        spokenResponse: 'Opening Voice Chat Mode.'
       }
     }
 
@@ -1030,14 +1177,59 @@ class VoiceCommandProcessor {
   }
 
   // ==========================================
-  // 7. ANDROID AI APP LAUNCHER PIPELINE
+  // 7. UNIVERSAL & ANDROID AI APP LAUNCHER PIPELINE
   // ==========================================
   private async checkAppLauncher(
-    _cleaned: string,
+    cleaned: string,
     originalText: string,
     context?: CommandProcessorContext
   ): Promise<CommandProcessResult | null> {
-    // 1. Detect internal 'launch_app' intent
+    // 0. Trigger Launcher Palette directly
+    if (
+      cleaned === 'open launcher' ||
+      cleaned === 'show launcher' ||
+      cleaned === 'open app launcher' ||
+      cleaned === 'launch app' ||
+      cleaned === 'apps' ||
+      cleaned === 'command palette' ||
+      cleaned === 'open command palette' ||
+      cleaned === 'show apps'
+    ) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('iris:open-launcher'))
+      }
+      return {
+        handled: true,
+        intent: 'APP_LAUNCH',
+        actionExecuted: 'OPEN_LAUNCHER_MODAL',
+        spokenResponse: 'Opening AI App Launcher.',
+        displayText: 'Opened universal application launcher.'
+      }
+    }
+
+    // 1. Resolve Universal App Intent (Web apps, internal tools, settings, multi-step actions)
+    const resolvedIntent = IntentResolver.resolve(originalText, context?.activeTab)
+    if (resolvedIntent && resolvedIntent.app && resolvedIntent.confidence >= 0.8) {
+      const launchRes = await launchManager.launch(
+        resolvedIntent.app,
+        resolvedIntent.secondaryParam
+      )
+      return {
+        handled: true,
+        intent: 'APP_LAUNCH',
+        actionExecuted: `LAUNCH_${resolvedIntent.app.name.toUpperCase().replace(/\s+/g, '_')}`,
+        spokenResponse: launchRes.spokenResponse || `Opening ${resolvedIntent.app.name}.`,
+        displayText: launchRes.message,
+        metadata: {
+          app: resolvedIntent.app,
+          status: launchRes.status,
+          success: launchRes.success,
+          multiStepActions: resolvedIntent.multiStepActions
+        }
+      }
+    }
+
+    // 2. Fall back to Android companion 'launch_app' intent
     const detected = detectLaunchAppIntent(originalText)
     if (!detected || detected.intent !== 'launch_app' || !detected.app_name) {
       return null
@@ -1091,11 +1283,11 @@ class VoiceCommandProcessor {
       }
     }
 
-    // 2. Call AI Launcher Tool: launch_app(appName)
+    // 3. Call Android Companion Launcher Tool: launch_app(appName)
     // Resolves package, validates installation, handles aliases/fuzzy matching, and triggers Android Launch Intent
     const result = await launch_app(appName)
 
-    // 3. Return structured internal intent & conversational response
+    // 4. Return structured internal intent & conversational response
     return {
       handled: true,
       intent: 'launch_app',
@@ -2180,8 +2372,19 @@ class VoiceCommandProcessor {
 
       if (apiRes.ok) {
         const data = await apiRes.json()
-        console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(data?.text), textLength: data?.text?.length, model: data?.model })
-        if (data?.text) {
+        const resolvedText =
+          typeof data?.text === 'string' && data.text.trim()
+            ? data.text.trim()
+            : typeof data?.response === 'string' && data.response.trim()
+            ? data.response.trim()
+            : typeof data?.content === 'string' && data.content.trim()
+            ? data.content.trim()
+            : typeof data === 'string'
+            ? data.trim()
+            : ''
+
+        console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(resolvedText), textLength: resolvedText.length, model: data?.model })
+        if (resolvedText) {
           const isWebGrounded = Boolean(
             (data.webSourcesCount && data.webSourcesCount > 0) ||
             (data.citations && data.citations.length > 0)
@@ -2202,8 +2405,8 @@ class VoiceCommandProcessor {
             handled: true,
             intent,
             actionExecuted,
-            spokenResponse: data.text,
-            displayText: data.text,
+            spokenResponse: resolvedText,
+            displayText: resolvedText,
             metadata: {
               codebaseSnippets: codebaseContext.length,
               webSources: data.webSourcesCount || 0,

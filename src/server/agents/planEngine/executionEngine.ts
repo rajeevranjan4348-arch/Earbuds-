@@ -269,10 +269,9 @@ Provide two outputs in JSON format:
 2. "displayText": A structured, polished markdown summary of the result.`
 
         const candidateModels = [
-          'gemini-2.5-flash',
-          'gemini-2.0-flash',
-          'gemini-1.5-flash',
-          'gemini-2.5-pro'
+          'gemini-3.8-flash',
+          'gemini-3.1-flash-lite',
+          'gemini-flash-latest'
         ]
 
         let responseText = ''

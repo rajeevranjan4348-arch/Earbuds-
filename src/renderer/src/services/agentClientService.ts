@@ -239,6 +239,120 @@ class AgentClientService {
       return []
     }
   }
+
+  /**
+   * Advanced AI Brain: Central Agent Orchestrator execution
+   */
+  public async executeBrainTask(
+    prompt: string,
+    userId: string = 'default_user',
+    context?: Record<string, any>
+  ): Promise<any> {
+    try {
+      const res = await fetch('/api/brain/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, userId, context })
+      })
+      return await res.json()
+    } catch (err) {
+      console.error('[AgentClientService] Brain execution error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Advanced AI Brain: Lists persisted task graphs
+   */
+  public async fetchBrainTasks(userId?: string): Promise<any[]> {
+    try {
+      const url = userId ? `/api/brain/tasks?userId=${encodeURIComponent(userId)}` : '/api/brain/tasks'
+      const res = await fetch(url)
+      const data = await res.json()
+      return data.graphs || []
+    } catch (_e) {
+      return []
+    }
+  }
+
+  /**
+   * Advanced AI Brain: Fetches a single task graph by ID
+   */
+  public async fetchBrainTask(graphId: string): Promise<any> {
+    try {
+      const res = await fetch(`/api/brain/task/${encodeURIComponent(graphId)}`)
+      const data = await res.json()
+      return data.graph || null
+    } catch (_e) {
+      return null
+    }
+  }
+
+  /**
+   * Advanced AI Brain: Continues/resumes unfinished tasks after restart or interruption
+   */
+  public async resumeBrainTasks(): Promise<{ success: boolean; resumedCount: number }> {
+    try {
+      const res = await fetch('/api/brain/resume', { method: 'POST' })
+      return await res.json()
+    } catch (_e) {
+      return { success: false, resumedCount: 0 }
+    }
+  }
+
+  /**
+   * Central TaskOrchestrator: Executes multi-agent pipeline with status tracking and verification
+   */
+  public async executeTaskOrchestrator(
+    prompt: string,
+    userId: string = 'default_user',
+    context?: Record<string, any>
+  ): Promise<any> {
+    try {
+      const res = await fetch('/api/orchestrator/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, userId, context })
+      })
+      return await res.json()
+    } catch (err) {
+      console.error('[AgentClientService] Orchestrator execution error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Long-Term Memory: Semantic vector retrieval
+   */
+  public async queryVectorMemory(
+    query: string,
+    options?: { userId?: string; topK?: number; minSimilarity?: number }
+  ): Promise<any[]> {
+    try {
+      const res = await fetch('/api/memory/vector/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, ...options })
+      })
+      const data = await res.json()
+      return data.results || []
+    } catch (_e) {
+      return []
+    }
+  }
+
+  /**
+   * Agent Registry: Lists all registered specialized agents
+   */
+  public async fetchRegisteredAgents(): Promise<any[]> {
+    try {
+      const res = await fetch('/api/agents/registry')
+      const data = await res.json()
+      return data.agents || []
+    } catch (_e) {
+      return []
+    }
+  }
 }
 
 export const agentClientService = new AgentClientService()

@@ -19,6 +19,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { handleApiRequest } from './api'
 import { loadEnv } from './env'
 import { applyRuntimeKeys, getRuntimeKeyStatus, hydrateRuntimeKeys } from './keyStore'
+import { attachGeminiLiveWebSocket } from './services/gemini-live'
 
 loadEnv()
 hydrateRuntimeKeys()
@@ -190,6 +191,9 @@ export function createIrisServer(options: IrisServerOptions): Server {
   // Long lived agent streams can exceed Node's default header timeout.
   server.keepAliveTimeout = 65_000
   server.headersTimeout = 70_000
+
+  // Attach Gemini Multimodal Live WebSocket endpoints (/api/ai/live-ws, /live)
+  attachGeminiLiveWebSocket(server)
 
   return server
 }

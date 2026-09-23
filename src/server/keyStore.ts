@@ -14,6 +14,8 @@ const KEY_FILE = resolve(process.cwd(), '.iris-keys.json')
 
 export const RUNTIME_KEY_MAP: Record<string, string> = {
   geminiKey: 'GEMINI_API_KEY',
+  nvidiaKey: 'NVIDIA_API_KEY',
+  deepseekKey: 'DEEPSEEK_API_KEY',
   groqKey: 'GROQ_API_KEY',
   hfKey: 'HUGGINGFACE_API_KEY',
   tavilyKey: 'TAVILY_API_KEY',
@@ -29,6 +31,8 @@ export const RUNTIME_KEY_MAP: Record<string, string> = {
 
 export interface RuntimeKeyPayload {
   geminiKey?: string
+  nvidiaKey?: string
+  deepseekKey?: string
   groqKey?: string
   hfKey?: string
   tavilyKey?: string

@@ -1,0 +1,331 @@
+/**
+ * SpeechRecognitionManager - Streaming Multi-Language STT Engine
+ * 
+ * Rules:
+ * - Real-time streaming partial transcript updates.
+ * - Finalize command when speech ends.
+ * - Deduplicate duplicate transcripts.
+ * - Support Hindi + English + Hinglish with auto-detection.
+ * - Handle errors and reconnect automatically.
+ * - Fallback MediaRecorder when Web Speech API is absent or restricted.
+ */
+
+import { SpeechRecognitionProvider, SupportedLanguage } from './VoiceTypes'
+
+export interface SpeechRecognitionManagerHandlers {
+  onInterimTranscript: (text: string) => void
+  onFinalTranscript: (text: string, language?: string) => void
+  onError: (error: string) => void
+  onEnd: () => void
+}
+
+export class SpeechRecognitionManager implements SpeechRecognitionProvider {
+  private recognition: any = null
+  private isListening: boolean = false
+  private isPaused: boolean = false
+  private language: SupportedLanguage = 'auto'
+  private handlers: SpeechRecognitionManagerHandlers
+  private currentInterimText: string = ''
+  private lastFinalText: string = ''
+  private lastFinalTime: number = 0
+
+  // Fallback MediaRecorder
+  private mediaRecorder: MediaRecorder | null = null
+  private recordedChunks: Blob[] = []
+  private isFallbackActive: boolean = false
+  private activeStream: MediaStream | null = null
+
+  constructor(handlers: SpeechRecognitionManagerHandlers, language: SupportedLanguage = 'auto') {
+    this.handlers = handlers
+    this.language = language
+  }
+
+  public setLanguage(lang: SupportedLanguage): void {
+    this.language = lang
+    if (this.recognition) {
+      this.recognition.lang = this.resolveBrowserLang(lang)
+    }
+  }
+
+  public getLanguage(): SupportedLanguage {
+    return this.language
+  }
+
+  private resolveBrowserLang(lang: SupportedLanguage): string {
+    switch (lang) {
+      case 'hi-IN':
+        return 'hi-IN'
+      case 'en-IN':
+        return 'en-IN'
+      case 'en-US':
+        return 'en-US'
+      case 'auto':
+      default:
+        return 'en-IN' // Indian English handles English + Hinglish natively
+    }
+  }
+
+  /**
+   * Identifies whether a string has Hindi Devanagari or Hinglish vocabulary
+   */
+  public detectLanguageHeuristic(text: string): 'hi-IN' | 'en-IN' | 'en-US' {
+    if (!text) return 'en-US'
+    // 1. Devanagari script check
+    if (/[\u0900-\u097F]/.test(text)) {
+      return 'hi-IN'
+    }
+    // 2. Common Hinglish phonetic tokens
+    const hinglishTokens = [
+      'kya', 'hai', 'kaise', 'ho', 'batao', 'namaste', 'shukriya', 'theek', 'karo',
+      'sunao', 'achha', 'nahi', 'haan', 'mera', 'meri', 'tum', 'aap', 'mujhe', 'kuch', 'yaar'
+    ]
+    const words = text.toLowerCase().split(/\s+/)
+    if (words.some((w) => hinglishTokens.includes(w))) {
+      return 'en-IN'
+    }
+    return 'en-US'
+  }
+
+  public start(stream?: MediaStream): boolean {
+    if (this.isListening) return true
+    this.isPaused = false
+    this.activeStream = stream || null
+
+    const SpeechRecognitionClass =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition ||
+      (window as any).mozSpeechRecognition ||
+      (window as any).msSpeechRecognition
+
+    if (!SpeechRecognitionClass) {
+      console.warn('[SpeechRecognitionManager] Web Speech API not supported; activating fallback recorder.')
+      if (stream) {
+        this.startFallbackRecorder(stream)
+        return true
+      }
+      this.handlers.onError('Speech Recognition API is not supported on this browser.')
+      return false
+    }
+
+    try {
+      this.destroyRecognition()
+
+      const rec = new SpeechRecognitionClass()
+      rec.continuous = true
+      rec.interimResults = true
+      rec.maxAlternatives = 1
+      rec.lang = this.resolveBrowserLang(this.language)
+
+      rec.onstart = () => {
+        this.isListening = true
+      }
+
+      rec.onresult = (event: any) => {
+        if (this.isPaused) return
+
+        let interim = ''
+        let final = ''
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const item = event.results[i]
+          const transcript = item[0]?.transcript || ''
+          if (item.isFinal) {
+            final += transcript
+          } else {
+            interim += transcript
+          }
+        }
+
+        const trimmedInterim = interim.trim()
+        if (trimmedInterim) {
+          this.currentInterimText = trimmedInterim
+          this.handlers.onInterimTranscript(trimmedInterim)
+        }
+
+        const trimmedFinal = final.trim()
+        if (trimmedFinal) {
+          this.currentInterimText = ''
+          const now = Date.now()
+          // Deduplicate exact duplicate transcripts received within 1000ms
+          if (
+            trimmedFinal.toLowerCase() === this.lastFinalText.toLowerCase() &&
+            now - this.lastFinalTime < 1000
+          ) {
+            return
+          }
+          this.lastFinalText = trimmedFinal
+          this.lastFinalTime = now
+
+          const detectedLang =
+            this.language === 'auto'
+              ? this.detectLanguageHeuristic(trimmedFinal)
+              : this.language
+
+          this.handlers.onInterimTranscript('')
+          this.handlers.onFinalTranscript(trimmedFinal, detectedLang)
+        }
+      }
+
+      rec.onerror = (event: any) => {
+        const err = event.error || event.type
+        if (err === 'no-speech' || err === 'aborted') {
+          return
+        }
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          this.isListening = false
+          this.handlers.onError('Microphone permission was denied.')
+          return
+        }
+        if (err === 'network') {
+          console.warn('[SpeechRecognitionManager] Network issue with speech recognition, trying fallback.')
+          if (this.activeStream) {
+            this.startFallbackRecorder(this.activeStream)
+          }
+          return
+        }
+        this.handlers.onError(`Speech recognition error: ${err}`)
+      }
+
+      rec.onend = () => {
+        const wasActive = this.isListening
+        this.isListening = false
+
+        if (this.currentInterimText) {
+          const text = this.currentInterimText
+          this.currentInterimText = ''
+          this.handlers.onInterimTranscript('')
+          this.handlers.onFinalTranscript(text, this.detectLanguageHeuristic(text))
+        }
+
+        if (wasActive && !this.isPaused) {
+          this.handlers.onEnd()
+        }
+      }
+
+      rec.start()
+      this.recognition = rec
+      this.isListening = true
+      return true
+    } catch (err: any) {
+      console.warn('[SpeechRecognitionManager] Failed to start native recognition:', err)
+      if (stream) {
+        this.startFallbackRecorder(stream)
+        return true
+      }
+      this.handlers.onError(err?.message || 'Failed to start speech recognition')
+      return false
+    }
+  }
+
+  public commitInterimNow(): void {
+    if (this.currentInterimText) {
+      const text = this.currentInterimText
+      this.currentInterimText = ''
+      this.handlers.onInterimTranscript('')
+      this.handlers.onFinalTranscript(text, this.detectLanguageHeuristic(text))
+    }
+  }
+
+  public pause(): void {
+    this.isPaused = true
+  }
+
+  public resume(): void {
+    this.isPaused = false
+  }
+
+  public stop(): void {
+    this.isListening = false
+    this.isPaused = false
+    this.currentInterimText = ''
+    this.destroyRecognition()
+    this.stopFallbackRecorder()
+  }
+
+  public destroy(): void {
+    this.stop()
+  }
+
+  private destroyRecognition(): void {
+    if (this.recognition) {
+      try {
+        this.recognition.onstart = null
+        this.recognition.onresult = null
+        this.recognition.onerror = null
+        this.recognition.onend = null
+        this.recognition.abort()
+      } catch (_e) {}
+      this.recognition = null
+    }
+  }
+
+  // --- Fallback Recorder for environments without Web Speech API ---
+  private startFallbackRecorder(stream: MediaStream): void {
+    if (this.isFallbackActive || typeof MediaRecorder === 'undefined') return
+
+    try {
+      const mimeTypes = ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg', 'audio/mp4']
+      const supported = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || ''
+      this.mediaRecorder = new MediaRecorder(stream, supported ? { mimeType: supported } : {})
+      this.recordedChunks = []
+      this.isFallbackActive = true
+
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          this.recordedChunks.push(e.data)
+        }
+      }
+
+      this.mediaRecorder.onstop = async () => {
+        this.isFallbackActive = false
+        if (this.recordedChunks.length === 0) return
+
+        const blob = new Blob(this.recordedChunks, {
+          type: this.mediaRecorder?.mimeType || 'audio/webm'
+        })
+        this.recordedChunks = []
+
+        if (blob.size > 1000) {
+          try {
+            const reader = new FileReader()
+            const base64Promise = new Promise<string>((res, rej) => {
+              reader.onloadend = () => res(reader.result as string)
+              reader.onerror = rej
+            })
+            reader.readAsDataURL(blob)
+            const audioData = await base64Promise
+
+            const resp = await fetch('/api/voice/transcribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ audioData, mimeType: blob.type })
+            })
+            if (resp.ok) {
+              const data = await resp.json()
+              const transcript = data.transcript?.trim()
+              if (transcript) {
+                this.handlers.onFinalTranscript(transcript, this.detectLanguageHeuristic(transcript))
+              }
+            }
+          } catch (err) {
+            console.warn('[SpeechRecognitionManager Fallback] Transcription error:', err)
+          }
+        }
+      }
+
+      this.mediaRecorder.start(300)
+    } catch (err) {
+      console.warn('[SpeechRecognitionManager Fallback] Start error:', err)
+    }
+  }
+
+  private stopFallbackRecorder(): void {
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try {
+        this.mediaRecorder.stop()
+      } catch (_e) {}
+    }
+    this.isFallbackActive = false
+    this.recordedChunks = []
+  }
+}

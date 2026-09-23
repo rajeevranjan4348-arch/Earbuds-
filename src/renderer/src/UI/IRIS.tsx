@@ -8,10 +8,9 @@ import {
   RiImageLine,
   RiGoogleFill,
   RiCompass3Line,
-  RiYoutubeFill,
   RiChat3Line
 } from 'react-icons/ri'
-import { FileText, Database, Minimize2, Maximize2, Hand, MessageSquare } from 'lucide-react'
+import { FileText, Database, Maximize2, MessageSquare, Mic } from 'lucide-react'
 import { shortcutService, formatKeyCombo } from '../services/shortcutService'
 
 import DashboardView from '../views/Dashboard'
@@ -19,8 +18,6 @@ import PhoneView from '../views/Phone'
 import SettingsView from '../views/Settings'
 import RightPanel from '../components/UI/RightPanel'
 import DocumentStatusOverlay from '../components/UI/DocumentStatusOverlay'
-import QuickActionsMenu from '../components/UI/QuickActionsMenu'
-import GestureGuideModal from '../components/UI/GestureGuideModal'
 import WorkspaceStatusIndicator from '../components/UI/WorkspaceStatusIndicator'
 
 const NotesView = lazy(() => import('../views/Notes'))
@@ -90,13 +87,12 @@ const IRIS = ({
   const setIsCoreUiMinimal = propSetIsCoreUiMinimal !== undefined ? propSetIsCoreUiMinimal : setInternalMinimal
 
   const [coreUiShortcutDisplay, setCoreUiShortcutDisplay] = useState('Ctrl+\\')
-  const [isGestureGuideOpen, setIsGestureGuideOpen] = useState(false)
 
   useEffect(() => {
     const unsub = shortcutService.subscribe((list) => {
-      const match = list.find((s) => s.id === 'TOGGLE_CORE_UI')
-      if (match) {
-        setCoreUiShortcutDisplay(formatKeyCombo(match).join('+'))
+      const matchCore = list.find((s) => s.id === 'TOGGLE_CORE_UI')
+      if (matchCore) {
+        setCoreUiShortcutDisplay(formatKeyCombo(matchCore).join('+'))
       }
     })
     return () => unsub()
@@ -105,7 +101,6 @@ const IRIS = ({
   const tabs = [
     { id: 'DASHBOARD', label: 'Command', icon: <RiLayoutGridLine size={16} /> },
     { id: 'CHAT', label: 'Chat', icon: <RiChat3Line size={16} /> },
-    { id: 'YOUTUBE', label: 'YouTube', icon: <RiYoutubeFill size={16} /> },
     { id: 'WORKSPACE', label: 'Workspace', icon: <RiGoogleFill size={16} /> },
     { id: 'MAPS', label: 'Maps', icon: <RiCompass3Line size={16} /> },
     { id: 'NOTES', label: 'Notes', icon: <RiFolderOpenLine size={16} /> },
@@ -165,55 +160,62 @@ const IRIS = ({
             </div>
 
             {/* Desktop Tabs with Animated Sliding Pill */}
-            <div className="hidden md:flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative">
-              {tabs.map((tab) => (
+            <div className="hidden md:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative">
+              {/* Unified Voice & Command Dual Mode Switcher */}
+              <div className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
                 <motion.button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-colors duration-200 ${
-                    activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
-                  }`}
+                  onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="relative cursor-pointer px-3 py-1.5 text-[11px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 border border-cyan-500/50 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-400 hover:text-cyan-300 transition-all shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                  title="Open Voice System (ChatGPT / JARVIS Voice Mode)"
                 >
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="activeTabBadge"
-                      className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                    />
-                  )}
-                  <span className="relative z-10">{tab.icon}</span>
-                  <span className="relative z-10">{tab.label}</span>
+                  <Mic size={14} className="text-cyan-400 animate-pulse" />
+                  <span>VOICE</span>
                 </motion.button>
-              ))}
+
+                <motion.button
+                  onClick={() => setActiveTab('DASHBOARD')}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  className={`relative cursor-pointer px-3 py-1.5 text-[11px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 border transition-all ${
+                    activeTab === 'DASHBOARD'
+                      ? 'border-emerald-500/70 bg-emerald-950/60 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
+                      : 'border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-400/90 hover:text-emerald-300'
+                  }`}
+                  title="Command Center"
+                >
+                  <RiLayoutGridLine size={14} className="text-emerald-400" />
+                  <span>COMMAND</span>
+                </motion.button>
+              </div>
+
+              {tabs
+                .filter((tab) => tab.id !== 'DASHBOARD')
+                .map((tab) => (
+                  <motion.button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-colors duration-200 ${
+                      activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
+                    }`}
+                  >
+                    {activeTab === tab.id && (
+                      <motion.div
+                        layoutId="activeTabBadge"
+                        className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                        transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                      />
+                    )}
+                    <span className="relative z-10">{tab.icon}</span>
+                    <span className="relative z-10">{tab.label}</span>
+                  </motion.button>
+                ))}
             </div>
 
             <div className="flex items-center justify-end gap-2 md:gap-3 w-auto shrink-0">
-              {/* Toggle Minimal HUD Mode Button */}
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsCoreUiMinimal(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-cyan-500/10 border border-white/10 hover:border-cyan-500/30 text-zinc-300 hover:text-cyan-300 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer"
-                title={`Toggle Minimalist HUD (${coreUiShortcutDisplay})`}
-              >
-                <Minimize2 size={13} className="text-cyan-400" />
-                <span className="hidden lg:inline">Minimal HUD</span>
-              </motion.button>
-
-              {/* Hands-Free Camera Gesture Guide Trigger Button */}
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsGestureGuideOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-zinc-300 hover:text-emerald-300 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer"
-                title="Open Hands-Free Camera Gesture Guide & Sandbox"
-              >
-                <Hand size={13} className="text-emerald-400" />
-                <span className="hidden xl:inline">Gestures</span>
-              </motion.button>
-
               {/* Google Workspace Real-Time Status Indicator */}
               <WorkspaceStatusIndicator onNavigateWorkspace={() => setActiveTab('WORKSPACE')} />
 
@@ -227,6 +229,18 @@ const IRIS = ({
               >
                 <Database size={13} className="text-emerald-400" />
                 <span className="hidden sm:inline">PDF Knowledge</span>
+              </motion.button>
+
+              {/* Dedicated Real-Time Voice Chat Mode Trigger */}
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.15)]"
+                title="Launch Real-Time Voice Chat Mode (ChatGPT / JARVIS Style)"
+              >
+                <Mic size={13} className="text-cyan-400 animate-pulse" />
+                <span className="hidden sm:inline">Voice Chat</span>
               </motion.button>
 
               <div className="flex flex-col items-end leading-none">
@@ -278,15 +292,39 @@ const IRIS = ({
             exit={{ height: 0, opacity: 0 }}
             className="md:hidden flex items-center gap-1 px-2.5 py-1.5 bg-zinc-950/95 border-b border-white/5 overflow-x-auto no-scrollbar shrink-0 z-40"
           >
-            {tabs.map((tab) => (
-              <motion.button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                whileTap={{ scale: 0.95 }}
-                className={`relative cursor-pointer shrink-0 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 transition-colors duration-200 ${
-                  activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
-                }`}
-              >
+            <motion.button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))
+              }}
+              whileTap={{ scale: 0.95 }}
+              className="relative cursor-pointer shrink-0 px-2.5 py-1.5 text-[10px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1 border border-cyan-500/50 bg-cyan-950/30 text-cyan-400"
+            >
+              <Mic size={12} className="text-cyan-400 animate-pulse" />
+              <span>VOICE</span>
+            </motion.button>
+            <motion.button
+              onClick={() => setActiveTab('DASHBOARD')}
+              whileTap={{ scale: 0.95 }}
+              className={`relative cursor-pointer shrink-0 px-2.5 py-1.5 text-[10px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1 border transition-all ${
+                activeTab === 'DASHBOARD'
+                  ? 'border-emerald-500/70 bg-emerald-950/60 text-emerald-400'
+                  : 'border-emerald-500/40 bg-emerald-950/20 text-emerald-400/90'
+              }`}
+            >
+              <RiLayoutGridLine size={12} className="text-emerald-400" />
+              <span>COMMAND</span>
+            </motion.button>
+            {tabs
+              .filter((tab) => tab.id !== 'DASHBOARD')
+              .map((tab) => (
+                <motion.button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  whileTap={{ scale: 0.95 }}
+                  className={`relative cursor-pointer shrink-0 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 transition-colors duration-200 ${
+                    activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
+                  }`}
+                >
                 {activeTab === tab.id && (
                   <motion.div
                     layoutId="activeTabBadgeMobile"
@@ -338,6 +376,7 @@ const IRIS = ({
                   <RightPanel
                     interimTranscript={interimTranscript}
                     isListening={isListening}
+                    micLevel={micLevel}
                     onSendPrompt={submitVoicePrompt}
                   />
                 </div>
@@ -369,19 +408,6 @@ const IRIS = ({
         isOpen={isDocOverlayOpen}
         onClose={() => setIsDocOverlayOpen(false)}
         onOpen={() => setIsDocOverlayOpen(true)}
-      />
-
-      {/* Visual Illustrated Hands-Free Gesture Guide Modal */}
-      <GestureGuideModal
-        isOpen={isGestureGuideOpen}
-        onClose={() => setIsGestureGuideOpen(false)}
-      />
-
-      {/* Floating Quick Actions Menu */}
-      <QuickActionsMenu
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenKnowledgeBase={() => setIsDocOverlayOpen(true)}
       />
     </div>
   )

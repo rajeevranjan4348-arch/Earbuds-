@@ -8,12 +8,15 @@
 import type { IncomingMessage, ServerResponse } from 'http'
 import MemoryClient from 'mem0ai'
 import { GoogleGenAI } from '@google/genai'
+import { nvidiaChatService } from './nvidiaService'
+import { deepseekService } from './deepseekService'
+import { geminiLiveService } from './geminiLiveService'
 import { codebaseService } from './codebase/service'
 import { searchOrchestrator, executeSearchTool, searchToolDefinitions } from './search'
 import { privacyAlign, cybersecurity } from './security'
 import { unifiedMemory } from './memory'
 import { browserUseAgent } from './browser'
-import { scientificResearch, diagramDesign } from './research'
+import { scientificResearch, diagramDesign, aiqCitationEngine, DiscoveredResearchSource } from './research'
 import { fluxImageEngine, imageStore, getImageApiKey } from './image'
 import { androidPackageResolver } from './android'
 import {
@@ -54,6 +57,8 @@ import {
   productionScheduler,
   channelMemoryStore
 } from './youtube'
+import { centralAgentOrchestrator, brainMemoryManager } from './brain'
+import { taskOrchestrator, longTermMemory, agentRegistry } from './services'
 
 // In-memory fallback database per user for offline / unauthenticated Mem0 mode
 interface StoredMemory {
@@ -78,18 +83,69 @@ function saveMemoriesForUser(userId: string, memories: StoredMemory[]) {
   serverMemoryStore.set(userId, memories)
 }
 
-// Lazy SDK client getters
+// Lazy SDK client getters with auto-fallback and auth error suppression
 let mem0Client: MemoryClient | null = null
+let mem0AuthFailed = false
+let lastTestedMem0Key: string | null = null
+
+function isMem0KeyValidFormat(key?: string): boolean {
+  if (!key || typeof key !== 'string') return false
+  const trimmed = key.trim()
+  // Valid Mem0 keys are typically prefixed with "m0-" and are alphanumeric.
+  // Speechify keys start with "sm_" and are incompatible with Mem0.
+  if (trimmed.startsWith('sm_')) {
+    return false
+  }
+  return trimmed.length >= 10
+}
+
 function getMem0(): MemoryClient | null {
+  const rawKey = process.env.MEM0_API_KEY
+  if (!rawKey || !isMem0KeyValidFormat(rawKey)) {
+    return null
+  }
+
+  const key = rawKey.trim()
+  if (key !== lastTestedMem0Key) {
+    lastTestedMem0Key = key
+    mem0AuthFailed = false
+    mem0Client = null
+  }
+
+  if (mem0AuthFailed) {
+    return null
+  }
+
   if (mem0Client) return mem0Client
-  const key = process.env.MEM0_API_KEY
-  if (!key) return null
+
   try {
     mem0Client = new MemoryClient({ apiKey: key })
     return mem0Client
-  } catch (err) {
-    console.warn('[Server] Mem0 SDK initialization warning:', err)
+  } catch (_err) {
+    mem0AuthFailed = true
+    mem0Client = null
     return null
+  }
+}
+
+function handleMem0Error(operation: string, err: any): void {
+  const errMsg = String(err?.message || err?.detail || err || '')
+  const isAuthError =
+    errMsg.includes('Invalid API key') ||
+    errMsg.includes('AuthenticationError') ||
+    err?.status === 401 ||
+    err?.errorCode === 'HTTP_401'
+
+  if (isAuthError) {
+    if (!mem0AuthFailed) {
+      mem0AuthFailed = true
+      mem0Client = null
+      console.info(
+        `[Server] Mem0 cloud authentication failed (${operation}); smoothly routed to internal local memory store.`
+      )
+    }
+  } else {
+    console.warn(`[Server] Mem0 cloud ${operation} fallback to local store:`, errMsg || err)
   }
 }
 
@@ -221,7 +277,7 @@ export async function handleApiRequest(
     if (pathname === '/api/health') {
       return sendJson(res, 200, {
         status: 'ok',
-        mem0Connected: Boolean(process.env.MEM0_API_KEY),
+        mem0Connected: Boolean(process.env.MEM0_API_KEY && !mem0AuthFailed && isMem0KeyValidFormat(process.env.MEM0_API_KEY)),
         geminiConnected: Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
         codebaseReady: true,
         searchReady: true,
@@ -231,6 +287,7 @@ export async function handleApiRequest(
         fluxReady: true,
         multiAgentReady: true,
         planExecutionAgentReady: true,
+        brainReady: true,
         unifiedMemoryReady: true,
         mcpReady: true,
         searxngConfigured: Boolean(process.env.SEARXNG_URL),
@@ -242,41 +299,56 @@ export async function handleApiRequest(
     if (pathname === '/api/voice/transcribe' && req.method === 'POST') {
       const { audioData, mimeType = 'audio/webm' } = await parseBody(req)
       if (!audioData) {
-        return sendJson(res, 400, { success: false, error: 'Missing audioData payload' })
+        return sendJson(res, 200, { success: true, transcript: '' })
       }
 
       const gemini = getGemini()
       if (!gemini) {
-        return sendJson(res, 503, {
+        return sendJson(res, 200, {
           success: false,
+          transcript: '',
           error: 'Gemini AI speech processing service not initialized.'
         })
       }
 
       try {
-        const cleanBase64 = audioData.includes('base64,')
-          ? audioData.split('base64,')[1]
-          : audioData
+        const cleanBase64 = typeof audioData === 'string'
+          ? audioData.replace(/^data:audio\/[a-zA-Z0-9.-]+;base64,/, '').replace(/\s+/g, '')
+          : ''
 
-        let response: any = null
-        let usedModel = 'gemini-2.5-flash'
-        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
+        if (!cleanBase64) {
+          return sendJson(res, 200, { success: true, transcript: '' })
+        }
+
+        const cleanMime = (mimeType || 'audio/webm').split(';')[0] || 'audio/webm'
+
+        let transcript = ''
+        let usedModel = ''
+        const candidateModels = [
+          'gemini-3.5-transcribe',
+          'gemini-3.6-flash',
+          'gemini-flash-latest',
+          'gemini-3.8-flash',
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-lite'
+        ]
 
         for (const modelName of candidateModels) {
           try {
-            response = await gemini.models.generateContent({
+            const response = await gemini.models.generateContent({
               model: modelName,
               contents: [
                 {
                   inlineData: {
-                    mimeType: mimeType || 'audio/webm',
+                    mimeType: cleanMime,
                     data: cleanBase64
                   }
                 },
                 "You are an acoustic speech-to-text transcriber for the IRIS AI voice assistant. Accurately transcribe the user's spoken voice command verbatim. Return ONLY the transcribed text without any markdown quotes, commentary, punctuation fluff, or prefixes. If no intelligible speech is detected, return an empty string."
               ]
             })
-            if (response && response.text !== undefined) {
+            if (response && typeof response.text === 'string') {
+              transcript = response.text.trim().replace(/^["']|["']$/g, '')
               usedModel = modelName
               break
             }
@@ -285,22 +357,18 @@ export async function handleApiRequest(
           }
         }
 
-        if (!response) {
-          throw new Error('All speech transcription models failed.')
-        }
-
-        const transcript = (response.text || '').trim().replace(/^["']|["']$/g, '')
         return sendJson(res, 200, {
           success: true,
           transcript,
           provider: 'gemini-ai',
-          model: usedModel
+          model: usedModel || 'fallback'
         })
       } catch (err: any) {
-        console.error('[API Voice Transcribe] Gemini error:', err)
-        return sendJson(res, 500, {
-          success: false,
-          error: err?.message || 'Speech transcription failed'
+        console.error('[API Voice Transcribe] error:', err)
+        return sendJson(res, 200, {
+          success: true,
+          transcript: '',
+          warning: err?.message || 'Speech transcription fallback'
         })
       }
     }
@@ -1500,12 +1568,12 @@ export async function handleApiRequest(
       if (client) {
         try {
           const result = await client.add([{ role: 'user', content: text }], {
-            userId: uid,
+            user_id: uid,
             metadata
-          })
+          } as any)
           return sendJson(res, 200, { success: true, result, source: 'mem0_cloud' })
-        } catch (err) {
-          console.warn('[Server] Mem0 cloud add fallback to local store:', err)
+        } catch (err: any) {
+          handleMem0Error('add', err)
         }
       }
 
@@ -1541,7 +1609,7 @@ export async function handleApiRequest(
           } as any)
           return sendJson(res, 200, { results, source: 'mem0_cloud' })
         } catch (err) {
-          console.warn('[Server] Mem0 cloud search fallback to local store:', err)
+          handleMem0Error('search', err)
         }
       }
 
@@ -1576,7 +1644,7 @@ export async function handleApiRequest(
           } as any)
           return sendJson(res, 200, { results, source: 'mem0_cloud' })
         } catch (err) {
-          console.warn('[Server] Mem0 cloud getAll fallback:', err)
+          handleMem0Error('getAll', err)
         }
       }
 
@@ -1593,7 +1661,7 @@ export async function handleApiRequest(
           await client.update(id, text)
           return sendJson(res, 200, { success: true, source: 'mem0_cloud' })
         } catch (err) {
-          console.warn('[Server] Mem0 cloud update fallback:', err)
+          handleMem0Error('update', err)
         }
       }
 
@@ -1617,7 +1685,7 @@ export async function handleApiRequest(
           await client.delete(id)
           return sendJson(res, 200, { success: true, source: 'mem0_cloud' })
         } catch (err) {
-          console.warn('[Server] Mem0 cloud delete fallback:', err)
+          handleMem0Error('delete', err)
         }
       }
 
@@ -1636,7 +1704,7 @@ export async function handleApiRequest(
           await client.deleteAll({ userId: uid })
           return sendJson(res, 200, { success: true, source: 'mem0_cloud' })
         } catch (err) {
-          console.warn('[Server] Mem0 cloud clear fallback:', err)
+          handleMem0Error('clear', err)
         }
       }
 
@@ -1645,64 +1713,6 @@ export async function handleApiRequest(
     }
 
     // 3. Web Search & Browsing Endpoints (SearXNG / DuckDuckGo / Tavily / Reader)
-    if (pathname === '/api/voice/transcribe' && req.method === 'POST') {
-      try {
-        const body = await parseBody(req)
-        const { audioData, mimeType = 'audio/webm' } = body
-        if (!audioData) {
-          return sendJson(res, 400, { success: false, error: 'Missing audioData' })
-        }
-
-        const ai = getGemini()
-        if (!ai) {
-          return sendJson(res, 200, {
-            success: false,
-            transcript: '',
-            message: 'Gemini API not configured for server transcription.'
-          })
-        }
-
-        const cleanBase64 = typeof audioData === 'string'
-          ? audioData.replace(/^data:audio\/[a-zA-Z0-9.-]+;base64,/, '')
-          : ''
-
-        const cleanMime = (mimeType || 'audio/webm').split(';')[0] || 'audio/webm'
-
-        const candidates = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash']
-        let transcript = ''
-
-        for (const model of candidates) {
-          try {
-            const resp = await ai.models.generateContent({
-              model,
-              contents: [
-                {
-                  text: 'Accurately transcribe the spoken voice in this audio file. Output ONLY the transcribed text verbatim with no markdown formatting, quotes, or conversational explanations.'
-                },
-                {
-                  inlineData: {
-                    mimeType: cleanMime,
-                    data: cleanBase64
-                  }
-                }
-              ]
-            })
-            if (resp && resp.text) {
-              transcript = resp.text.trim().replace(/^["']|["']$/g, '')
-              break
-            }
-          } catch (mErr: any) {
-            console.warn(`[Server Voice Transcribe] Model ${model} warning:`, mErr?.message)
-          }
-        }
-
-        return sendJson(res, 200, { success: true, transcript })
-      } catch (err: any) {
-        console.error('[Server Voice Transcribe Error]:', err)
-        return sendJson(res, 500, { success: false, error: err?.message || 'Transcription failed' })
-      }
-    }
-
     if (pathname === '/api/search' && req.method === 'POST') {
       const {
         query,
@@ -2014,6 +2024,152 @@ export async function handleApiRequest(
       })
     }
 
+    // 13-B. Advanced AI Brain Endpoints (Agent Orchestrator, Task Graph DAG, Self-Verification, Recovery)
+    // Pipeline: USER REQUEST → UNDERSTAND → RETRIEVE MEMORY → BUILD CONTEXT → PLAN TASK → CREATE TASK GRAPH → SELECT AGENT → SELECT TOOLS → EXECUTE → VERIFY → RECOVER IF NEEDED → SAVE STATE → RESPOND
+    if (pathname === '/api/brain/execute' && req.method === 'POST') {
+      return handleSafeRoute(res, 'brain_execute', async () => {
+        const body = await parseBody(req)
+        const prompt = body.prompt || body.input || body.goal || ''
+        const userId = body.userId || 'default_user'
+        const context = body.context || body.contextMemory || {}
+
+        if (!prompt || typeof prompt !== 'string') {
+          return { success: false, error: 'Missing prompt/goal for AI Brain' }
+        }
+
+        const brainResponse = await centralAgentOrchestrator.processRequest(prompt, userId, context)
+        return { success: true, ...brainResponse }
+      })
+    }
+
+    // Brain Task Graphs History & Active Tasks
+    if (pathname === '/api/brain/tasks' && req.method === 'GET') {
+      const parsed = new URL(url, 'http://localhost')
+      const userId = parsed.searchParams.get('userId') || undefined
+      const graphs = centralAgentOrchestrator.listGraphs(userId)
+      return sendJson(res, 200, { success: true, graphs })
+    }
+
+    // Get Single Brain Task Graph by ID
+    if (pathname.startsWith('/api/brain/task/') && req.method === 'GET') {
+      const graphId = pathname.replace('/api/brain/task/', '').trim()
+      const graph = centralAgentOrchestrator.getGraph(graphId)
+      if (!graph) {
+        return sendJson(res, 404, { success: false, error: `Task graph "${graphId}" not found` })
+      }
+      return sendJson(res, 200, { success: true, graph })
+    }
+
+    // Resume Unfinished Tasks (after app restart, network drop, etc.)
+    if (pathname === '/api/brain/resume' && req.method === 'POST') {
+      const result = await centralAgentOrchestrator.continueUnfinishedTasks()
+      return sendJson(res, 200, { success: true, ...result })
+    }
+
+    // 13-C. TaskOrchestrator Multi-Agent Pipeline Endpoints
+    if (pathname === '/api/orchestrator/execute' && req.method === 'POST') {
+      return handleSafeRoute(res, 'orchestrator_execute', async () => {
+        const body = await parseBody(req)
+        const prompt = body.prompt || body.input || body.goal || ''
+        const userId = body.userId || 'default_user'
+        const context = body.context || body.contextMemory || {}
+
+        if (!prompt || typeof prompt !== 'string') {
+          return { success: false, error: 'Missing prompt/goal for TaskOrchestrator' }
+        }
+
+        const result = await taskOrchestrator.processRequest(prompt, userId, context)
+        return { success: true, ...result }
+      })
+    }
+
+    if (pathname === '/api/orchestrator/tasks' && req.method === 'GET') {
+      const parsed = new URL(url, 'http://localhost')
+      const userId = parsed.searchParams.get('userId') || undefined
+      const graphs = taskOrchestrator.listGraphs(userId)
+      return sendJson(res, 200, { success: true, graphs })
+    }
+
+    if (pathname.startsWith('/api/orchestrator/task/') && req.method === 'GET') {
+      const graphId = pathname.replace('/api/orchestrator/task/', '').trim()
+      const graph = taskOrchestrator.getGraph(graphId)
+      if (!graph) {
+        return sendJson(res, 404, { success: false, error: `Task graph "${graphId}" not found` })
+      }
+      return sendJson(res, 200, { success: true, graph })
+    }
+
+    if (pathname === '/api/orchestrator/resume' && req.method === 'POST') {
+      const result = await taskOrchestrator.resumeUnfinishedTasks()
+      return sendJson(res, 200, { success: true, ...result })
+    }
+
+    // 13-D. Vector Long-Term Memory Endpoints
+    if (pathname === '/api/memory/vector/query' && req.method === 'POST') {
+      return handleSafeRoute(res, 'memory_vector_query', async () => {
+        const body = await parseBody(req)
+        const query = body.query || body.prompt || ''
+        const userId = body.userId || undefined
+        const topK = Number(body.topK) || 5
+        const minSimilarity = Number(body.minSimilarity) || 0.28
+
+        if (!query) {
+          return { success: false, error: 'Missing search query for vector memory' }
+        }
+
+        const results = await longTermMemory.retrieveContext(query, {
+          userId,
+          topK,
+          minSimilarity,
+          type: body.type
+        })
+        return { success: true, count: results.length, results }
+      })
+    }
+
+    if (pathname === '/api/memory/vector/store' && req.method === 'POST') {
+      return handleSafeRoute(res, 'memory_vector_store', async () => {
+        const body = await parseBody(req)
+        const content = body.content || body.memory || ''
+        const userId = body.userId || 'default_user'
+
+        if (!content) {
+          return { success: false, error: 'Missing content for vector memory' }
+        }
+
+        const stored = await longTermMemory.storeMemory({
+          userId,
+          content,
+          type: body.type || 'continuity_context',
+          taskId: body.taskId,
+          metadata: body.metadata || {},
+          importance: body.importance || 0.5
+        })
+        return { success: true, memory: stored }
+      })
+    }
+
+    if (pathname === '/api/memory/vector/list' && req.method === 'GET') {
+      const parsed = new URL(url, 'http://localhost')
+      const userId = parsed.searchParams.get('userId') || undefined
+      const limit = Number(parsed.searchParams.get('limit')) || 50
+      const memories = longTermMemory.listMemories(userId, limit)
+      return sendJson(res, 200, { success: true, count: memories.length, memories })
+    }
+
+    // 13-E. Agent Registry Inspection Endpoint
+    if (pathname === '/api/agents/registry' && req.method === 'GET') {
+      const agents = agentRegistry.list().map((a) => ({
+        name: a.name,
+        role: a.role,
+        description: a.description,
+        capabilities: a.capabilities,
+        supportedTools: a.supportedTools,
+        maxRetries: a.maxRetries
+      }))
+      return sendJson(res, 200, { success: true, agents })
+    }
+
     // 13a. Live Location Status Endpoint
     if (pathname === '/api/location/status' && req.method === 'GET') {
       let loc = getLatestLocation()
@@ -2090,6 +2246,221 @@ export async function handleApiRequest(
       return sendJson(res, 200, { success: Boolean(loc), location: loc })
     }
 
+    // 13e. Direct NVIDIA / Moonshot Kimi-k3 Chat Completions Endpoint
+    if (pathname === '/api/ai/nvidia/chat' && req.method === 'POST') {
+      const {
+        messages = [],
+        prompt,
+        model = 'moonshotai/kimi-k3',
+        stream = false,
+        imageUrl,
+        temperature = 1,
+        reasoning_effort = 'max',
+        max_tokens = 16384
+      } = await parseBody(req)
+
+      let formattedMessages = Array.isArray(messages) && messages.length > 0 ? messages : []
+      if (formattedMessages.length === 0 && prompt) {
+        formattedMessages = [{ role: 'user', content: prompt }]
+      }
+
+      if (stream) {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive'
+        })
+        try {
+          await nvidiaChatService.streamCompletion(
+            {
+              model,
+              messages: formattedMessages,
+              imageUrl,
+              temperature,
+              reasoning_effort,
+              max_tokens
+            },
+            (chunk) => {
+              res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+            }
+          )
+          res.write('data: [DONE]\n\n')
+          return res.end()
+        } catch (streamErr: any) {
+          res.write(`data: ${JSON.stringify({ error: streamErr?.message || 'Streaming failed' })}\n\n`)
+          return res.end()
+        }
+      } else {
+        try {
+          const result = await nvidiaChatService.generateCompletion({
+            model,
+            messages: formattedMessages,
+            imageUrl,
+            temperature,
+            reasoning_effort,
+            max_tokens
+          })
+          return sendJson(res, 200, {
+            text: result.text,
+            model: result.model,
+            usage: result.usage
+          })
+        } catch (err: any) {
+          return sendJson(res, 500, {
+            error: err?.message || 'NVIDIA chat completion failed'
+          })
+        }
+      }
+    }
+
+    // 13f. Gemini Live Voice Conversation Endpoint
+    if (pathname === '/api/ai/voice/conversation' && req.method === 'POST') {
+      const {
+        prompt,
+        voiceName = 'Kore',
+        conversationHistory = []
+      } = await parseBody(req)
+
+      if (!prompt) {
+        return sendJson(res, 400, { error: 'Missing prompt for voice conversation' })
+      }
+
+      try {
+        const voiceResult = await geminiLiveService.generateVoiceResponse({
+          prompt,
+          voiceName,
+          conversationHistory
+        })
+        return sendJson(res, 200, voiceResult)
+      } catch (voiceErr: any) {
+        console.error('[Gemini Live Error]:', voiceErr)
+        return sendJson(res, 200, {
+          text: `Voice conversation received: "${prompt}". Ready for next turn.`,
+          sampleRate: 24000,
+          voiceName,
+          model: 'fallback-voice'
+        })
+      }
+    }
+
+    // 13g. Gemini Live Real-Time Continuous Audio Bridge Endpoint
+    if ((pathname === '/api/ai/voice/stream' || pathname === '/api/ai/live-audio-bridge') && req.method === 'POST') {
+      const {
+        audioChunk,
+        mimeType = 'audio/webm;codecs=opus',
+        prompt,
+        voiceName = 'Kore',
+        sessionId = 'live_mic_stream',
+        isFinal = false,
+        conversationHistory = []
+      } = await parseBody(req)
+
+      try {
+        const liveResult = await geminiLiveService.processLiveAudioStream({
+          audioChunk,
+          mimeType,
+          prompt,
+          voiceName,
+          sessionId,
+          isFinal,
+          conversationHistory
+        })
+        return sendJson(res, 200, liveResult)
+      } catch (streamErr: any) {
+        console.error('[Gemini Live Audio Bridge Error]:', streamErr)
+        return sendJson(res, 200, {
+          text: prompt ? `Acknowledged: "${prompt}"` : 'Standing by for audio stream...',
+          transcript: prompt || '',
+          sampleRate: 24000,
+          voiceName,
+          model: 'fallback-audio-bridge'
+        })
+      }
+    }
+
+    // 13h. DeepSeek API Chat Completions Endpoint (V3 & Reasoner R1)
+    if (pathname === '/api/ai/deepseek/chat' && req.method === 'POST') {
+      const {
+        messages = [],
+        prompt,
+        model = 'deepseek-chat',
+        stream = false,
+        temperature,
+        max_tokens = 8192,
+        citations = []
+      } = await parseBody(req)
+
+      let formattedMessages = Array.isArray(messages) && messages.length > 0 ? messages : []
+      if (formattedMessages.length === 0 && prompt) {
+        formattedMessages = [{ role: 'user', content: prompt }]
+      }
+
+      if (stream) {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive'
+        })
+        try {
+          await deepseekService.streamCompletion(
+            {
+              model,
+              messages: formattedMessages,
+              temperature,
+              max_tokens,
+              citations
+            },
+            (chunk, reasoningChunk) => {
+              res.write(
+                `data: ${JSON.stringify({ text: chunk, reasoning: reasoningChunk })}\n\n`
+              )
+            }
+          )
+          res.write('data: [DONE]\n\n')
+          return res.end()
+        } catch (streamErr: any) {
+          res.write(
+            `data: ${JSON.stringify({ error: streamErr?.message || 'DeepSeek stream failed' })}\n\n`
+          )
+          return res.end()
+        }
+      } else {
+        try {
+          const result = await deepseekService.generateCompletion({
+            model,
+            messages: formattedMessages,
+            temperature,
+            max_tokens,
+            citations
+          })
+
+          const aiqResult = aiqCitationEngine.annotateResponse(
+            result.text,
+            (citations || []).map((c: any) => ({
+              title: c.title,
+              url: c.url,
+              snippet: c.snippet,
+              domain: c.domain,
+              sourceType: 'deepseek' as const
+            }))
+          )
+
+          return sendJson(res, 200, {
+            text: aiqResult.annotatedText,
+            rawText: result.text,
+            reasoningContent: result.reasoningContent,
+            model: result.model,
+            usage: result.usage,
+            aiQCitations: aiqResult.citations
+          })
+        } catch (err: any) {
+          return sendJson(res, 500, {
+            error: err?.message || 'DeepSeek completion failed'
+          })
+        }
+      }
+    }
+
     // 14. Unified AI Core Engine (Mem0 + Letta + Agency Agents + Web Search + Codebase)
     if (pathname === '/api/ai/chat' && req.method === 'POST') {
       const {
@@ -2101,7 +2472,9 @@ export async function handleApiRequest(
         userId = 'default_user',
         enableWebSearch,
         searchCategory = 'general',
-        agentRole: requestedRole
+        agentRole: requestedRole,
+        provider: requestedProvider,
+        model: requestedModel
       } = await parseBody(req)
 
       if (!rawPrompt) {
@@ -2163,6 +2536,23 @@ export async function handleApiRequest(
               .join('\n')
             systemInstruction += `\n\n[USER RELEVANT MEMORIES]:\n${memoryList}`
           }
+
+          // Advanced AI Brain: Context Awareness & Previous Task History Retrieval
+          try {
+            const relevantTaskHistory = brainMemoryManager.findRelevantTaskHistory(sanitizedPrompt, 3)
+            if (relevantTaskHistory.length > 0) {
+              const brainMemories = relevantTaskHistory
+                .map((h, i) => `${i + 1}. Goal: "${h.goal}" -> Outcome: ${h.summary}`)
+                .join('\n')
+              systemInstruction += `\n\n[ADVANCED AI BRAIN - RELEVANT PREVIOUS TASK MEMORIES & EXECUTION OUTCOMES]:\n${brainMemories}`
+            }
+
+            // Long-Term Vector Memory Continuity
+            const continuity = await longTermMemory.getContinuityPrompt(sanitizedPrompt, userId)
+            if (continuity) {
+              systemInstruction += continuity
+            }
+          } catch (_e) {}
 
           if (codebaseContext.length > 0) {
             const codeList = codebaseContext
@@ -2252,6 +2642,36 @@ export async function handleApiRequest(
             systemInstruction += `\n\n[USER LIVE LOCATION & SPATIAL TELEMETRY]:\nLatitude: ${userLoc.latitude}\nLongitude: ${userLoc.longitude}\nCity: ${userLoc.city || 'Unknown'}\nRegion: ${userLoc.region || 'Unknown'}\nCountry: ${userLoc.country || 'Unknown'}\nAddress: ${userLoc.displayName || 'Unspecified'}\nTelemetry Accuracy: ${userLoc.accuracy ? `±${Math.round(userLoc.accuracy)}m` : 'nominal'}\nSource: ${userLoc.source.toUpperCase()}\nUpdated: ${userLoc.updatedAt}\nDirectives: Use this verified spatial telemetry when user inquires about where they are, local weather, time, regional context, or directions.`
           }
 
+          // Gather all discovered research sources for AI-Q citation-backed answer mechanism
+          const allDiscoveredSources: DiscoveredResearchSource[] = [
+            ...webCitations.map((c) => ({
+              title: c.title,
+              url: c.url,
+              domain: c.domain,
+              snippet: c.snippet,
+              sourceType: 'web' as const
+            })),
+            ...documentCitations.map((d) => ({
+              title: d.filename || d.title || 'Uploaded Document',
+              url: d.url || '#',
+              domain: 'document-rag',
+              snippet: d.snippet,
+              sourceType: 'document' as const,
+              pageNumber: d.page
+            })),
+            ...workspaceCitations.map((w) => ({
+              title: w.title,
+              url: w.url,
+              domain: w.domain,
+              snippet: w.snippet,
+              sourceType: 'workspace' as const
+            }))
+          ]
+
+          if (allDiscoveredSources.length > 0) {
+            systemInstruction += `\n\n${aiqCitationEngine.buildGroundingInstruction(allDiscoveredSources)}`
+          }
+
           if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
             const historyFormatted = conversationHistory
               .filter((h: any) => h && h.text && h.text.trim())
@@ -2262,13 +2682,55 @@ export async function handleApiRequest(
             }
           }
 
+          // Direct DeepSeek Provider execution if requested
+          if (requestedProvider === 'deepseek' || (requestedModel && requestedModel.includes('deepseek'))) {
+            try {
+              const dsModel = requestedModel || 'deepseek-chat'
+              const dsResult = await deepseekService.generateCompletion({
+                model: dsModel,
+                messages: [
+                  { role: 'system', content: systemInstruction },
+                  ...(conversationHistory || []).map((h: any) => ({
+                    role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                    content: h.text || h.content || ''
+                  })),
+                  { role: 'user', content: sanitizedPrompt }
+                ],
+                citations: allDiscoveredSources
+              })
+
+              const aiqResult = aiqCitationEngine.annotateResponse(dsResult.text, allDiscoveredSources)
+              agentHarness.completeTrace(execPlan.traceId)
+
+              return sendJson(res, 200, {
+                text: aiqResult.annotatedText,
+                rawText: dsResult.text,
+                reasoningContent: dsResult.reasoningContent,
+                model: dsResult.model,
+                provider: 'deepseek',
+                agentRole: execPlan.role,
+                agentName: execPlan.agentName,
+                traceId: execPlan.traceId,
+                privacySanitized: execPlan.privacyMinimization.applied,
+                codebaseContextCount: codebaseContext.length,
+                webSourcesCount: webSearchResults.length,
+                aiQCitations: aiqResult.citations,
+                citations: [...webCitations, ...documentCitations, ...workspaceCitations],
+                documentCitations,
+                workspaceCitations,
+                searchQuery: webSearchQuery
+              })
+            } catch (dsErr: any) {
+              console.warn('[DeepSeek API Provider] Execution error, falling back to Gemini/NVIDIA:', dsErr?.message || dsErr)
+            }
+          }
+
           let response: any = null
-          let usedChatModel = 'gemini-2.5-flash'
+          let usedChatModel = 'gemini-3.8-flash'
           const chatModelCandidates = [
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'gemini-2.5-pro'
+            'gemini-3.8-flash',
+            'gemini-3.1-flash-lite',
+            'gemini-flash-latest'
           ]
 
           console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', promptLength: sanitizedPrompt.length, modelCandidate: chatModelCandidates[0] })
@@ -2319,17 +2781,23 @@ export async function handleApiRequest(
           const sanitizedOutput = privacyAlign.sanitize(extractedText).redactedText
           console.log('[AI_RESPONSE_PARSED]', { outputLength: sanitizedOutput.length, model: usedChatModel })
 
+          // AI-Q Citation Annotation with verified links
+          const aiqResult = aiqCitationEngine.annotateResponse(sanitizedOutput, allDiscoveredSources)
+
           agentHarness.completeTrace(execPlan.traceId)
 
           return sendJson(res, 200, {
-            text: sanitizedOutput,
+            text: aiqResult.annotatedText,
+            rawText: sanitizedOutput,
             model: usedChatModel,
+            provider: 'gemini',
             agentRole: execPlan.role,
             agentName: execPlan.agentName,
             traceId: execPlan.traceId,
             privacySanitized: execPlan.privacyMinimization.applied,
             codebaseContextCount: codebaseContext.length,
             webSourcesCount: webSearchResults.length,
+            aiQCitations: aiqResult.citations,
             citations: [...webCitations, ...documentCitations, ...workspaceCitations],
             documentCitations,
             workspaceCitations,
@@ -2338,6 +2806,46 @@ export async function handleApiRequest(
         } catch (err: any) {
           console.error('[AI_REQUEST_ERROR] Gemini server generation error:', err?.message || err)
         }
+      }
+
+      // Provider Fallback to NVIDIA / Moonshot Kimi-k3 API
+      try {
+        console.log('[AI_PROVIDER_FALLBACK] Attempting NVIDIA/Moonshot Kimi-k3 completion')
+        const nvidiaResult = await nvidiaChatService.generateCompletion({
+          messages: [
+            ...(conversationHistory || []).map((h: any) => ({
+              role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+              content: h.text || h.content || ''
+            })),
+            { role: 'user', content: sanitizedPrompt }
+          ],
+          model: 'moonshotai/kimi-k3'
+        })
+        if (nvidiaResult?.text) {
+          const fallbackSources: DiscoveredResearchSource[] = [
+            ...webCitations.map((c) => ({ title: c.title, url: c.url, domain: c.domain, snippet: c.snippet, sourceType: 'web' as const })),
+            ...documentCitations.map((d) => ({ title: d.filename || 'Document', url: d.url || '#', domain: 'document-rag', snippet: d.snippet, sourceType: 'document' as const })),
+            ...workspaceCitations.map((w) => ({ title: w.title, url: w.url, domain: w.domain, snippet: w.snippet, sourceType: 'workspace' as const }))
+          ]
+          const aiqResult = aiqCitationEngine.annotateResponse(nvidiaResult.text, fallbackSources)
+
+          agentHarness.completeTrace(execPlan.traceId)
+          return sendJson(res, 200, {
+            text: aiqResult.annotatedText,
+            rawText: nvidiaResult.text,
+            model: nvidiaResult.model,
+            agentRole: execPlan.role,
+            agentName: execPlan.agentName,
+            provider: 'nvidia_kimi_k3',
+            aiQCitations: aiqResult.citations,
+            citations: [...webCitations, ...documentCitations, ...workspaceCitations],
+            documentCitations,
+            workspaceCitations,
+            searchQuery: webSearchQuery
+          })
+        }
+      } catch (nvidiaErr: any) {
+        console.warn('[AI_PROVIDER_FALLBACK] NVIDIA completion note:', nvidiaErr?.message || nvidiaErr)
       }
 
       // Graceful local fallback if Gemini key missing or network down

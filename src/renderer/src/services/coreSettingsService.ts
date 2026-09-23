@@ -112,7 +112,7 @@ export interface ParticleCoreConfig {
   autoOptimize?: boolean
 }
 
-export type ApiProviderId = 'gemini' | 'groq' | 'huggingface' | 'tavily' | 'mem0'
+export type ApiProviderId = 'gemini' | 'deepseek' | 'groq' | 'huggingface' | 'tavily' | 'mem0'
 
 export interface CoreSettingsState {
   permissions: HardwarePermissions

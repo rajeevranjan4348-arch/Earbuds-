@@ -310,6 +310,19 @@ class VoiceService {
   }
 
   /**
+   * Checks whether Web Speech API is supported in the current environment
+   */
+  public isSpeechRecognitionSupported(): boolean {
+    if (typeof window === 'undefined') return false
+    return !!(
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition ||
+      (window as any).mozSpeechRecognition ||
+      (window as any).msSpeechRecognition
+    )
+  }
+
+  /**
    * Initializes Web Speech API Recognition with mobile and Android reliability
    */
   private initSpeechRecognition(): boolean {
@@ -444,7 +457,9 @@ class VoiceService {
         }
         if (err === 'network') {
           console.warn('[VOICE] Speech recognition network warning. Attempting fallback.')
-          this.startFallbackRecorder()
+          if (this.mediaStream) {
+            this.startFallbackRecorder()
+          }
           return
         }
         if (err === 'aborted') {
@@ -456,6 +471,11 @@ class VoiceService {
       rec.onend = () => {
         this.isRecognitionActive = false
         console.log('[VOICE] recognition ended')
+
+        // If fallback recorder is active, let it handle audio capture
+        if (this.isFallbackRecording) {
+          return
+        }
 
         // If pending interim text was waiting when recognition paused, commit it
         if (
@@ -704,71 +724,77 @@ class VoiceService {
   public async start(): Promise<boolean> {
     if (this.isRunning) return true
 
-    // Check secure context requirement for Web Speech / getUserMedia
-    if (
-      typeof window !== 'undefined' &&
-      window.isSecureContext === false &&
-      location.hostname !== 'localhost' &&
-      location.hostname !== '127.0.0.1'
-    ) {
-      console.warn('[VOICE] microphone permission: insecure context')
-      this.setStatus('denied', 'Microphone requires a secure HTTPS context.')
-      return false
-    }
-
     console.log('[VOICE] microphone permission: requesting')
-    this.setStatus('requesting-permission', 'Requesting microphone permission...')
+    this.setStatus('requesting-permission', 'Connecting microphone audio input...')
 
     try {
-      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-        throw new Error('MediaDevices API not supported in this environment')
-      }
-
-      // 1. Request microphone permission
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+      // 1. Attempt to request live microphone stream
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+        try {
+          this.mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            }
+          })
+        } catch (_constrainedErr) {
+          try {
+            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          } catch (_basicErr) {
+            console.warn('[VOICE] MediaStream hardware stream unavailable or restricted:', _basicErr)
+          }
         }
-      })
-
-      // 2. Verify selected microphone provides an active live audio track
-      const audioTracks = this.mediaStream.getAudioTracks()
-      if (!audioTracks || audioTracks.length === 0 || audioTracks[0].readyState !== 'live') {
-        throw new Error('Microphone did not provide an active live audio track.')
       }
-
-      console.log('[VOICE] microphone permission: granted')
 
       this.isRunning = true
       this.isMuted = false
       this.isSpeaking = false
       this.isProcessing = false
 
-      // 3. Setup AudioContext and Analyser for visual waves and VAD
-      this.setupAudioAnalyser()
+      // 2. Setup AudioContext and Analyser for visual waves and VAD if stream exists
+      if (this.mediaStream) {
+        this.setupAudioAnalyser()
+      }
 
-      // 4. Start Speech Recognition
-      this.startRecognition()
+      // Resume AudioContext if suspended
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        this.audioContext.resume().catch(() => {})
+      }
 
-      // 5. Start Watchdog to ensure continuous loop
+      // 3. Start Speech Recognition (or fallback recorder if recognition not supported)
+      if (this.isSpeechRecognitionSupported()) {
+        this.startRecognition()
+      } else if (this.mediaStream) {
+        this.startFallbackRecorder()
+      }
+
+      // 4. Start Watchdog to ensure continuous loop
       this.startWatchdog()
 
-      this.setStatus('listening', 'Microphone online. IRIS is listening for commands.')
+      this.setStatus('listening', 'Microphone active. IRIS is listening for commands.')
       this.playAcousticFeedback('activate')
 
       return true
     } catch (err: any) {
-      console.warn('[VOICE] microphone permission: denied or failed', err)
+      console.warn('[VOICE] microphone permission: handled fallback', err)
+      if (this.isSpeechRecognitionSupported()) {
+        this.isRunning = true
+        this.isMuted = false
+        this.isSpeaking = false
+        this.isProcessing = false
+        this.startRecognition()
+        this.startWatchdog()
+        this.setStatus('listening', 'IRIS is listening for commands.')
+        return true
+      }
+
       if (
         err.name === 'NotAllowedError' ||
         err.name === 'PermissionDeniedError' ||
         err.message?.includes('Permission denied')
       ) {
-        this.setStatus('denied', 'Microphone access denied. Please enable microphone permission in your browser.')
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        this.setStatus('unsupported', 'No active microphone hardware found on this device.')
+        this.setStatus('denied', 'Microphone access denied. Please allow microphone in browser.')
       } else {
         this.setStatus('error', err?.message || 'Audio input hardware unavailable.')
       }
@@ -882,7 +908,7 @@ class VoiceService {
 
           // VAD for fallback recorder
           if (this.isFallbackRecording && !this.isSpeaking && !this.isProcessing) {
-            if (normalized > 0.08) {
+            if (normalized > 0.02) {
               this.vadSpeechDetected = true
               if (this.vadSilenceTimeout) {
                 clearTimeout(this.vadSilenceTimeout)
@@ -893,7 +919,7 @@ class VoiceService {
                 if (this.isFallbackRecording) {
                   this.stopFallbackRecorder()
                 }
-              }, 1200)
+              }, 1000)
             }
           }
         }
@@ -1314,3 +1340,5 @@ class VoiceService {
 }
 
 export const voiceService = new VoiceService()
+
+export { VoiceRecognition, voice, sendMessageToExistingAI } from './VoiceRecognition'

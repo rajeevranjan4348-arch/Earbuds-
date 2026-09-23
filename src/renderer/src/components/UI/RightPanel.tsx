@@ -14,19 +14,25 @@ import {
   Sparkles,
   Mic,
   AlertTriangle,
-  RotateCcw
+  RotateCcw,
+  Volume2,
+  Radio,
+  Cpu
 } from 'lucide-react'
 import { RiFlashlightFill } from 'react-icons/ri'
 import { chatHistoryService, Message, ChatSession } from '../../services/chatHistoryService'
 import { shortcutService } from '../../services/shortcutService'
 import { voiceService } from '../../services/voiceService'
+import { coreSettingsService } from '../../services/coreSettingsService'
 import MicrophoneInputButton from './MicrophoneInputButton'
+import { LiveVoiceConversationModal } from './LiveVoiceConversationModal'
 
 export type { Message, ChatSession }
 
 interface RightPanelProps {
   interimTranscript?: string
   isListening?: boolean
+  micLevel?: number
   onSendPrompt?: (text: string) => void
 }
 
@@ -61,34 +67,14 @@ function diffDayCalc(hours: number): number {
 function normalizeDuplicateTokens(text: string): string {
   if (!text) return ''
   const trimmed = text.trim()
+  // Clean up only exact immediate duplications of entire sentences or phrases
   const len = trimmed.length
-
-  if (len >= 6 && len % 2 === 0) {
+  if (len >= 12 && len % 2 === 0) {
     const half = len / 2
-    if (trimmed.slice(0, half) === trimmed.slice(half)) {
-      return trimmed.slice(0, half)
+    if (trimmed.slice(0, half).trim() === trimmed.slice(half).trim()) {
+      return trimmed.slice(0, half).trim()
     }
   }
-
-  const words = trimmed.split(/\s+/)
-  if (words.length >= 4) {
-    let duplicatePairs = 0
-    for (let i = 0; i < words.length - 1; i += 2) {
-      const cleanA = words[i].toLowerCase().replace(/[^a-z0-9]/g, '')
-      const cleanB = words[i + 1].toLowerCase().replace(/[^a-z0-9]/g, '')
-      if (cleanA && cleanA === cleanB) {
-        duplicatePairs++
-      }
-    }
-    if (duplicatePairs >= 2 && duplicatePairs * 2 >= words.length * 0.5) {
-      const deduped: string[] = []
-      for (let i = 0; i < words.length; i += 2) {
-        deduped.push(words[i])
-      }
-      return deduped.join(' ')
-    }
-  }
-
   return trimmed
 }
 
@@ -104,8 +90,18 @@ interface ChatMessageItemProps {
 
 const ChatMessageItem = memo(
   function ChatMessageItem({ msg, isStreaming, onRetry }: ChatMessageItemProps) {
+    const isUser = msg.role === 'user'
     const isFallbackOrError =
-      msg.role !== 'user' && (msg.status === 'failed' || msg.text.includes('⚠️'))
+      !isUser && (msg.status === 'failed' || (msg.text && msg.text.includes('⚠️')) || (msg.content && msg.content.includes('⚠️')))
+
+    const rawContent =
+      typeof msg.text === 'string' && msg.text.trim()
+        ? msg.text
+        : typeof msg.content === 'string' && msg.content.trim()
+        ? msg.content
+        : ''
+
+    const displayContent = rawContent || (isStreaming ? '...' : (isUser ? '' : '⚠️ No response content received.'))
 
     return (
       <motion.div
@@ -113,28 +109,28 @@ const ChatMessageItem = memo(
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
       >
         <div
           className={`max-w-[90%] sm:max-w-[85%] p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-lg break-words overflow-wrap-anywhere ${
-            msg.role === 'user'
+            isUser
               ? 'bg-emerald-600/20 text-emerald-100 border border-emerald-500/25 rounded-br-md shadow-[0_0_15px_rgba(16,185,129,0.1)]'
               : isFallbackOrError
                 ? 'bg-amber-950/25 text-amber-100 border border-amber-500/30 rounded-bl-md shadow-[0_0_15px_rgba(245,158,11,0.08)]'
                 : 'bg-white/5 text-gray-200 border border-white/5 rounded-bl-md'
           }`}
         >
-          {msg.role === 'user' ? (
-            <span>{msg.text}</span>
+          {isUser ? (
+            <span>{displayContent}</span>
           ) : (
             <div className="text-xs sm:text-sm leading-relaxed space-y-2">
               {isFallbackOrError && (
                 <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-500/20 text-amber-300 text-[11px] font-medium">
                   <div className="flex items-center gap-1.5">
                     <AlertTriangle size={13} className="text-amber-400 shrink-0" />
-                    <span>AI Fallback Response</span>
+                    <span>AI Execution Notice</span>
                   </div>
-                  <span className="text-[10px] text-amber-400/70 font-mono">Status: Error Handled</span>
+                  <span className="text-[10px] text-amber-400/70 font-mono">Status: Handled</span>
                 </div>
               )}
 
@@ -179,8 +175,27 @@ const ChatMessageItem = memo(
                   }
                 }}
               >
-                {msg.text}
+                {displayContent}
               </ReactMarkdown>
+
+              {!isUser && !isStreaming && rawContent && (
+                <div className="pt-2 mt-1 border-t border-white/5 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => voiceService.speak(rawContent)}
+                    className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-emerald-500/15 text-zinc-400 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Speak answer with voice"
+                  >
+                    <Volume2 size={11} />
+                    <span>Speak</span>
+                  </button>
+                  {((msg as any).provider || (msg as any).model) && (
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {(msg as any).provider === 'nvidia_kimi_k3' ? 'NVIDIA Kimi-k3' : (msg as any).model || ''}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {isFallbackOrError && (
                 <div className="pt-2 mt-1 border-t border-amber-500/15 flex items-center justify-between gap-2">
@@ -193,7 +208,7 @@ const ChatMessageItem = memo(
                     <RotateCcw size={11} />
                     <span>Retry Prompt</span>
                   </button>
-                  <span className="text-[10px] text-zinc-500 italic">Fallback engaged</span>
+                  <span className="text-[10px] text-zinc-500 italic">Fallback active</span>
                 </div>
               )}
             </div>
@@ -209,6 +224,7 @@ const ChatMessageItem = memo(
     return (
       prevProps.msg.id === nextProps.msg.id &&
       prevProps.msg.text === nextProps.msg.text &&
+      prevProps.msg.content === nextProps.msg.content &&
       prevProps.msg.status === nextProps.msg.status &&
       prevProps.isStreaming === nextProps.isStreaming
     )
@@ -243,6 +259,7 @@ const AIThinkingIndicator = memo(function AIThinkingIndicator() {
 export default function RightPanel({
   interimTranscript = '',
   isListening = false,
+  micLevel = 0,
   onSendPrompt
 }: RightPanelProps) {
   // Session State backed by chatHistoryService
@@ -257,7 +274,25 @@ export default function RightPanel({
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null)
   const [inputVal, setInputVal] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showQuickActions, setShowQuickActions] = useState(false)
+  const [showLiveVoiceModal, setShowLiveVoiceModal] = useState(false)
+  const [chatProvider, setChatProvider] = useState<'deepseek' | 'deepseek_r1' | 'gemini' | 'nvidia_kimi'>(() => {
+    const active = coreSettingsService.getSettings().activeProvider
+    if (active === 'gemini') return 'gemini'
+    return 'deepseek'
+  })
+  const [showProviderMenu, setShowProviderMenu] = useState(false)
+
+  // Synchronize active AI state with coreSettingsService
+  useEffect(() => {
+    const unsub = coreSettingsService.subscribe((settings) => {
+      if (settings.activeProvider === 'deepseek') {
+        setChatProvider((prev) => (prev.startsWith('deepseek') ? prev : 'deepseek'))
+      } else if (settings.activeProvider === 'gemini') {
+        setChatProvider('gemini')
+      }
+    })
+    return unsub
+  }, [])
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isUserScrolledUpRef = useRef(false)
@@ -342,7 +377,8 @@ export default function RightPanel({
       id?: string
       requestId?: string
       role: string
-      text: string
+      text?: string
+      content?: string
       isFinal?: boolean
       chunkIndex?: number
       mode?: 'delta' | 'cumulative'
@@ -350,14 +386,15 @@ export default function RightPanel({
       if (!isMounted || !data) return
 
       const reqId = data.requestId || activeRequestIdRef.current || `req_${Date.now()}`
-      const role = data.role as 'user' | 'model' | 'system'
+      const role = ((data.role || 'assistant') as string).toLowerCase()
+      const rawText = data.text || data.content || ''
 
       if (role === 'user') {
         const userMsgId = data.id || `msg_user_${reqId}`
         if (seenMessageIdsRef.current.has(userMsgId)) return
 
         seenMessageIdsRef.current.add(userMsgId)
-        const cleanUserText = normalizeDuplicateTokens(data.text)
+        const cleanUserText = normalizeDuplicateTokens(rawText)
 
         setChatHistory((prev) => {
           if (
@@ -379,17 +416,10 @@ export default function RightPanel({
           console.log('[AI_STATE_UPDATED]', { messageId: userMsgId, role: 'user', textLength: cleanUserText.length })
           return [...prev, userMsg].slice(-50)
         })
-      } else if (role === 'model') {
+      } else if (role === 'model' || role === 'assistant') {
         const assistantMsgId = data.id || `msg_model_${reqId}`
 
-        if (
-          activeRequestIdRef.current &&
-          activeRequestIdRef.current !== reqId &&
-          data.requestId &&
-          data.requestId !== activeRequestIdRef.current
-        ) {
-          activeRequestIdRef.current = reqId
-        } else if (!activeRequestIdRef.current) {
+        if (activeRequestIdRef.current !== reqId) {
           activeRequestIdRef.current = reqId
         }
 
@@ -409,20 +439,22 @@ export default function RightPanel({
         const lastRecord = lastChunkRecordRef.current.get(reqId)
         if (
           lastRecord &&
-          lastRecord.text === data.text &&
+          lastRecord.text === rawText &&
           now - lastRecord.time < 350 &&
           data.chunkIndex === undefined
         ) {
           return
         }
-        lastChunkRecordRef.current.set(reqId, { text: data.text, time: now })
+        lastChunkRecordRef.current.set(reqId, { text: rawText, time: now })
 
         setActiveStreamingId(assistantMsgId)
         seenMessageIdsRef.current.add(assistantMsgId)
 
         setChatHistory((prev) => {
           const existingIdx = prev.findIndex(
-            (m) => m.id === assistantMsgId || (m.requestId === reqId && m.role === 'model')
+            (m) =>
+              m.id === assistantMsgId ||
+              (m.requestId === reqId && (m.role === 'model' || m.role === 'assistant'))
           )
 
           if (existingIdx >= 0) {
@@ -431,14 +463,14 @@ export default function RightPanel({
 
             if (
               data.mode === 'cumulative' ||
-              (data.text.length >= current.text.length && data.text.startsWith(current.text))
+              (rawText.length >= current.text.length && rawText.startsWith(current.text))
             ) {
-              nextText = data.text
+              nextText = rawText
             } else {
-              if (current.text.endsWith(data.text) && data.text.length > 2) {
+              if (current.text.endsWith(rawText) && rawText.length > 2) {
                 nextText = current.text
               } else {
-                nextText = current.text + data.text
+                nextText = current.text + rawText
               }
             }
 
@@ -455,9 +487,9 @@ export default function RightPanel({
               messageId: assistantMsgId,
               conversationId: activeSessionId,
               requestId: reqId,
-              role: 'model',
-              text: data.text,
-              content: data.text,
+              role: 'assistant',
+              text: rawText,
+              content: rawText,
               timestamp: now,
               inputType: (data as any).inputType || 'voice'
             }
@@ -472,49 +504,49 @@ export default function RightPanel({
       requestId?: string
       role?: string
       text?: string
+      content?: string
       status?: 'success' | 'failed'
     }) => {
       if (!isMounted) return
 
       const reqId = data?.requestId || activeRequestIdRef.current
-      if (reqId && activeRequestIdRef.current && reqId !== activeRequestIdRef.current) {
-        return
-      }
-
       const assistantMsgId = data?.id || (reqId ? `msg_model_${reqId}` : null)
+      const rawText = data?.text || data?.content || ''
+      const cleaned = rawText ? normalizeDuplicateTokens(rawText.trim()) : ''
 
-      if (assistantMsgId) {
+      if (assistantMsgId || reqId) {
         setChatHistory((prev) => {
           const idx = prev.findIndex(
-            (m) => m.id === assistantMsgId || (m.requestId === reqId && m.role === 'model')
+            (m) =>
+              (assistantMsgId && m.id === assistantMsgId) ||
+              (reqId && m.requestId === reqId && (m.role === 'model' || m.role === 'assistant'))
           )
           if (idx >= 0) {
-            const raw = data?.text || prev[idx].text
-            const cleaned = normalizeDuplicateTokens(raw.trim())
+            const final = cleaned || prev[idx].text || prev[idx].content || ''
             const updated = [...prev]
             updated[idx] = {
               ...updated[idx],
-              text: cleaned,
-              content: cleaned,
+              text: final,
+              content: final,
               status: data?.status || 'success'
             }
-            console.log('[AI_STATE_UPDATED]', { messageId: assistantMsgId, role: 'model', status: data?.status || 'success' })
+            console.log('[AI_STATE_UPDATED]', { messageId: updated[idx].id, role: updated[idx].role, status: data?.status || 'success' })
             return updated
-          } else if (data?.text) {
-            const cleaned = normalizeDuplicateTokens(data.text.trim())
+          } else if (cleaned) {
+            const finalId = assistantMsgId || `msg_model_${Date.now()}`
             const newAssistantMsg: Message = {
-              id: assistantMsgId,
-              messageId: assistantMsgId,
+              id: finalId,
+              messageId: finalId,
               conversationId: activeSessionId,
               requestId: reqId || undefined,
-              role: 'model',
+              role: 'assistant',
               text: cleaned,
               content: cleaned,
               timestamp: Date.now(),
-              inputType: (data as any).inputType || 'voice',
+              inputType: (data as any)?.inputType || 'voice',
               status: data?.status || 'success'
             }
-            console.log('[AI_STATE_UPDATED]', { messageId: assistantMsgId, role: 'model', status: data?.status || 'success', createdOnComplete: true })
+            console.log('[AI_STATE_UPDATED]', { messageId: finalId, role: 'assistant', status: data?.status || 'success', createdOnComplete: true })
             return [...prev, newAssistantMsg].slice(-50)
           }
           return prev
@@ -523,6 +555,7 @@ export default function RightPanel({
 
       setActiveStreamingId(null)
       activeRequestIdRef.current = null
+      setIsSubmitting(false)
     }
 
     let unsubTranscript: any
@@ -634,15 +667,6 @@ export default function RightPanel({
       } catch (_e) {}
     }
   }
-
-  const quickActionShortcuts = [
-    { label: 'YouTube Trends', icon: '📈', prompt: "Find today's trending topics for YouTube." },
-    { label: 'Create Script', icon: '✍️', prompt: 'Draft a high-retention video script for YouTube Shorts.' },
-    { label: 'PDF Docs', icon: '📄', prompt: 'Search uploaded PDF documents for summary and key data.' },
-    { label: 'FLUX Image', icon: '🎨', prompt: 'Generate an ultra-realistic cinematic visual asset.' },
-    { label: 'Web Research', icon: '🌐', prompt: 'Search the web for latest AI breakthroughs.' },
-    { label: 'System Memory', icon: '🧠', prompt: 'What do you remember from our past interactions?' }
-  ]
 
   // External sync listeners (from IRISRoot sidebar or history actions)
   useEffect(() => {
@@ -764,18 +788,19 @@ export default function RightPanel({
     }
   }
 
-  // Safety watchdog: clear streaming if hanging for more than 14 seconds
+  // Safety watchdog: clear streaming and submitting if hanging for more than 16 seconds
   useEffect(() => {
-    if (!activeStreamingId) return
+    if (!isSubmitting && !activeStreamingId) return
 
     const watchdog = setTimeout(() => {
-      console.warn('[AI_WATCHDOG] Streaming timed out, forcing completion cleanup.')
+      console.warn('[AI_WATCHDOG] AI request/streaming timed out, resetting states.')
+      setIsSubmitting(false)
       setActiveStreamingId(null)
       activeRequestIdRef.current = null
-    }, 14000)
+    }, 16000)
 
     return () => clearTimeout(watchdog)
-  }, [activeStreamingId])
+  }, [isSubmitting, activeStreamingId])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -790,9 +815,347 @@ export default function RightPanel({
     }
     lastSubmissionRef.current = { text: trimmed, time: now }
 
+    const reqId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+    const userMsgId = `msg_user_${reqId}`
+    const assistantMsgId = `msg_model_${reqId}`
+
+    activeRequestIdRef.current = reqId
     setIsSubmitting(true)
     chatHistoryService.clearDraft(activeSessionId)
     setInputVal('')
+
+    // Immediately push user message to chat state
+    seenMessageIdsRef.current.add(userMsgId)
+    setChatHistory((prev) => {
+      if (prev.some((m) => m.id === userMsgId)) return prev
+      const userMsg: Message = {
+        id: userMsgId,
+        messageId: userMsgId,
+        conversationId: activeSessionId,
+        requestId: reqId,
+        role: 'user',
+        text: trimmed,
+        content: trimmed,
+        timestamp: now,
+        inputType: 'text'
+      }
+      return [...prev, userMsg].slice(-50)
+    })
+
+    // Scroll to bottom immediately
+    requestAnimationFrame(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+      }
+    })
+
+    // 1. Direct Real-time Streaming with DeepSeek (V3 & Reasoner R1)
+    if (chatProvider === 'deepseek' || chatProvider === 'deepseek_r1') {
+      ;(async () => {
+        const dsModel = chatProvider === 'deepseek_r1' ? 'deepseek-reasoner' : 'deepseek-chat'
+        try {
+          setActiveStreamingId(assistantMsgId)
+          seenMessageIdsRef.current.add(assistantMsgId)
+
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              messageId: assistantMsgId,
+              conversationId: activeSessionId,
+              requestId: reqId,
+              role: 'assistant',
+              text: '',
+              content: '',
+              timestamp: Date.now(),
+              inputType: 'text',
+              provider: dsModel
+            }
+          ].slice(-50))
+
+          const response = await fetch('/api/ai/deepseek/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: trimmed,
+              model: dsModel,
+              stream: true,
+              messages: chatHistory.slice(-8).map((m) => ({
+                role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+                content: m.text || m.content || ''
+              }))
+            })
+          })
+
+          if (!response.ok) {
+            throw new Error(`DeepSeek API HTTP ${response.status}`)
+          }
+
+          const reader = response.body?.getReader()
+          if (!reader) throw new Error('Stream reader unavailable')
+
+          const decoder = new TextDecoder()
+          let accumulatedText = ''
+          let accumulatedReasoning = ''
+          let buffer = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              const trimmedLine = line.trim()
+              if (!trimmedLine || trimmedLine.startsWith(':')) continue
+              if (trimmedLine === 'data: [DONE]') continue
+              if (trimmedLine.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(trimmedLine.slice(6))
+                  if (data.reasoning) {
+                    accumulatedReasoning += data.reasoning
+                  }
+                  if (data.text) {
+                    accumulatedText += data.text
+                  }
+
+                  let combined = ''
+                  if (accumulatedReasoning && !accumulatedText) {
+                    combined = `> 💭 *Thinking:*\n> ${accumulatedReasoning.replace(/\n/g, '\n> ')}`
+                  } else if (accumulatedReasoning && accumulatedText) {
+                    combined = `> 💭 *Thinking:*\n> ${accumulatedReasoning.replace(/\n/g, '\n> ')}\n\n${accumulatedText}`
+                  } else {
+                    combined = accumulatedText
+                  }
+
+                  setChatHistory((prev) => {
+                    const idx = prev.findIndex((m) => m.id === assistantMsgId)
+                    if (idx >= 0) {
+                      const updated = [...prev]
+                      updated[idx] = {
+                        ...updated[idx],
+                        text: combined,
+                        content: combined
+                      }
+                      return updated
+                    }
+                    return prev
+                  })
+
+                  requestAnimationFrame(() => {
+                    if (scrollRef.current && !isUserScrolledUpRef.current) {
+                      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+                    }
+                  })
+                } catch (_e) {}
+              }
+            }
+          }
+
+          setActiveStreamingId(null)
+          setIsSubmitting(false)
+        } catch (dsErr: any) {
+          console.error('[DEEPSEEK_STREAM_ERROR]', dsErr)
+          setChatHistory((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            const errorMsg = `⚠️ **DeepSeek Notice:** ${dsErr?.message || 'Request failure'}. Standing by.`
+            if (idx >= 0) {
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], text: errorMsg, content: errorMsg, status: 'failed' }
+              return updated
+            }
+            return prev
+          })
+          setActiveStreamingId(null)
+          setIsSubmitting(false)
+        }
+      })()
+      return
+    }
+
+    // 2. Direct Real-time Streaming with NVIDIA Moonshot Kimi-k3
+    if (chatProvider === 'nvidia_kimi' || trimmed.includes('phi-3-5-vision')) {
+      ;(async () => {
+        try {
+          setActiveStreamingId(assistantMsgId)
+          seenMessageIdsRef.current.add(assistantMsgId)
+
+          // Seed assistant message placeholder in chat history
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              messageId: assistantMsgId,
+              conversationId: activeSessionId,
+              requestId: reqId,
+              role: 'assistant',
+              text: '',
+              content: '',
+              timestamp: Date.now(),
+              inputType: 'text',
+              provider: 'nvidia_kimi_k3'
+            }
+          ].slice(-50))
+
+          const imageUrlMatch = trimmed.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|webp|gif)/i)
+          const detectedImageUrl = imageUrlMatch ? imageUrlMatch[0] : (trimmed.includes('phi-3-5-vision') ? 'https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg' : undefined)
+
+          const response = await fetch('/api/ai/nvidia/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: trimmed,
+              model: 'moonshotai/kimi-k3',
+              stream: true,
+              imageUrl: detectedImageUrl,
+              messages: chatHistory.slice(-6).map((m) => ({
+                role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+                content: m.text || m.content || ''
+              }))
+            })
+          })
+
+          if (!response.ok) {
+            throw new Error(`NVIDIA API HTTP ${response.status}`)
+          }
+
+          const reader = response.body?.getReader()
+          if (!reader) throw new Error('Stream reader unavailable')
+
+          const decoder = new TextDecoder()
+          let accumulated = ''
+          let buffer = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+
+            for (const line of lines) {
+              const trimmedLine = line.trim()
+              if (!trimmedLine || trimmedLine.startsWith(':')) continue
+              if (trimmedLine === 'data: [DONE]') continue
+              if (trimmedLine.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(trimmedLine.slice(6))
+                  if (data.text) {
+                    accumulated += data.text
+                    const currentAccum = accumulated
+                    setChatHistory((prev) => {
+                      const idx = prev.findIndex((m) => m.id === assistantMsgId)
+                      if (idx >= 0) {
+                        const updated = [...prev]
+                        updated[idx] = {
+                          ...updated[idx],
+                          text: currentAccum,
+                          content: currentAccum
+                        }
+                        return updated
+                      }
+                      return prev
+                    })
+                    requestAnimationFrame(() => {
+                      if (scrollRef.current && !isUserScrolledUpRef.current) {
+                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+                      }
+                    })
+                  }
+                } catch (_e) {}
+              }
+            }
+          }
+
+          setActiveStreamingId(null)
+          setIsSubmitting(false)
+        } catch (nvidiaErr: any) {
+          console.error('[NVIDIA_STREAM_ERROR]', nvidiaErr)
+          setChatHistory((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            const errorMsg = `⚠️ **NVIDIA Kimi-k3 Stream Notice:** ${nvidiaErr?.message || 'Request failure'}. Default engine standing by.`
+            if (idx >= 0) {
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], text: errorMsg, content: errorMsg, status: 'failed' }
+              return updated
+            }
+            return prev
+          })
+          setActiveStreamingId(null)
+          setIsSubmitting(false)
+        }
+      })()
+      return
+    }
+
+    // 3. Multimodal Chat with Gemini (AI-Q Citation Grounded)
+    if (chatProvider === 'gemini') {
+      ;(async () => {
+        try {
+          setActiveStreamingId(assistantMsgId)
+          seenMessageIdsRef.current.add(assistantMsgId)
+
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              id: assistantMsgId,
+              messageId: assistantMsgId,
+              conversationId: activeSessionId,
+              requestId: reqId,
+              role: 'assistant',
+              text: '',
+              content: '',
+              timestamp: Date.now(),
+              inputType: 'text',
+              provider: 'gemini'
+            }
+          ].slice(-50))
+
+          const response = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: trimmed,
+              provider: 'gemini',
+              model: 'gemini-3.8-flash',
+              conversationHistory: chatHistory.slice(-8).map((m) => ({
+                role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+                text: m.text || m.content || ''
+              }))
+            })
+          })
+
+          const data = await response.json()
+          const returnedText = data?.text || data?.rawText || 'Gemini response received.'
+
+          setChatHistory((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            if (idx >= 0) {
+              const updated = [...prev]
+              updated[idx] = {
+                ...updated[idx],
+                text: returnedText,
+                content: returnedText,
+                status: 'success'
+              }
+              return updated
+            }
+            return prev
+          })
+          setActiveStreamingId(null)
+          setIsSubmitting(false)
+        } catch (gemErr: any) {
+          console.error('[GEMINI_CHAT_ERROR]', gemErr)
+          if (onSendPrompt) {
+            onSendPrompt(trimmed)
+          } else {
+            voiceService.triggerVoiceInput(trimmed, 'text')
+          }
+        }
+      })()
+      return
+    }
 
     try {
       if (onSendPrompt) {
@@ -802,10 +1165,24 @@ export default function RightPanel({
       }
     } catch (err: any) {
       console.error('[AI_REQUEST_ERROR]', err)
-    } finally {
-      setTimeout(() => {
-        setIsSubmitting(false)
-      }, 400)
+      const errorMsg = `⚠️ **AI Execution Notice:** Unable to send prompt (${err?.message || 'Request failure'}). Please retry.`
+      setChatHistory((prev) => {
+        const errorMsgObj: Message = {
+          id: assistantMsgId,
+          messageId: assistantMsgId,
+          conversationId: activeSessionId,
+          requestId: reqId,
+          role: 'assistant',
+          text: errorMsg,
+          content: errorMsg,
+          timestamp: Date.now(),
+          inputType: 'text',
+          status: 'failed'
+        }
+        return [...prev, errorMsgObj].slice(-50)
+      })
+      setIsSubmitting(false)
+      setActiveStreamingId(null)
     }
   }
 
@@ -848,8 +1225,80 @@ export default function RightPanel({
           )}
         </div>
 
-        {/* Buttons in place of the live area - icon buttons only without names */}
+        {/* Buttons in place of the live area */}
         <div className="flex items-center gap-1.5">
+          {/* Provider Selector: DeepSeek V3, DeepSeek R1, Gemini, NVIDIA Kimi */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowProviderMenu((prev) => !prev)}
+              title="Select AI Chat Provider & Model"
+              className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-mono rounded-lg border transition-all cursor-pointer bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+            >
+              <Cpu size={12} className="text-emerald-400" />
+              <span className="font-semibold">
+                {chatProvider === 'deepseek'
+                  ? 'DeepSeek V3'
+                  : chatProvider === 'deepseek_r1'
+                  ? 'DeepSeek R1'
+                  : chatProvider === 'gemini'
+                  ? 'Gemini 3.8'
+                  : 'Kimi-k3'}
+              </span>
+            </button>
+
+            {showProviderMenu && (
+              <div
+                className="absolute right-0 mt-1 w-44 rounded-xl bg-zinc-900/95 border border-white/10 shadow-2xl backdrop-blur-xl p-1 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150"
+                onClick={() => setShowProviderMenu(false)}
+              >
+                <div className="px-2 py-1 text-[9px] font-mono text-zinc-500 uppercase tracking-wider">
+                  AI Chat Provider
+                </div>
+                {[
+                  { id: 'deepseek', label: 'DeepSeek V3', tag: 'Fast / General' },
+                  { id: 'deepseek_r1', label: 'DeepSeek R1', tag: 'Reasoning CoT' },
+                  { id: 'gemini', label: 'Gemini 3.8 Flash', tag: 'Multimodal' },
+                  { id: 'nvidia_kimi', label: 'NVIDIA Kimi-k3', tag: 'Reasoning' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      const next = item.id as any
+                      setChatProvider(next)
+                      if (next === 'deepseek' || next === 'deepseek_r1') {
+                        coreSettingsService.setActiveProvider('deepseek')
+                      } else if (next === 'gemini') {
+                        coreSettingsService.setActiveProvider('gemini')
+                      }
+                      setShowProviderMenu(false)
+                    }}
+                    className={`px-2 py-1.5 rounded-lg text-left text-xs transition-colors flex items-center justify-between ${
+                      chatProvider === item.id
+                        ? 'bg-emerald-500/20 text-emerald-300 font-medium'
+                        : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-[9px] text-zinc-500 font-mono">{item.tag}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Gemini Live Voice Call Button */}
+          <button
+            type="button"
+            onClick={() => setShowLiveVoiceModal(true)}
+            title="Start Gemini Live Voice Call"
+            aria-label="Gemini Live Voice Call"
+            className="flex items-center justify-center gap-1 p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg transition-all cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
+          >
+            <Radio size={14} className="animate-pulse" />
+            <span className="hidden sm:inline font-mono text-[11px]">Live Voice</span>
+          </button>
+
           <button
             type="button"
             onClick={handleNewChat}
@@ -1083,15 +1532,47 @@ export default function RightPanel({
             {isSubmitting && !activeStreamingId && <AIThinkingIndicator key="iris-thinking" />}
           </AnimatePresence>
 
-          {interimTranscript && (
+          {/* Real-time Audio Visualization & Interim Transcript when microphone is active */}
+          {(isListening || interimTranscript) && (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex justify-end"
+              exit={{ opacity: 0, y: 4 }}
+              className="flex justify-end my-1"
             >
-              <div className="max-w-[90%] sm:max-w-[85%] p-2.5 sm:p-3 rounded-2xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-br-md text-xs leading-relaxed shadow-lg flex items-center gap-2 break-words">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                <span className="italic font-mono truncate">Listening: "{interimTranscript}"</span>
+              <div className="max-w-[90%] sm:max-w-[85%] p-2.5 sm:p-3 rounded-2xl bg-emerald-950/40 text-emerald-300 border border-emerald-500/30 rounded-br-md text-xs leading-relaxed shadow-lg flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3 border-b border-emerald-500/20 pb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                    </span>
+                    <span className="font-mono text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                      Voice Command Listening
+                    </span>
+                  </div>
+                  {/* Real-time Decibel / Animated Waveform Meter */}
+                  <div className="flex items-end gap-1 h-3.5 px-1.5 py-0.5 bg-black/50 rounded-full border border-emerald-500/20">
+                    {[0.5, 1.2, 0.7, 1.6, 1.0, 1.4, 0.8, 1.3].map((factor, idx) => {
+                      const level = Math.max(0.15, micLevel || 0.25)
+                      const barH = Math.max(3, Math.min(12, level * 20 * factor))
+                      return (
+                        <span
+                          key={idx}
+                          className="w-1 rounded-full bg-emerald-400 transition-all duration-75"
+                          style={{ height: `${barH}px` }}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="italic font-mono text-[11px] text-emerald-200 truncate">
+                    {interimTranscript ? `"${interimTranscript}"` : 'Listening for your voice command...'}
+                  </span>
+                  <span className="w-1.5 h-3 bg-emerald-400 animate-pulse shrink-0" />
+                </div>
               </div>
             </motion.div>
           )}
@@ -1103,71 +1584,11 @@ export default function RightPanel({
 
       {/* Bottom Composer */}
       <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]">
-        {/* Quick Actions Interactive Tray */}
-        <AnimatePresence>
-          {showQuickActions && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="flex flex-col gap-1.5 overflow-hidden pb-1"
-            >
-              <div className="flex items-center justify-between px-1 text-[10px] font-mono text-zinc-400">
-                <span className="flex items-center gap-1 text-emerald-400 font-semibold">
-                  <RiFlashlightFill size={11} />
-                  Quick Actions
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    shortcutService.triggerAction('TOGGLE_QUICK_MENU')
-                  }}
-                  className="hover:text-emerald-300 text-zinc-400 transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Full Palette (Ctrl+K)</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5">
-                {quickActionShortcuts.map((chip, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setInputVal(chip.prompt)
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 text-[11px] font-medium whitespace-nowrap transition-all cursor-pointer shrink-0"
-                  >
-                    <span>{chip.icon}</span>
-                    <span>{chip.label}</span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Input Form at bottom */}
         <form
           onSubmit={handleSubmit}
           className="flex items-center gap-1.5 sm:gap-2 relative"
         >
-          {/* Quick Actions Trigger in Composer */}
-          <button
-            type="button"
-            onClick={() => setShowQuickActions((prev) => !prev)}
-            className={`p-2 sm:p-2 rounded-xl border transition-all cursor-pointer shrink-0 flex items-center justify-center ${
-              showQuickActions
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                : 'bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-emerald-400 border-white/10'
-            }`}
-            title="Toggle Quick Actions"
-            aria-label="Quick Actions"
-          >
-            <RiFlashlightFill size={15} />
-          </button>
-
           <div className="relative flex-1 flex items-center min-w-0">
             <input
               type="text"
@@ -1198,6 +1619,17 @@ export default function RightPanel({
             }}
           />
 
+          {/* Gemini Live Voice Call Trigger in Composer */}
+          <button
+            type="button"
+            onClick={() => setShowLiveVoiceModal(true)}
+            className="p-2 sm:p-2 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 cursor-pointer shrink-0 transition-all shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
+            title="Start Gemini Live Voice Call"
+            aria-label="Live Voice Call"
+          >
+            <Radio size={15} className="animate-pulse" />
+          </button>
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -1214,6 +1646,30 @@ export default function RightPanel({
           </motion.button>
         </form>
       </div>
+
+      {/* Gemini Live Real-time Voice Call Experience Modal */}
+      <LiveVoiceConversationModal
+        isOpen={showLiveVoiceModal}
+        onClose={() => setShowLiveVoiceModal(false)}
+        onTranscriptMessage={(role, text) => {
+          const reqId = `live_voice_${Date.now()}`
+          const msgId = `msg_${role}_${reqId}`
+          setChatHistory((prev) => [
+            ...prev,
+            {
+              id: msgId,
+              messageId: msgId,
+              conversationId: activeSessionId,
+              requestId: reqId,
+              role: role === 'user' ? 'user' : 'assistant',
+              text,
+              content: text,
+              timestamp: Date.now(),
+              inputType: 'voice'
+            }
+          ].slice(-50))
+        }}
+      />
     </div>
   )
 }

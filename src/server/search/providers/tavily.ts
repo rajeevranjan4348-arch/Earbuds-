@@ -58,7 +58,9 @@ export class TavilyProvider {
         domain: extractDomain(r.url || '')
       }))
     } catch (err: any) {
-      console.warn('[Tavily Provider] Error:', err?.message)
+      if (!err?.message?.includes('401')) {
+        console.warn('[Tavily Provider] Error:', err?.message)
+      }
       return []
     }
   }

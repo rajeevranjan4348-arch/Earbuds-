@@ -384,6 +384,7 @@ export default function Dashboard({
           <RightPanel
             interimTranscript={interimTranscript}
             isListening={isListening}
+            micLevel={micLevel}
             onSendPrompt={submitVoicePrompt}
           />
         </div>

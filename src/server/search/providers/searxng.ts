@@ -25,15 +25,22 @@ export class SearxngProvider {
   public async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
     const { category = 'general', timeRange = '', limit = 6, language = 'en' } = options
 
-    const candidates = this.customUrl
-      ? [this.customUrl.replace(/\/$/, '')]
-      : DEFAULT_FALLBACK_INSTANCES
+    const candidates: string[] = []
+    if (this.customUrl) {
+      try {
+        const parsed = new URL(this.customUrl.startsWith('http') ? this.customUrl : `https://${this.customUrl}`)
+        candidates.push(parsed.origin)
+      } catch (_e) {
+        // Invalid custom URL, ignore
+      }
+    }
+    candidates.push(...DEFAULT_FALLBACK_INSTANCES)
 
     let lastError: Error | null = null
 
     for (const baseUrl of candidates) {
       try {
-        const url = new URL(`${baseUrl}/search`)
+        const url = new URL(`${baseUrl.replace(/\/$/, '')}/search`)
         url.searchParams.set('q', query)
         url.searchParams.set('format', 'json')
         url.searchParams.set('categories', category)

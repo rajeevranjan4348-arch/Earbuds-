@@ -27,6 +27,16 @@ export default defineConfig({
             next(err)
           }
         })
+
+        if (server.httpServer) {
+          import('./src/server/services/gemini-live')
+            .then(({ attachGeminiLiveWebSocket }) => {
+              attachGeminiLiveWebSocket(server.httpServer!)
+            })
+            .catch((err) => {
+              console.error('[Vite Server] Failed to attach Gemini Live WebSocket:', err)
+            })
+        }
       }
     }
   ],

@@ -1,0 +1,656 @@
+[
+  {
+    "graphId": "graph_1790149924661_8jy7d",
+    "userId": "test_user",
+    "originalRequest": "Research the status of Artemis 2 mission",
+    "goal": "Research the status of Artemis 2 mission",
+    "understanding": {
+      "intent": "Research the status of Artemis 2 mission",
+      "category": "academic_research",
+      "urgency": "NORMAL",
+      "detectedEntities": {},
+      "estimatedComplexity": "SIMPLE"
+    },
+    "tasks": [
+      {
+        "taskId": "graph_1790149924661_8jy7d_t1",
+        "description": "Gather factual sources and data for: Research the status of Artemis 2 mission",
+        "priority": "HIGH",
+        "dependencies": [],
+        "status": "COMPLETED",
+        "assignedAgent": "Research Agent",
+        "requiredTools": [
+          "search_web"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "parameters": {
+          "query": "Research the status of Artemis 2 mission"
+        },
+        "retrySafe": true,
+        "createdAt": 1790149947831,
+        "updatedAt": 1790149953891,
+        "executionDurationMs": 6060,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Research the status of Artemis 2 mission",
+          "resultsCount": 5,
+          "results": [
+            {
+              "id": "ddg_4_vt1y",
+              "title": "NASA&#x27;s Artemis II Moon Mission Research Continues on Earth",
+              "url": "https://science.nasa.gov/missions/artemis/artemis-2/nasas-artemis-ii-moon-mission-research-continues-on-earth/",
+              "snippet": "Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ...",
+              "engine": "duckduckgo",
+              "domain": "science.nasa.gov",
+              "score": 0.6,
+              "content": "NASA’s Artemis II Moon Mission Research Continues on Earth - NASA Science\n\nSuggested Searches\n\nClimate Change\n\n(https://science.nasa.gov/?search=Climate%20Change)\n\nArtemis\n\n(https://science.nasa.gov/?search=Artemis)\n\nExpedition 64\n\n(https://science.nasa.gov/?search=Expedition%2064)\n\nMars perseverance\n\n(https://science.nasa.gov/?search=Mars%20perseverance)\n\nSpaceX Crew-2\n\n(https://science.nasa.gov/?search=SpaceX%20Crew-2)\n\nInternational Space Station\n\n(https://science.nasa.gov/?search=International%20Space%20Station)\n\nView All Topics A-Z\n\n(https://science.nasa.gov/a-to-z-topics-listing/)\n\nHome   (https://science.nasa.gov/)\n\nMissions   (https://science.nasa.gov/nasa-missions/)\n\nHumans in Space   (https://science.nasa.gov/humans-in-space/)\n\nEarth   (https://science.nasa.gov/earth/)\n\nThe Solar System   (https://science.nasa.gov/solar-system/)\n\nThe Universe   (https://science.nasa.gov/universe/)\n\nScience   (https://science.nasa.gov/)\n\nAeronautics   (https://science.nasa.gov/aeronautics/)\n\nTechnology   (https://science.nasa.gov/technology/)\n\nLearning Resources   (https://science.nasa.gov/learning-resources/)\n\nAbout NASA   (https://science.nasa.gov/about/)\n\nEspañol   (https://science.nasa.gov/es/)\n\nNews & Events\n\n(#)\n\nMultimedia\n\n(#)\n\nNASA+\n\n(https://plus.nasa.gov/)\n\nHighlights\n\n6 min read\n\nNASA-Funded Research Finds Complex Life Defying Record Heat\n\narticle   13 hours ago\n\n(https://science.nasa.gov/science-research/planetary-science/nasa-funded-research-finds-complex-life-defying-record-heat/)\n\n5 min read\n\nNASA Discovery Reveals Complex Water Systems on Early Mars\n\narticle   2 days ago\n\n(https://www.nasa.gov/solar-system/planets/mars/nasa-discovery-reveals-complex-water-systems-on-early-mars/)\n\n6 min read\n\nNASA’s Moon Orbiter Spots New, ‘Once-in-Century’ Moon Crater\n\narticle   7 days ago\n\n(https://science.nasa.gov/solar-system/moon/nasas-moon-orbiter-spots-new-once-in-century-moon-crater/)\n\nBack\n\nMissions\n\n(https://science.nasa.gov/nasa-missions/)\n\nSearch All NASA Missions   (https://www.nasa.gov/missions/)\n\nA to Z List of Missions   (https://www.nasa.gov/a-to-z-of-nasa-missions/)\n\nUpcoming Launches and Landings   (https://www.nasa.gov/events/)\n\nSpaceships and Rockets   (https://www.nasa.gov/humans-in-space/spaceships-and-rockets/)\n\nCommunicating with Missions   (https://www.nasa.gov/communicating-with-missions/)\n\nArtemis   (https://www.nasa.gov/humans-in-space/artemis/)\n\nJames Webb Space Telescope   (https://science.nasa.gov/mission/webb/)\n\nHubble Space Telesco... [truncated]"
+            },
+            {
+              "id": "ddg_2_wjy3",
+              "title": "Artemis 2 Moon Mission: All information and videos",
+              "url": "https://spaceinformer.com/artemis-2-live-tracker/",
+              "snippet": "Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ...",
+              "engine": "duckduckgo",
+              "domain": "spaceinformer.com",
+              "score": 0.51,
+              "content": "Artemis 2 Moon Mission: All information and videos\n\nSkip to content (#content)\n\nShare this page!\n\n(https://www.facebook.com/dialog/send?app_id=1904103319867886&display=popup&link=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&redirect_uri=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://twitter.com/intent/tweet?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos&url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://reddit.com/submit?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&title=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://spaceinformer.com/artemis-2-live-tracker/)    (https://mastodon.social/share?text=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&title=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://api.whatsapp.com/send?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos%20https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://telegram.me/share/url?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://www.threads.net/intent/post?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos%20https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://spaceinformer.com/artemis-2-live-tracker/)\n\nExperience the historic  Artemis II mission  in real-time. Follow the four-person crew as they journey beyond the Moon and back in the Orion spacecraft. Use our live tracker, mission countdown, and flight telemetry to stay updated on every second of this monumental leap for deep space exploration.\n\nFollow SpaceInformer.com\n\nStay updated with the latest in Space!\n\nFollow on Instagram\n\n(https://www.instagram.com/spaceinformercom)\n\nArtemis II Status Update: April 11, 2026\n\nFollowing a historic journey  around the Moon  and a flawless return through deep space, NASA has confirmed that Artemis II is  officially a success.  The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect  splashdown  in the Pacific Ocean. With the crew safely recovered, this mission marks the ... [truncated]"
+            },
+            {
+              "id": "ddg_0_h5se",
+              "title": "Track NASA&#x27;s Artemis II Mission in Real Time - NASA",
+              "url": "https://www.nasa.gov/missions/artemis/artemis-2/track-nasas-artemis-ii-mission-in-real-time/",
+              "snippet": "As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ...",
+              "engine": "duckduckgo",
+              "domain": "nasa.gov",
+              "score": 0.47000000000000003
+            },
+            {
+              "id": "ddg_1_2gcn",
+              "title": "Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA",
+              "url": "https://www.nasa.gov/mission/artemis-ii/",
+              "snippet": "Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings.",
+              "engine": "duckduckgo",
+              "domain": "nasa.gov",
+              "score": 0.37
+            },
+            {
+              "id": "ddg_3_ougf",
+              "title": "Artemis II Live Mission Tracker — NASA Moon Mission 2026",
+              "url": "https://artemistracker.io",
+              "snippet": "Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center.",
+              "engine": "duckduckgo",
+              "domain": "artemistracker.io",
+              "score": 0.37
+            }
+          ],
+          "citations": [
+            {
+              "index": 1,
+              "title": "NASA&#x27;s Artemis II Moon Mission Research Continues on Earth",
+              "url": "https://science.nasa.gov/missions/artemis/artemis-2/nasas-artemis-ii-moon-mission-research-continues-on-earth/",
+              "domain": "science.nasa.gov",
+              "snippet": "Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ..."
+            },
+            {
+              "index": 2,
+              "title": "Artemis 2 Moon Mission: All information and videos",
+              "url": "https://spaceinformer.com/artemis-2-live-tracker/",
+              "domain": "spaceinformer.com",
+              "snippet": "Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ..."
+            },
+            {
+              "index": 3,
+              "title": "Track NASA&#x27;s Artemis II Mission in Real Time - NASA",
+              "url": "https://www.nasa.gov/missions/artemis/artemis-2/track-nasas-artemis-ii-mission-in-real-time/",
+              "domain": "nasa.gov",
+              "snippet": "As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ..."
+            },
+            {
+              "index": 4,
+              "title": "Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA",
+              "url": "https://www.nasa.gov/mission/artemis-ii/",
+              "domain": "nasa.gov",
+              "snippet": "Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings."
+            },
+            {
+              "index": 5,
+              "title": "Artemis II Live Mission Tracker — NASA Moon Mission 2026",
+              "url": "https://artemistracker.io",
+              "domain": "artemistracker.io",
+              "snippet": "Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center."
+            }
+          ],
+          "summary": "[1] NASA&#x27;s Artemis II Moon Mission Research Continues on Earth: Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ...\n\n[2] Artemis 2 Moon Mission: All information and videos: Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ...\n\n[3] Track NASA&#x27;s Artemis II Mission in Real Time - NASA: As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ...\n\n[4] Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA: Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings.\n\n[5] Artemis II Live Mission Tracker — NASA Moon Mission 2026: Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center."
+        },
+        "completedAt": 1790149953891
+      },
+      {
+        "taskId": "graph_1790149924661_8jy7d_t2",
+        "description": "Synthesize research findings into comprehensive answer for user",
+        "priority": "NORMAL",
+        "dependencies": [
+          "graph_1790149924661_8jy7d_t1"
+        ],
+        "status": "COMPLETED",
+        "assignedAgent": "Voice Agent",
+        "requiredTools": [
+          "voice_format_dialogue"
+        ],
+        "attempts": 1,
+        "maxAttempts": 2,
+        "parameters": {
+          "text": "Research the status of Artemis 2 mission",
+          "dep_graph_1790149924661_8jy7d_t1_output": {
+            "query": "Research the status of Artemis 2 mission",
+            "resultsCount": 5,
+            "results": [
+              {
+                "id": "ddg_4_vt1y",
+                "title": "NASA&#x27;s Artemis II Moon Mission Research Continues on Earth",
+                "url": "https://science.nasa.gov/missions/artemis/artemis-2/nasas-artemis-ii-moon-mission-research-continues-on-earth/",
+                "snippet": "Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ...",
+                "engine": "duckduckgo",
+                "domain": "science.nasa.gov",
+                "score": 0.6,
+                "content": "NASA’s Artemis II Moon Mission Research Continues on Earth - NASA Science\n\nSuggested Searches\n\nClimate Change\n\n(https://science.nasa.gov/?search=Climate%20Change)\n\nArtemis\n\n(https://science.nasa.gov/?search=Artemis)\n\nExpedition 64\n\n(https://science.nasa.gov/?search=Expedition%2064)\n\nMars perseverance\n\n(https://science.nasa.gov/?search=Mars%20perseverance)\n\nSpaceX Crew-2\n\n(https://science.nasa.gov/?search=SpaceX%20Crew-2)\n\nInternational Space Station\n\n(https://science.nasa.gov/?search=International%20Space%20Station)\n\nView All Topics A-Z\n\n(https://science.nasa.gov/a-to-z-topics-listing/)\n\nHome   (https://science.nasa.gov/)\n\nMissions   (https://science.nasa.gov/nasa-missions/)\n\nHumans in Space   (https://science.nasa.gov/humans-in-space/)\n\nEarth   (https://science.nasa.gov/earth/)\n\nThe Solar System   (https://science.nasa.gov/solar-system/)\n\nThe Universe   (https://science.nasa.gov/universe/)\n\nScience   (https://science.nasa.gov/)\n\nAeronautics   (https://science.nasa.gov/aeronautics/)\n\nTechnology   (https://science.nasa.gov/technology/)\n\nLearning Resources   (https://science.nasa.gov/learning-resources/)\n\nAbout NASA   (https://science.nasa.gov/about/)\n\nEspañol   (https://science.nasa.gov/es/)\n\nNews & Events\n\n(#)\n\nMultimedia\n\n(#)\n\nNASA+\n\n(https://plus.nasa.gov/)\n\nHighlights\n\n6 min read\n\nNASA-Funded Research Finds Complex Life Defying Record Heat\n\narticle   13 hours ago\n\n(https://science.nasa.gov/science-research/planetary-science/nasa-funded-research-finds-complex-life-defying-record-heat/)\n\n5 min read\n\nNASA Discovery Reveals Complex Water Systems on Early Mars\n\narticle   2 days ago\n\n(https://www.nasa.gov/solar-system/planets/mars/nasa-discovery-reveals-complex-water-systems-on-early-mars/)\n\n6 min read\n\nNASA’s Moon Orbiter Spots New, ‘Once-in-Century’ Moon Crater\n\narticle   7 days ago\n\n(https://science.nasa.gov/solar-system/moon/nasas-moon-orbiter-spots-new-once-in-century-moon-crater/)\n\nBack\n\nMissions\n\n(https://science.nasa.gov/nasa-missions/)\n\nSearch All NASA Missions   (https://www.nasa.gov/missions/)\n\nA to Z List of Missions   (https://www.nasa.gov/a-to-z-of-nasa-missions/)\n\nUpcoming Launches and Landings   (https://www.nasa.gov/events/)\n\nSpaceships and Rockets   (https://www.nasa.gov/humans-in-space/spaceships-and-rockets/)\n\nCommunicating with Missions   (https://www.nasa.gov/communicating-with-missions/)\n\nArtemis   (https://www.nasa.gov/humans-in-space/artemis/)\n\nJames Webb Space Telescope   (https://science.nasa.gov/mission/webb/)\n\nHubble Space Telesco... [truncated]"
+              },
+              {
+                "id": "ddg_2_wjy3",
+                "title": "Artemis 2 Moon Mission: All information and videos",
+                "url": "https://spaceinformer.com/artemis-2-live-tracker/",
+                "snippet": "Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ...",
+                "engine": "duckduckgo",
+                "domain": "spaceinformer.com",
+                "score": 0.51,
+                "content": "Artemis 2 Moon Mission: All information and videos\n\nSkip to content (#content)\n\nShare this page!\n\n(https://www.facebook.com/dialog/send?app_id=1904103319867886&display=popup&link=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&redirect_uri=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://twitter.com/intent/tweet?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos&url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://reddit.com/submit?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&title=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://spaceinformer.com/artemis-2-live-tracker/)    (https://mastodon.social/share?text=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&title=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://api.whatsapp.com/send?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos%20https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://telegram.me/share/url?url=https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F&text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos)    (https://www.threads.net/intent/post?text=Artemis%202%20Moon%20Mission%3A%20All%20information%20and%20videos%20https%3A%2F%2Fspaceinformer.com%2Fartemis-2-live-tracker%2F)    (https://spaceinformer.com/artemis-2-live-tracker/)\n\nExperience the historic  Artemis II mission  in real-time. Follow the four-person crew as they journey beyond the Moon and back in the Orion spacecraft. Use our live tracker, mission countdown, and flight telemetry to stay updated on every second of this monumental leap for deep space exploration.\n\nFollow SpaceInformer.com\n\nStay updated with the latest in Space!\n\nFollow on Instagram\n\n(https://www.instagram.com/spaceinformercom)\n\nArtemis II Status Update: April 11, 2026\n\nFollowing a historic journey  around the Moon  and a flawless return through deep space, NASA has confirmed that Artemis II is  officially a success.  The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect  splashdown  in the Pacific Ocean. With the crew safely recovered, this mission marks the ... [truncated]"
+              },
+              {
+                "id": "ddg_0_h5se",
+                "title": "Track NASA&#x27;s Artemis II Mission in Real Time - NASA",
+                "url": "https://www.nasa.gov/missions/artemis/artemis-2/track-nasas-artemis-ii-mission-in-real-time/",
+                "snippet": "As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ...",
+                "engine": "duckduckgo",
+                "domain": "nasa.gov",
+                "score": 0.47000000000000003
+              },
+              {
+                "id": "ddg_1_2gcn",
+                "title": "Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA",
+                "url": "https://www.nasa.gov/mission/artemis-ii/",
+                "snippet": "Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings.",
+                "engine": "duckduckgo",
+                "domain": "nasa.gov",
+                "score": 0.37
+              },
+              {
+                "id": "ddg_3_ougf",
+                "title": "Artemis II Live Mission Tracker — NASA Moon Mission 2026",
+                "url": "https://artemistracker.io",
+                "snippet": "Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center.",
+                "engine": "duckduckgo",
+                "domain": "artemistracker.io",
+                "score": 0.37
+              }
+            ],
+            "citations": [
+              {
+                "index": 1,
+                "title": "NASA&#x27;s Artemis II Moon Mission Research Continues on Earth",
+                "url": "https://science.nasa.gov/missions/artemis/artemis-2/nasas-artemis-ii-moon-mission-research-continues-on-earth/",
+                "domain": "science.nasa.gov",
+                "snippet": "Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ..."
+              },
+              {
+                "index": 2,
+                "title": "Artemis 2 Moon Mission: All information and videos",
+                "url": "https://spaceinformer.com/artemis-2-live-tracker/",
+                "domain": "spaceinformer.com",
+                "snippet": "Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ..."
+              },
+              {
+                "index": 3,
+                "title": "Track NASA&#x27;s Artemis II Mission in Real Time - NASA",
+                "url": "https://www.nasa.gov/missions/artemis/artemis-2/track-nasas-artemis-ii-mission-in-real-time/",
+                "domain": "nasa.gov",
+                "snippet": "As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ..."
+              },
+              {
+                "index": 4,
+                "title": "Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA",
+                "url": "https://www.nasa.gov/mission/artemis-ii/",
+                "domain": "nasa.gov",
+                "snippet": "Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings."
+              },
+              {
+                "index": 5,
+                "title": "Artemis II Live Mission Tracker — NASA Moon Mission 2026",
+                "url": "https://artemistracker.io",
+                "domain": "artemistracker.io",
+                "snippet": "Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center."
+              }
+            ],
+            "summary": "[1] NASA&#x27;s Artemis II Moon Mission Research Continues on Earth: Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ...\n\n[2] Artemis 2 Moon Mission: All information and videos: Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ...\n\n[3] Track NASA&#x27;s Artemis II Mission in Real Time - NASA: As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ...\n\n[4] Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA: Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings.\n\n[5] Artemis II Live Mission Tracker — NASA Moon Mission 2026: Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center."
+          },
+          "query": "[1] NASA&#x27;s Artemis II Moon Mission Research Continues on Earth: Since NASA&#x27;s Artemis II crew members safely splashed down in the Pacific Ocean on April 10 after their record-setting mission around the Moon, science teams have been busy collecting more data and combing through observations collected on the test flight. Results from these science investigations will help support safe human exploration of deep space and provide a blueprint for how future ...\n\n[2] Artemis 2 Moon Mission: All information and videos: Artemis II Status Update: April 11, 2026 Following a historic journey around the Moon and a flawless return through deep space, NASA has confirmed that Artemis II is officially a success. The Orion spacecraft successfully completed its high-stakes atmospheric reentry and executed a perfect splashdown in the Pacific Ocean. With the crew safely recovered, this mission marks the first time humans ...\n\n[3] Track NASA&#x27;s Artemis II Mission in Real Time - NASA: As NASA invites the public to follow the Artemis II mission as a crew of four astronauts venture around the Moon inside the agency&#x27;s Orion spacecraft, people around the world can pinpoint Orion during its journey using the Artemis Real-time Orbit Website (AROW). During the approximately 10-day mission, NASA will test how the spacecraft&#x27;s systems operate as designed with crew aboard in the ...\n\n[4] Artemis II: NASA&#x27;s First Crewed Lunar Flyby in 50 Years - NASA: Meet the Artemis II crew and learn how NASA&#x27;s 10-day lunar flyby mission will test deep space systems and pave the way for future Moon landings.\n\n[5] Artemis II Live Mission Tracker — NASA Moon Mission 2026: Live tracker for NASA&#x27;s Artemis II — humanity&#x27;s first crewed lunar mission since Apollo 17 in 1972. Real-time mission clock, phase timeline, crew bios, and NASA blog updates. Launched April 1, 2026 from Kennedy Space Center."
+        },
+        "retrySafe": true,
+        "createdAt": 1790149947831,
+        "updatedAt": 1790149953892,
+        "executionDurationMs": 0,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "spokenText": "Research the status of Artemis 2 mission",
+          "displayText": "Research the status of Artemis 2 mission",
+          "characterCount": 40,
+          "estimatedDurationSec": 3
+        },
+        "completedAt": 1790149953892
+      }
+    ],
+    "priority": "NORMAL",
+    "status": "COMPLETED",
+    "createdAt": 1790149924661,
+    "updatedAt": 1790149953893,
+    "contextMemory": {},
+    "retrievedMemories": [],
+    "completedAt": 1790149953893,
+    "finalSynthesis": "**Mission Status: Completed — Post-Flight Science & Analysis Phase**\n\nNASA’s **Artemis II** mission has successfully concluded, marking humanity's first crewed lunar flyby in over 50 years. \n\n### Key Mission Milestones & Current Operations:\n* **Flight Summary:** Artemis II launched from Kennedy Space Center on **April 1, 2026**, carrying a crew of four on an approximately 10-day journey around the far side of the Moon aboard the Orion spacecraft.\n* **Splashdown & Recovery:** Following a successful high-stakes atmospheric reentry, the Orion capsule safely splashed down in the Pacific Ocean on **April 10, 2026**. The crew was recovered safely, and NASA officially designated the flight test a complete success on April 11.\n* **Current Status on Earth:** Science and engineering teams are actively analyzing the extensive telemetry, flight observations, and life-support performance data gathered during the mission. \n\nThese post-flight evaluations will provide the baseline data required to validate Orion's deep-space systems and support upcoming crewed lunar landing operations for **Artemis III**."
+  },
+  {
+    "graphId": "graph_1790149978508_mmdce",
+    "userId": "test_user",
+    "originalRequest": "Inspect codebase structure and find symbols for MultiAgentOrchestrator",
+    "goal": "Inspect codebase structure and find symbols for MultiAgentOrchestrator",
+    "understanding": {
+      "intent": "Inspect codebase structure and find symbols for MultiAgentOrchestrator",
+      "category": "software_engineering",
+      "urgency": "NORMAL",
+      "detectedEntities": {},
+      "estimatedComplexity": "COMPOUND"
+    },
+    "tasks": [
+      {
+        "taskId": "graph_1790149978508_mmdce_t1",
+        "description": "Inspect the repository directory structure to map the codebase layout and identify core source modules.",
+        "priority": "HIGH",
+        "dependencies": [],
+        "status": "COMPLETED",
+        "assignedAgent": "Coding Agent",
+        "requiredTools": [
+          "codebase_search"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "retrySafe": true,
+        "createdAt": 1790149995825,
+        "updatedAt": 1790149995932,
+        "verificationRules": {
+          "type": "non_empty"
+        },
+        "parameters": {},
+        "executionDurationMs": 106,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Inspect the repository directory structure to map the codebase layout and identify core source modules.",
+          "matchesCount": 5,
+          "matches": [
+            {
+              "chunkId": "docs/development/setup-guide.md#L1-L53",
+              "filePath": "docs/development/setup-guide.md",
+              "startLine": 1,
+              "endLine": 53,
+              "snippet": "# Development Setup Guide\n\nThis guide details the process for standing up the IRIS development environment.\n\n## Prerequisites\n\nEnsure your system meets the following requirements:\n- **OS:** Windows 10/11, macOS (Apple Silicon recommended), or Ubuntu Linux.\n- **Runtime:** Node.js v23+\n- **Version Control:** Git\n- **IDE:** VS Code or Cursor recommended.\n\n## Option 1: Free Tier (UI Shell Development)\n\nFor developers looking to explore or contribute to the React frontend, you can use the public repository. Note that core system execution tools are stubbed or disabled in this tier.\n\n```bash\n# 1. Clone the public repository\ngit clone https://github.com/IRISX-AI/IRIS-AI\n\n# 2. Navigate into the directory\ncd IRIS-AI\n\n# 3. Install dependencies\nnpm install\n\n# 4. Start the Vite development server\nnpm run dev\n```\n\n## Option 2: IRIS Insider (Core Access)\n\nTo unlock actual Voice-First Desktop Assistant functionality, you must be a GitHub Sponsor at the **IRIS Insider ($15/mo)** tier. This grants you access to the private `iris-insiders` repository.\n\n```bash\n# 1. Ensure you have accepted the GitHub invitation to the private repo after sponsoring.\n\n# 2. Clone the private insiders repository\ngit clone https://github.com/IRISX-AI/iris-insiders\n\n# 3. Navigate into the directory\ncd iris-insiders\n\n# 4. Install dependencies\nnpm install\n\n# 5. Launch the full application\nnpm run dev\n```\n\n### Linking Modules\nIf you are developing custom tools, place your integration logic within the protected Main Process directory. Ensure that any new IPC channels are properly registered in the `preload` script before invoking them from the React frontend.\n",
+              "score": 9.5075,
+              "matchType": "hybrid",
+              "language": "markdown"
+            },
+            {
+              "chunkId": "src/server/codebase/service.ts#class:CodebaseService:L22",
+              "filePath": "src/server/codebase/service.ts",
+              "startLine": 22,
+              "endLine": 199,
+              "snippet": "export class CodebaseService {\n  private defaultProjectId = 'current_workspace'\n\n  constructor() {\n    // Automatically index the current workspace in the background on startup\n    setTimeout(() => {\n      this.ensureWorkspaceIndexed().catch((err) => {\n        console.warn('[CodebaseService] Background workspace index notice:', err?.message)\n      })\n    }, 1500)\n  }\n\n  /**\n   * Automatically indexes the active application codebase for immediate out-of-the-box querying\n   */\n  public async ensureWorkspaceIndexed(): Promise<ProjectMetadata> {\n    const cwd = process.cwd()\n    const existing = projectStore.getProject(this.defaultProjectId)\n    if (existing && existing.metadata.indexingStatus === 'ready') {\n      return existing.metadata\n    }\n\n    return this.indexProject({\n      path: cwd,\n      projectId: this.defaultProjectId,\n      userId: 'system',\n      name: 'IRIS AI Workspace'\n    })\n  }\n\n  /**\n   * Tool: index_project\n   * Indexes a local directory path or a remote GitHub repository\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    userId?: string\n    name?: string\n    githubToken?: string\n  }): Promise<ProjectMetadata> {\n    const userId = params.userId || 'usr_default'\n    let rootPath = params.path\n    let projectId = params.projectId\n\n    if (params.githubUrl) {\n      // GitHub repo flow\n      const cleanProjId = projectId || `gh_${Date.now()}`\n      const syncResult = await syncGithubRepository(\n        params.githubUrl,\n        cleanProjId,\n        params.githubToken\n      )\n      rootPath = syncResult.repoPath\n      projectId = cleanProjId\n    }\n\n    if (!rootPath) {\n      rootPath = process.cwd()\n      projectId = projectId || this.defaultProjectId\n    }\n\n    const resolvedRoot = resolve(rootPath)\n    if (!existsSync(resolvedRoot)) {\n      throw new Error(`Directory not found: ${resolvedRoot}`)\n    }\n\n    const finalProjectId = projectId || `proj_${Date.now()}`\n    const existing = projectStore.getProject(finalProjectId, userId)\n\n    const indexed = await indexCodebase(\n      resolvedRoot,\n      finalProjectId,\n      userId,\n      params.name,\n      existing || undefined\n    )\n\n    projectStore.saveProject(indexed)\n    return indexed.metadata\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   * Hybrid semantic + BM25 search across indexed code chunks\n   */\n  public searchCodebase(\n    query: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    options: SearchCodebaseOptions = {}\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) {\n      return []\n    }\n\n    return searchCodebase(project.chunks, project.symbols, query, options)\n  }\n\n  /**\n   * Tool: get_file_context\n   * Retrieves precise file content, related symbols, and imports\n   */\n  public getFileContext(\n    filePath: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    startLine?: number,\n    endLine?: number\n  ): FileContextResult | null {\n    return projectStore.getFileContext(projectId, filePath, userId, startLine, endLine)\n  }\n\n  /**\n   * Tool: find_symbol\n   * Finds symbol definitions across codebase\n   */\n  public findSymbol(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SymbolDef[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findSymbolInIndex(project.symbols, symbolName)\n  }\n\n  /**\n   * Tool: find_references\n   * Finds references / call sites of a symbol across the project\n   */\n  public findReferences(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findReferencesInIndex(project.chunks, symbolName)\n  }\n\n  /**\n   * Tool: get_project_structure\n   * Returns directory tree and project summary stats\n   */\n  public getProjectStructure(\n    projectId = this.defaultProjectId,\n    userId?: string,\n    depth = 3\n  ): ProjectStructure | null {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return null\n\n    return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)\n  }\n\n  /**\n   * List all projects\n   */\n  public listProjects(userId?: string): ProjectMetadata[] {\n    return projectStore.listProjects(userId)\n  }\n\n  /**\n   * Delete project\n   */\n  public deleteProject(projectId: string, userId?: string): boolean {\n    return projectStore.deleteProject(projectId, userId)\n  }\n}",
+              "score": 8.5812,
+              "matchType": "hybrid",
+              "symbolName": "CodebaseService",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/codebase/indexer.ts#func:buildProjectStructure:L283",
+              "filePath": "src/server/codebase/indexer.ts",
+              "startLine": 283,
+              "endLine": 352,
+              "snippet": "export function buildProjectStructure(\n  rootPath: string,\n  projectId: string,\n  maxDepth = 4\n): ProjectStructure {\n  const resolvedRoot = resolve(rootPath)\n  const languages: Record<string, number> = {}\n  let totalFiles = 0\n  let totalLines = 0\n  const topDirs: Set<string> = new Set()\n\n  function buildTree(currentDir: string, depth: number): TreeNode[] {\n    if (depth > maxDepth) return []\n    let entries: string[] = []\n    try {\n      entries = readdirSync(currentDir)\n    } catch (_e) {\n      return []\n    }\n\n    const nodes: TreeNode[] = []\n    for (const entry of entries) {\n      const fullPath = join(currentDir, entry)\n      const relPath = relative(resolvedRoot, fullPath)\n\n      if (isIgnoredFile(relPath)) continue\n\n      try {\n        const stat = statSync(fullPath)\n        if (stat.isDirectory()) {\n          if (depth === 1) topDirs.add(entry)\n          const children = buildTree(fullPath, depth + 1)\n          nodes.push({\n            name: entry,\n            path: relPath,\n            type: 'directory',\n            children\n          })\n        } else if (stat.isFile()) {\n          totalFiles++\n          const ext = entry.split('.').pop()?.toLowerCase() || 'other'\n          languages[ext] = (languages[ext] || 0) + 1\n\n          nodes.push({\n            name: entry,\n            path: relPath,\n            type: 'file',\n            size: stat.size,\n            language: ext\n          })\n        }\n      } catch (_e) {}\n    }\n    return nodes\n  }\n\n  const tree = buildTree(resolvedRoot, 1)\n\n  return {\n    projectId,\n    rootName: resolvedRoot.split(/[/\\\\]/).pop() || 'project',\n    tree,\n    summary: {\n      totalFiles,\n      totalLines,\n      languages,\n      topDirectories: Array.from(topDirs)\n    }\n  }\n}",
+              "score": 7.4554,
+              "matchType": "hybrid",
+              "symbolName": "buildProjectStructure",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "README.md#L91-L150",
+              "filePath": "README.md",
+              "startLine": 91,
+              "endLine": 150,
+              "snippet": "- Bug fixes for Email, WhatsApp, Image Generation, Ghost Control, Wallpaper Engine, Camera, and Screen Context for AI.\n\n---\n\n# 🪡 Open Core Model\n\n### IRIS follows an Open Core development model.\n\n**The public repository includes**:\n\n- Desktop application framework\n- User interface\n- Core infrastructure\n- Selected integrations\n- Community-facing examples\n\nThe following production components are private:\n\n- Core voice orchestration engine\n- Advanced tool execution logic\n- Internal automation systems\n- Production-grade implementations\n- Certain premium modules\n\nGitHub Sponsors receive access to additional documentation, implementation examples, architecture breakdowns, and development resources depending on tier.\n\n**Sponsorship does not include access to the complete private source code.**\n\n---\n\n# 🎯 What is Voice-First?\n\nTraditional AI assistants are **text-first**: you type → they respond → you read.\n\nIRIS is **voice-first**: you speak → they listen & execute → actions happen in real-time.\n\n### Real-Time Audio Processing\n\n```\nYour Voice\n    ↓ (WebRTC Stream)\nGemini 3.1 Live API (Real-time)\n    ↓ (Intent Recognition)\nLangGraph Agent Orchestration\n    ↓ (Tool Selection)\nProtected Tool Execution\n    ↓ (System Actions)\nResults Streamed Back to You\n```\n\n- **Latency:** < 500ms end-to-end (including network)\n- **Quality:** Full duplex (talk while agent responds)\n- **Models:** Gemini 3.1 Live API (primary) + Groq (Fast Responses) + Hugging Face (Open-Sourced + Local Models)\n- **Search:** Tavily for real-time web data\n\nNo local-only limitations. IRIS connects to **cloud AI, search engines, and APIs** for maximum intelligence.\n\n---\n\n# ✨ Core Features & System Capabilities",
+              "score": 7.3768,
+              "matchType": "hybrid",
+              "language": "markdown"
+            },
+            {
+              "chunkId": "README.md#L46-L105",
+              "filePath": "README.md",
+              "startLine": 46,
+              "endLine": 105,
+              "snippet": "- [🎯 What is Voice-First?](#-what-is-voice-first)\n- [✨ Core Features](#-core-features)\n- [🔐 Code Protection & Security](#-code-protection--security)\n- [💰 Sponsorship Tiers](#-sponsorship-tiers)\n- [🏗️ Architecture](#️-architecture)\n- [💻 Tech Stack](#-tech-stack)\n- [🚀 Installation & Setup](#-installation--setup)\n- [📁 Project Structure](#-project-structure)\n- [🧠 Development Philosophy](#-development-philosophy)\n- [🤝 Contributing](#-contributing)\n- [🧩 Extending IRIS](#-extending-iris)\n- [🧠 Roadmap](#-roadmap)\n- [⚠️ Disclaimer](#️-disclaimer)\n- [👨‍💻 Architect](#-architect)\n- [📜 License](#-license)\n\n---\n\n# ⚡ Overview\n\nIRIS is not a chatbot.\n\nIt is a **Voice-First Desktop AI Assistant** that executes real-world actions across your system, applications, and devices—powered by **Gemini 3.1 Live API** with real-time bidirectional audio processing.\n\n> **Speak naturally. IRIS understands intent. Real actions execute instantly.**\n\n## What Makes IRIS Different?\n\n✅ **Voice-First Design** – Optimized for natural speech input with real-time WebRTC audio streaming  \n✅ **Proprietary Agent Logic** – Heavily protected, production-grade agentic orchestration  \n✅ **Production-Ready Security** – V8 bytecode + ASAR integrity validation + window isolation  \n✅ **No Code Exposure** – Core agent and tools are completely hidden from public source  \n✅ **Autonomous Execution** – LangGraph-powered state machine with dynamic tool orchestration\n\n---\n\n# ✨ What's New In v1.7.0\n\n- Added interactive **Quiz** and **Tic Tac Toe** widgets.\n- Deeper **System Control for IRIS**.\n- Completely revamped **Dashboard UI** and **Settings UI** for a seamless experience.\n- Updated AI State colors: **Thinking (Blue)**, **Speaking (Green)**, and **Standby (White)**.\n- Enhanced Infrastructure: **New server** added for more stability and control.\n- **Important**: All previous versions prior to 1.7.0 are completely deprecated and no longer function.\n- **Free Tier Rate Limit**: Free tier is now limited to 12 turns and 5 tool calls per day (resets 12:00 PM - 2:00 PM).\n- Bug fixes for Email, WhatsApp, Image Generation, Ghost Control, Wallpaper Engine, Camera, and Screen Context for AI.\n\n---\n\n# 🪡 Open Core Model\n\n### IRIS follows an Open Core development model.\n\n**The public repository includes**:\n\n- Desktop application framework\n- User interface\n- Core infrastructure\n- Selected integrations\n- Community-facing examples",
+              "score": 7.314,
+              "matchType": "hybrid",
+              "language": "markdown"
+            }
+          ]
+        },
+        "completedAt": 1790149995932
+      },
+      {
+        "taskId": "graph_1790149978508_mmdce_t2",
+        "description": "Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.",
+        "priority": "CRITICAL",
+        "dependencies": [
+          "graph_1790149978508_mmdce_t1"
+        ],
+        "status": "COMPLETED",
+        "assignedAgent": "Coding Agent",
+        "requiredTools": [
+          "codebase_search"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "retrySafe": true,
+        "createdAt": 1790149995825,
+        "updatedAt": 1790149996049,
+        "verificationRules": {
+          "type": "non_empty"
+        },
+        "parameters": {
+          "dep_graph_1790149978508_mmdce_t1_output": {
+            "query": "Inspect the repository directory structure to map the codebase layout and identify core source modules.",
+            "matchesCount": 5,
+            "matches": [
+              {
+                "chunkId": "docs/development/setup-guide.md#L1-L53",
+                "filePath": "docs/development/setup-guide.md",
+                "startLine": 1,
+                "endLine": 53,
+                "snippet": "# Development Setup Guide\n\nThis guide details the process for standing up the IRIS development environment.\n\n## Prerequisites\n\nEnsure your system meets the following requirements:\n- **OS:** Windows 10/11, macOS (Apple Silicon recommended), or Ubuntu Linux.\n- **Runtime:** Node.js v23+\n- **Version Control:** Git\n- **IDE:** VS Code or Cursor recommended.\n\n## Option 1: Free Tier (UI Shell Development)\n\nFor developers looking to explore or contribute to the React frontend, you can use the public repository. Note that core system execution tools are stubbed or disabled in this tier.\n\n```bash\n# 1. Clone the public repository\ngit clone https://github.com/IRISX-AI/IRIS-AI\n\n# 2. Navigate into the directory\ncd IRIS-AI\n\n# 3. Install dependencies\nnpm install\n\n# 4. Start the Vite development server\nnpm run dev\n```\n\n## Option 2: IRIS Insider (Core Access)\n\nTo unlock actual Voice-First Desktop Assistant functionality, you must be a GitHub Sponsor at the **IRIS Insider ($15/mo)** tier. This grants you access to the private `iris-insiders` repository.\n\n```bash\n# 1. Ensure you have accepted the GitHub invitation to the private repo after sponsoring.\n\n# 2. Clone the private insiders repository\ngit clone https://github.com/IRISX-AI/iris-insiders\n\n# 3. Navigate into the directory\ncd iris-insiders\n\n# 4. Install dependencies\nnpm install\n\n# 5. Launch the full application\nnpm run dev\n```\n\n### Linking Modules\nIf you are developing custom tools, place your integration logic within the protected Main Process directory. Ensure that any new IPC channels are properly registered in the `preload` script before invoking them from the React frontend.\n",
+                "score": 9.5075,
+                "matchType": "hybrid",
+                "language": "markdown"
+              },
+              {
+                "chunkId": "src/server/codebase/service.ts#class:CodebaseService:L22",
+                "filePath": "src/server/codebase/service.ts",
+                "startLine": 22,
+                "endLine": 199,
+                "snippet": "export class CodebaseService {\n  private defaultProjectId = 'current_workspace'\n\n  constructor() {\n    // Automatically index the current workspace in the background on startup\n    setTimeout(() => {\n      this.ensureWorkspaceIndexed().catch((err) => {\n        console.warn('[CodebaseService] Background workspace index notice:', err?.message)\n      })\n    }, 1500)\n  }\n\n  /**\n   * Automatically indexes the active application codebase for immediate out-of-the-box querying\n   */\n  public async ensureWorkspaceIndexed(): Promise<ProjectMetadata> {\n    const cwd = process.cwd()\n    const existing = projectStore.getProject(this.defaultProjectId)\n    if (existing && existing.metadata.indexingStatus === 'ready') {\n      return existing.metadata\n    }\n\n    return this.indexProject({\n      path: cwd,\n      projectId: this.defaultProjectId,\n      userId: 'system',\n      name: 'IRIS AI Workspace'\n    })\n  }\n\n  /**\n   * Tool: index_project\n   * Indexes a local directory path or a remote GitHub repository\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    userId?: string\n    name?: string\n    githubToken?: string\n  }): Promise<ProjectMetadata> {\n    const userId = params.userId || 'usr_default'\n    let rootPath = params.path\n    let projectId = params.projectId\n\n    if (params.githubUrl) {\n      // GitHub repo flow\n      const cleanProjId = projectId || `gh_${Date.now()}`\n      const syncResult = await syncGithubRepository(\n        params.githubUrl,\n        cleanProjId,\n        params.githubToken\n      )\n      rootPath = syncResult.repoPath\n      projectId = cleanProjId\n    }\n\n    if (!rootPath) {\n      rootPath = process.cwd()\n      projectId = projectId || this.defaultProjectId\n    }\n\n    const resolvedRoot = resolve(rootPath)\n    if (!existsSync(resolvedRoot)) {\n      throw new Error(`Directory not found: ${resolvedRoot}`)\n    }\n\n    const finalProjectId = projectId || `proj_${Date.now()}`\n    const existing = projectStore.getProject(finalProjectId, userId)\n\n    const indexed = await indexCodebase(\n      resolvedRoot,\n      finalProjectId,\n      userId,\n      params.name,\n      existing || undefined\n    )\n\n    projectStore.saveProject(indexed)\n    return indexed.metadata\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   * Hybrid semantic + BM25 search across indexed code chunks\n   */\n  public searchCodebase(\n    query: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    options: SearchCodebaseOptions = {}\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) {\n      return []\n    }\n\n    return searchCodebase(project.chunks, project.symbols, query, options)\n  }\n\n  /**\n   * Tool: get_file_context\n   * Retrieves precise file content, related symbols, and imports\n   */\n  public getFileContext(\n    filePath: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    startLine?: number,\n    endLine?: number\n  ): FileContextResult | null {\n    return projectStore.getFileContext(projectId, filePath, userId, startLine, endLine)\n  }\n\n  /**\n   * Tool: find_symbol\n   * Finds symbol definitions across codebase\n   */\n  public findSymbol(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SymbolDef[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findSymbolInIndex(project.symbols, symbolName)\n  }\n\n  /**\n   * Tool: find_references\n   * Finds references / call sites of a symbol across the project\n   */\n  public findReferences(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findReferencesInIndex(project.chunks, symbolName)\n  }\n\n  /**\n   * Tool: get_project_structure\n   * Returns directory tree and project summary stats\n   */\n  public getProjectStructure(\n    projectId = this.defaultProjectId,\n    userId?: string,\n    depth = 3\n  ): ProjectStructure | null {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return null\n\n    return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)\n  }\n\n  /**\n   * List all projects\n   */\n  public listProjects(userId?: string): ProjectMetadata[] {\n    return projectStore.listProjects(userId)\n  }\n\n  /**\n   * Delete project\n   */\n  public deleteProject(projectId: string, userId?: string): boolean {\n    return projectStore.deleteProject(projectId, userId)\n  }\n}",
+                "score": 8.5812,
+                "matchType": "hybrid",
+                "symbolName": "CodebaseService",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "src/server/codebase/indexer.ts#func:buildProjectStructure:L283",
+                "filePath": "src/server/codebase/indexer.ts",
+                "startLine": 283,
+                "endLine": 352,
+                "snippet": "export function buildProjectStructure(\n  rootPath: string,\n  projectId: string,\n  maxDepth = 4\n): ProjectStructure {\n  const resolvedRoot = resolve(rootPath)\n  const languages: Record<string, number> = {}\n  let totalFiles = 0\n  let totalLines = 0\n  const topDirs: Set<string> = new Set()\n\n  function buildTree(currentDir: string, depth: number): TreeNode[] {\n    if (depth > maxDepth) return []\n    let entries: string[] = []\n    try {\n      entries = readdirSync(currentDir)\n    } catch (_e) {\n      return []\n    }\n\n    const nodes: TreeNode[] = []\n    for (const entry of entries) {\n      const fullPath = join(currentDir, entry)\n      const relPath = relative(resolvedRoot, fullPath)\n\n      if (isIgnoredFile(relPath)) continue\n\n      try {\n        const stat = statSync(fullPath)\n        if (stat.isDirectory()) {\n          if (depth === 1) topDirs.add(entry)\n          const children = buildTree(fullPath, depth + 1)\n          nodes.push({\n            name: entry,\n            path: relPath,\n            type: 'directory',\n            children\n          })\n        } else if (stat.isFile()) {\n          totalFiles++\n          const ext = entry.split('.').pop()?.toLowerCase() || 'other'\n          languages[ext] = (languages[ext] || 0) + 1\n\n          nodes.push({\n            name: entry,\n            path: relPath,\n            type: 'file',\n            size: stat.size,\n            language: ext\n          })\n        }\n      } catch (_e) {}\n    }\n    return nodes\n  }\n\n  const tree = buildTree(resolvedRoot, 1)\n\n  return {\n    projectId,\n    rootName: resolvedRoot.split(/[/\\\\]/).pop() || 'project',\n    tree,\n    summary: {\n      totalFiles,\n      totalLines,\n      languages,\n      topDirectories: Array.from(topDirs)\n    }\n  }\n}",
+                "score": 7.4554,
+                "matchType": "hybrid",
+                "symbolName": "buildProjectStructure",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "README.md#L91-L150",
+                "filePath": "README.md",
+                "startLine": 91,
+                "endLine": 150,
+                "snippet": "- Bug fixes for Email, WhatsApp, Image Generation, Ghost Control, Wallpaper Engine, Camera, and Screen Context for AI.\n\n---\n\n# 🪡 Open Core Model\n\n### IRIS follows an Open Core development model.\n\n**The public repository includes**:\n\n- Desktop application framework\n- User interface\n- Core infrastructure\n- Selected integrations\n- Community-facing examples\n\nThe following production components are private:\n\n- Core voice orchestration engine\n- Advanced tool execution logic\n- Internal automation systems\n- Production-grade implementations\n- Certain premium modules\n\nGitHub Sponsors receive access to additional documentation, implementation examples, architecture breakdowns, and development resources depending on tier.\n\n**Sponsorship does not include access to the complete private source code.**\n\n---\n\n# 🎯 What is Voice-First?\n\nTraditional AI assistants are **text-first**: you type → they respond → you read.\n\nIRIS is **voice-first**: you speak → they listen & execute → actions happen in real-time.\n\n### Real-Time Audio Processing\n\n```\nYour Voice\n    ↓ (WebRTC Stream)\nGemini 3.1 Live API (Real-time)\n    ↓ (Intent Recognition)\nLangGraph Agent Orchestration\n    ↓ (Tool Selection)\nProtected Tool Execution\n    ↓ (System Actions)\nResults Streamed Back to You\n```\n\n- **Latency:** < 500ms end-to-end (including network)\n- **Quality:** Full duplex (talk while agent responds)\n- **Models:** Gemini 3.1 Live API (primary) + Groq (Fast Responses) + Hugging Face (Open-Sourced + Local Models)\n- **Search:** Tavily for real-time web data\n\nNo local-only limitations. IRIS connects to **cloud AI, search engines, and APIs** for maximum intelligence.\n\n---\n\n# ✨ Core Features & System Capabilities",
+                "score": 7.3768,
+                "matchType": "hybrid",
+                "language": "markdown"
+              },
+              {
+                "chunkId": "README.md#L46-L105",
+                "filePath": "README.md",
+                "startLine": 46,
+                "endLine": 105,
+                "snippet": "- [🎯 What is Voice-First?](#-what-is-voice-first)\n- [✨ Core Features](#-core-features)\n- [🔐 Code Protection & Security](#-code-protection--security)\n- [💰 Sponsorship Tiers](#-sponsorship-tiers)\n- [🏗️ Architecture](#️-architecture)\n- [💻 Tech Stack](#-tech-stack)\n- [🚀 Installation & Setup](#-installation--setup)\n- [📁 Project Structure](#-project-structure)\n- [🧠 Development Philosophy](#-development-philosophy)\n- [🤝 Contributing](#-contributing)\n- [🧩 Extending IRIS](#-extending-iris)\n- [🧠 Roadmap](#-roadmap)\n- [⚠️ Disclaimer](#️-disclaimer)\n- [👨‍💻 Architect](#-architect)\n- [📜 License](#-license)\n\n---\n\n# ⚡ Overview\n\nIRIS is not a chatbot.\n\nIt is a **Voice-First Desktop AI Assistant** that executes real-world actions across your system, applications, and devices—powered by **Gemini 3.1 Live API** with real-time bidirectional audio processing.\n\n> **Speak naturally. IRIS understands intent. Real actions execute instantly.**\n\n## What Makes IRIS Different?\n\n✅ **Voice-First Design** – Optimized for natural speech input with real-time WebRTC audio streaming  \n✅ **Proprietary Agent Logic** – Heavily protected, production-grade agentic orchestration  \n✅ **Production-Ready Security** – V8 bytecode + ASAR integrity validation + window isolation  \n✅ **No Code Exposure** – Core agent and tools are completely hidden from public source  \n✅ **Autonomous Execution** – LangGraph-powered state machine with dynamic tool orchestration\n\n---\n\n# ✨ What's New In v1.7.0\n\n- Added interactive **Quiz** and **Tic Tac Toe** widgets.\n- Deeper **System Control for IRIS**.\n- Completely revamped **Dashboard UI** and **Settings UI** for a seamless experience.\n- Updated AI State colors: **Thinking (Blue)**, **Speaking (Green)**, and **Standby (White)**.\n- Enhanced Infrastructure: **New server** added for more stability and control.\n- **Important**: All previous versions prior to 1.7.0 are completely deprecated and no longer function.\n- **Free Tier Rate Limit**: Free tier is now limited to 12 turns and 5 tool calls per day (resets 12:00 PM - 2:00 PM).\n- Bug fixes for Email, WhatsApp, Image Generation, Ghost Control, Wallpaper Engine, Camera, and Screen Context for AI.\n\n---\n\n# 🪡 Open Core Model\n\n### IRIS follows an Open Core development model.\n\n**The public repository includes**:\n\n- Desktop application framework\n- User interface\n- Core infrastructure\n- Selected integrations\n- Community-facing examples",
+                "score": 7.314,
+                "matchType": "hybrid",
+                "language": "markdown"
+              }
+            ]
+          }
+        },
+        "executionDurationMs": 115,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.",
+          "matchesCount": 5,
+          "matches": [
+            {
+              "chunkId": "src/server/agents/orchestrator.ts#class:MultiAgentOrchestrator:L26",
+              "filePath": "src/server/agents/orchestrator.ts",
+              "startLine": 26,
+              "endLine": 162,
+              "snippet": "export class MultiAgentOrchestrator {\n  /**\n   * Classifies user prompt into the most suitable specialized agent role\n   */\n  public routeIntent(prompt: string): SpecializedAgentRole {\n    const p = prompt.toLowerCase()\n\n    // 1. Android Device & App Launching\n    if (\n      p.includes('open app') ||\n      p.includes('launch app') ||\n      p.includes('tap') ||\n      p.includes('swipe') ||\n      p.includes('accessibility') ||\n      p.includes('on my android') ||\n      p.includes('on phone') ||\n      p.startsWith('open ') ||\n      p.startsWith('launch ')\n    ) {\n      return 'android_device'\n    }\n\n    // 2. Creative Image Generation (FLUX)\n    if (\n      p.includes('generate image') ||\n      p.includes('draw') ||\n      p.includes('paint') ||\n      p.includes('create an image') ||\n      p.includes('flux') ||\n      p.includes('illustration')\n    ) {\n      return 'creative_image'\n    }\n\n    // 3. Architecture & Diagrams (Mermaid)\n    if (\n      p.includes('diagram') ||\n      p.includes('flowchart') ||\n      p.includes('sequence diagram') ||\n      p.includes('architecture diagram') ||\n      p.includes('system architecture')\n    ) {\n      return 'architecture'\n    }\n\n    // 4. Codebase & Software Engineering\n    if (\n      p.includes('function') ||\n      p.includes('refactor') ||\n      p.includes('bug') ||\n      p.includes('codebase') ||\n      p.includes('typescript') ||\n      p.includes('syntax error') ||\n      p.includes('unit test')\n    ) {\n      return 'coding'\n    }\n\n    // 5. Scientific & Academic Research\n    if (\n      p.includes('research paper') ||\n      p.includes('scientific study') ||\n      p.includes('hypothesis') ||\n      p.includes('empirical') ||\n      p.includes('academic') ||\n      p.includes('doi:')\n    ) {\n      return 'research'\n    }\n\n    // 6. Security & Vulnerability Analysis\n    if (\n      p.includes('vulnerability') ||\n      p.includes('security audit') ||\n      p.includes('ssrf') ||\n      p.includes('prompt injection') ||\n      p.includes('sanitize') ||\n      p.includes('pii')\n    ) {\n      return 'security'\n    }\n\n    // 7. Live Web Browsing & Scraping\n    if (\n      p.startsWith('browse ') ||\n      p.startsWith('visit ') ||\n      p.includes('read webpage') ||\n      p.includes('extract page')\n    ) {\n      return 'browser'\n    }\n\n    return 'general'\n  }\n\n  /**\n   * Prepares agent execution package with privacy sanitization and security audit\n   */\n  public prepareExecution(\n    prompt: string,\n    userId: string,\n    explicitRole?: SpecializedAgentRole\n  ): OrchestrationResult {\n    const role = explicitRole || this.routeIntent(prompt)\n    const agentDef: AgentDefinition = AGENCY_AGENT_REGISTRY[role] || AGENCY_AGENT_REGISTRY.general\n\n    // 1. Cybersecurity check for prompt injection\n    const injectionCheck = cybersecurity.evaluatePromptInjection(prompt)\n    if (!injectionCheck.safe) {\n      console.warn('[Orchestrator] Security warning:', injectionCheck.reason)\n    }\n\n    // 2. PrivacyAlign sanitization\n    const piiCheck = privacyAlign.sanitize(prompt)\n\n    // 3. Harness trace initialization\n    const trace = agentHarness.startTrace(role)\n    agentHarness.logStep(trace.traceId, `Routed to specialized agent: ${agentDef.name}`)\n\n    // 4. Unified Memory context integration\n    const memoryContext = unifiedMemory.buildContextBlock(userId, piiCheck.redactedText)\n\n    const enhancedSystemInstruction = `${agentDef.systemInstruction}\\n\\n${memoryContext}`\n\n    return {\n      role,\n      agentName: agentDef.name,\n      traceId: trace.traceId,\n      systemInstruction: enhancedSystemInstruction,\n      sanitizedPrompt: piiCheck.redactedText,\n      privacyMinimization: {\n        applied: piiCheck.hasPII,\n        redactedTypes: piiCheck.detectedTypes\n      }\n    }\n  }\n}",
+              "score": 11.967,
+              "matchType": "symbol",
+              "symbolName": "MultiAgentOrchestrator",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/codebase/service.ts#class:CodebaseService:L22",
+              "filePath": "src/server/codebase/service.ts",
+              "startLine": 22,
+              "endLine": 199,
+              "snippet": "export class CodebaseService {\n  private defaultProjectId = 'current_workspace'\n\n  constructor() {\n    // Automatically index the current workspace in the background on startup\n    setTimeout(() => {\n      this.ensureWorkspaceIndexed().catch((err) => {\n        console.warn('[CodebaseService] Background workspace index notice:', err?.message)\n      })\n    }, 1500)\n  }\n\n  /**\n   * Automatically indexes the active application codebase for immediate out-of-the-box querying\n   */\n  public async ensureWorkspaceIndexed(): Promise<ProjectMetadata> {\n    const cwd = process.cwd()\n    const existing = projectStore.getProject(this.defaultProjectId)\n    if (existing && existing.metadata.indexingStatus === 'ready') {\n      return existing.metadata\n    }\n\n    return this.indexProject({\n      path: cwd,\n      projectId: this.defaultProjectId,\n      userId: 'system',\n      name: 'IRIS AI Workspace'\n    })\n  }\n\n  /**\n   * Tool: index_project\n   * Indexes a local directory path or a remote GitHub repository\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    userId?: string\n    name?: string\n    githubToken?: string\n  }): Promise<ProjectMetadata> {\n    const userId = params.userId || 'usr_default'\n    let rootPath = params.path\n    let projectId = params.projectId\n\n    if (params.githubUrl) {\n      // GitHub repo flow\n      const cleanProjId = projectId || `gh_${Date.now()}`\n      const syncResult = await syncGithubRepository(\n        params.githubUrl,\n        cleanProjId,\n        params.githubToken\n      )\n      rootPath = syncResult.repoPath\n      projectId = cleanProjId\n    }\n\n    if (!rootPath) {\n      rootPath = process.cwd()\n      projectId = projectId || this.defaultProjectId\n    }\n\n    const resolvedRoot = resolve(rootPath)\n    if (!existsSync(resolvedRoot)) {\n      throw new Error(`Directory not found: ${resolvedRoot}`)\n    }\n\n    const finalProjectId = projectId || `proj_${Date.now()}`\n    const existing = projectStore.getProject(finalProjectId, userId)\n\n    const indexed = await indexCodebase(\n      resolvedRoot,\n      finalProjectId,\n      userId,\n      params.name,\n      existing || undefined\n    )\n\n    projectStore.saveProject(indexed)\n    return indexed.metadata\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   * Hybrid semantic + BM25 search across indexed code chunks\n   */\n  public searchCodebase(\n    query: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    options: SearchCodebaseOptions = {}\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) {\n      return []\n    }\n\n    return searchCodebase(project.chunks, project.symbols, query, options)\n  }\n\n  /**\n   * Tool: get_file_context\n   * Retrieves precise file content, related symbols, and imports\n   */\n  public getFileContext(\n    filePath: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    startLine?: number,\n    endLine?: number\n  ): FileContextResult | null {\n    return projectStore.getFileContext(projectId, filePath, userId, startLine, endLine)\n  }\n\n  /**\n   * Tool: find_symbol\n   * Finds symbol definitions across codebase\n   */\n  public findSymbol(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SymbolDef[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findSymbolInIndex(project.symbols, symbolName)\n  }\n\n  /**\n   * Tool: find_references\n   * Finds references / call sites of a symbol across the project\n   */\n  public findReferences(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findReferencesInIndex(project.chunks, symbolName)\n  }\n\n  /**\n   * Tool: get_project_structure\n   * Returns directory tree and project summary stats\n   */\n  public getProjectStructure(\n    projectId = this.defaultProjectId,\n    userId?: string,\n    depth = 3\n  ): ProjectStructure | null {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return null\n\n    return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)\n  }\n\n  /**\n   * List all projects\n   */\n  public listProjects(userId?: string): ProjectMetadata[] {\n    return projectStore.listProjects(userId)\n  }\n\n  /**\n   * Delete project\n   */\n  public deleteProject(projectId: string, userId?: string): boolean {\n    return projectStore.deleteProject(projectId, userId)\n  }\n}",
+              "score": 11.3599,
+              "matchType": "hybrid",
+              "symbolName": "CodebaseService",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/codebase/search.ts#func:findReferencesInIndex:L258",
+              "filePath": "src/server/codebase/search.ts",
+              "startLine": 258,
+              "endLine": 291,
+              "snippet": "export function findReferencesInIndex(\n  chunks: CodeChunk[],\n  symbolName: string,\n  limit = 10\n): SearchResult[] {\n  const query = symbolName.trim()\n  const regex = new RegExp(`\\\\b${query}\\\\b`, 'g')\n\n  const matches: SearchResult[] = []\n  for (const chunk of chunks) {\n    if (chunk.symbolName === query && chunk.type !== 'block') {\n      // This is the definition itself, lower priority or handle separately\n      continue\n    }\n    const count = (chunk.content.match(regex) || []).length\n    if (count > 0) {\n      matches.push({\n        chunkId: chunk.id,\n        filePath: chunk.filePath,\n        startLine: chunk.startLine,\n        endLine: chunk.endLine,\n        snippet: chunk.content,\n        score: count,\n        matchType: 'symbol',\n        symbolName: chunk.symbolName,\n        language: chunk.language\n      })\n    }\n    if (matches.length >= limit) break\n  }\n\n  matches.sort((a, b) => b.score - a.score)\n  return matches\n}",
+              "score": 11.1624,
+              "matchType": "hybrid",
+              "symbolName": "findReferencesInIndex",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/renderer/src/services/codebaseService.ts#class:ClientCodebaseService:L64",
+              "filePath": "src/renderer/src/services/codebaseService.ts",
+              "startLine": 64,
+              "endLine": 219,
+              "snippet": "class ClientCodebaseService {\n  private activeProjectId = 'current_workspace'\n\n  public setActiveProject(projectId: string) {\n    this.activeProjectId = projectId\n  }\n\n  public getActiveProject(): string {\n    return this.activeProjectId\n  }\n\n  /**\n   * Tool: index_project\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    name?: string\n  }): Promise<{ success: boolean; metadata?: ClientProjectMetadata; error?: string }> {\n    try {\n      const res = await fetch('/api/codebase/index', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(params)\n      })\n      const data = await res.json()\n      if (data.metadata?.projectId) {\n        this.activeProjectId = data.metadata.projectId\n      }\n      return data\n    } catch (err: any) {\n      return { success: false, error: err?.message || 'Network error' }\n    }\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   */\n  public async searchCodebase(\n    query: string,\n    projectId = this.activeProjectId,\n    limit = 6\n  ): Promise<ClientSearchResult[]> {\n    try {\n      const res = await fetch('/api/codebase/search', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ query, projectId, limit })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.results || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: get_file_context\n   */\n  public async getFileContext(\n    filePath: string,\n    projectId = this.activeProjectId,\n    startLine?: number,\n    endLine?: number\n  ): Promise<ClientFileContext | null> {\n    try {\n      const res = await fetch('/api/codebase/context', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ filePath, projectId, startLine, endLine })\n      })\n      if (!res.ok) return null\n      const data = await res.json()\n      return data.context || null\n    } catch (_e) {\n      return null\n    }\n  }\n\n  /**\n   * Tool: find_symbol\n   */\n  public async findSymbol(\n    symbol: string,\n    projectId = this.activeProjectId\n  ): Promise<ClientSymbolDef[]> {\n    try {\n      const res = await fetch('/api/codebase/symbol', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ symbol, projectId })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.symbols || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: find_references\n   */\n  public async findReferences(\n    symbol: string,\n    projectId = this.activeProjectId\n  ): Promise<ClientSearchResult[]> {\n    try {\n      const res = await fetch('/api/codebase/references', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ symbol, projectId })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.references || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: get_project_structure\n   */\n  public async getProjectStructure(\n    projectId = this.activeProjectId,\n    depth = 3\n  ): Promise<ClientProjectStructure | null> {\n    try {\n      const res = await fetch(\n        `/api/codebase/structure?projectId=${encodeURIComponent(projectId)}&depth=${depth}`\n      )\n      if (!res.ok) return null\n      const data = await res.json()\n      return data.structure || null\n    } catch (_e) {\n      return null\n    }\n  }\n\n  /**\n   * List all projects\n   */\n  public async listProjects(): Promise<ClientProjectMetadata[]> {\n    try {\n      const res = await fetch('/api/codebase/projects')\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.projects || []\n    } catch (_e) {\n      return []\n    }\n  }\n}",
+              "score": 10.9701,
+              "matchType": "hybrid",
+              "symbolName": "ClientCodebaseService",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/research/scientificResearch.ts#class:ScientificResearchEngine:L30",
+              "filePath": "src/server/research/scientificResearch.ts",
+              "startLine": 30,
+              "endLine": 94,
+              "snippet": "export class ScientificResearchEngine {\n  /**\n   * Conducts structured scientific research on a technical/scientific inquiry\n   */\n  public async conductResearch(topic: string): Promise<ScientificReport> {\n    // 1. Multi-query search targeting scientific literature and technical publications\n    const searchQueries = [\n      `${topic} empirical findings research paper`,\n      `${topic} mechanism methodology analysis`,\n      `${topic} state of the art benchmarks`\n    ]\n\n    const sources: { title: string; url: string; snippet: string }[] = []\n    for (const q of searchQueries) {\n      try {\n        const res = await searchOrchestrator.search(q, {\n          category: 'science',\n          limit: 3,\n          extractContent: true\n        })\n        for (const item of res.results) {\n          if (!sources.some((s) => s.url === item.url)) {\n            sources.push({\n              title: item.title,\n              url: item.url,\n              snippet: item.snippet\n            })\n          }\n        }\n      } catch (_e) {}\n    }\n\n    // 2. Synthesize structured findings\n    const references = sources.map((s, idx) => ({\n      index: idx + 1,\n      title: s.title,\n      url: s.url\n    }))\n\n    const evidenceMatrix: ScientificEvidence[] = sources.slice(0, 4).map((s) => ({\n      claim: s.snippet.slice(0, 150) + '...',\n      supportingSources: [s],\n      confidence: s.snippet.length > 80 ? 'HIGH' : 'MEDIUM'\n    }))\n\n    return {\n      topic,\n      abstract: `Empirical synthesis and structured literature evaluation of ${topic}.`,\n      hypothesis: {\n        statement: `The fundamental operational behavior and theoretical properties of ${topic} can be systematically analyzed through peer-reviewed evidence.`,\n        assumptions: [\n          'Standard technical and scientific definitions apply',\n          'Available literature reflects current peer consensus'\n        ],\n        testablePredictions: [\n          `Reproducible outcomes correlate with published benchmarks for ${topic}`,\n          `Methodological constraints align with empirical evidence`\n        ]\n      },\n      evidenceMatrix,\n      synthesis: `Evaluation based on ${sources.length} sources reveals cohesive architectural and theoretical patterns regarding ${topic}. Findings indicate solid convergence across published data points.`,\n      references\n    }\n  }\n}",
+              "score": 10.2978,
+              "matchType": "hybrid",
+              "symbolName": "ScientificResearchEngine",
+              "language": "typescript"
+            }
+          ]
+        },
+        "completedAt": 1790149996049
+      },
+      {
+        "taskId": "graph_1790149978508_mmdce_t3",
+        "description": "Extract AST symbols, class signatures, methods, and dependencies of 'MultiAgentOrchestrator'.",
+        "priority": "HIGH",
+        "dependencies": [
+          "graph_1790149978508_mmdce_t2"
+        ],
+        "status": "COMPLETED",
+        "assignedAgent": "Coding Agent",
+        "requiredTools": [
+          "codebase_search"
+        ],
+        "attempts": 1,
+        "maxAttempts": 3,
+        "retrySafe": true,
+        "createdAt": 1790149995825,
+        "updatedAt": 1790149996133,
+        "verificationRules": {
+          "type": "non_empty"
+        },
+        "parameters": {
+          "dep_graph_1790149978508_mmdce_t2_output": {
+            "query": "Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.",
+            "matchesCount": 5,
+            "matches": [
+              {
+                "chunkId": "src/server/agents/orchestrator.ts#class:MultiAgentOrchestrator:L26",
+                "filePath": "src/server/agents/orchestrator.ts",
+                "startLine": 26,
+                "endLine": 162,
+                "snippet": "export class MultiAgentOrchestrator {\n  /**\n   * Classifies user prompt into the most suitable specialized agent role\n   */\n  public routeIntent(prompt: string): SpecializedAgentRole {\n    const p = prompt.toLowerCase()\n\n    // 1. Android Device & App Launching\n    if (\n      p.includes('open app') ||\n      p.includes('launch app') ||\n      p.includes('tap') ||\n      p.includes('swipe') ||\n      p.includes('accessibility') ||\n      p.includes('on my android') ||\n      p.includes('on phone') ||\n      p.startsWith('open ') ||\n      p.startsWith('launch ')\n    ) {\n      return 'android_device'\n    }\n\n    // 2. Creative Image Generation (FLUX)\n    if (\n      p.includes('generate image') ||\n      p.includes('draw') ||\n      p.includes('paint') ||\n      p.includes('create an image') ||\n      p.includes('flux') ||\n      p.includes('illustration')\n    ) {\n      return 'creative_image'\n    }\n\n    // 3. Architecture & Diagrams (Mermaid)\n    if (\n      p.includes('diagram') ||\n      p.includes('flowchart') ||\n      p.includes('sequence diagram') ||\n      p.includes('architecture diagram') ||\n      p.includes('system architecture')\n    ) {\n      return 'architecture'\n    }\n\n    // 4. Codebase & Software Engineering\n    if (\n      p.includes('function') ||\n      p.includes('refactor') ||\n      p.includes('bug') ||\n      p.includes('codebase') ||\n      p.includes('typescript') ||\n      p.includes('syntax error') ||\n      p.includes('unit test')\n    ) {\n      return 'coding'\n    }\n\n    // 5. Scientific & Academic Research\n    if (\n      p.includes('research paper') ||\n      p.includes('scientific study') ||\n      p.includes('hypothesis') ||\n      p.includes('empirical') ||\n      p.includes('academic') ||\n      p.includes('doi:')\n    ) {\n      return 'research'\n    }\n\n    // 6. Security & Vulnerability Analysis\n    if (\n      p.includes('vulnerability') ||\n      p.includes('security audit') ||\n      p.includes('ssrf') ||\n      p.includes('prompt injection') ||\n      p.includes('sanitize') ||\n      p.includes('pii')\n    ) {\n      return 'security'\n    }\n\n    // 7. Live Web Browsing & Scraping\n    if (\n      p.startsWith('browse ') ||\n      p.startsWith('visit ') ||\n      p.includes('read webpage') ||\n      p.includes('extract page')\n    ) {\n      return 'browser'\n    }\n\n    return 'general'\n  }\n\n  /**\n   * Prepares agent execution package with privacy sanitization and security audit\n   */\n  public prepareExecution(\n    prompt: string,\n    userId: string,\n    explicitRole?: SpecializedAgentRole\n  ): OrchestrationResult {\n    const role = explicitRole || this.routeIntent(prompt)\n    const agentDef: AgentDefinition = AGENCY_AGENT_REGISTRY[role] || AGENCY_AGENT_REGISTRY.general\n\n    // 1. Cybersecurity check for prompt injection\n    const injectionCheck = cybersecurity.evaluatePromptInjection(prompt)\n    if (!injectionCheck.safe) {\n      console.warn('[Orchestrator] Security warning:', injectionCheck.reason)\n    }\n\n    // 2. PrivacyAlign sanitization\n    const piiCheck = privacyAlign.sanitize(prompt)\n\n    // 3. Harness trace initialization\n    const trace = agentHarness.startTrace(role)\n    agentHarness.logStep(trace.traceId, `Routed to specialized agent: ${agentDef.name}`)\n\n    // 4. Unified Memory context integration\n    const memoryContext = unifiedMemory.buildContextBlock(userId, piiCheck.redactedText)\n\n    const enhancedSystemInstruction = `${agentDef.systemInstruction}\\n\\n${memoryContext}`\n\n    return {\n      role,\n      agentName: agentDef.name,\n      traceId: trace.traceId,\n      systemInstruction: enhancedSystemInstruction,\n      sanitizedPrompt: piiCheck.redactedText,\n      privacyMinimization: {\n        applied: piiCheck.hasPII,\n        redactedTypes: piiCheck.detectedTypes\n      }\n    }\n  }\n}",
+                "score": 11.967,
+                "matchType": "symbol",
+                "symbolName": "MultiAgentOrchestrator",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "src/server/codebase/service.ts#class:CodebaseService:L22",
+                "filePath": "src/server/codebase/service.ts",
+                "startLine": 22,
+                "endLine": 199,
+                "snippet": "export class CodebaseService {\n  private defaultProjectId = 'current_workspace'\n\n  constructor() {\n    // Automatically index the current workspace in the background on startup\n    setTimeout(() => {\n      this.ensureWorkspaceIndexed().catch((err) => {\n        console.warn('[CodebaseService] Background workspace index notice:', err?.message)\n      })\n    }, 1500)\n  }\n\n  /**\n   * Automatically indexes the active application codebase for immediate out-of-the-box querying\n   */\n  public async ensureWorkspaceIndexed(): Promise<ProjectMetadata> {\n    const cwd = process.cwd()\n    const existing = projectStore.getProject(this.defaultProjectId)\n    if (existing && existing.metadata.indexingStatus === 'ready') {\n      return existing.metadata\n    }\n\n    return this.indexProject({\n      path: cwd,\n      projectId: this.defaultProjectId,\n      userId: 'system',\n      name: 'IRIS AI Workspace'\n    })\n  }\n\n  /**\n   * Tool: index_project\n   * Indexes a local directory path or a remote GitHub repository\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    userId?: string\n    name?: string\n    githubToken?: string\n  }): Promise<ProjectMetadata> {\n    const userId = params.userId || 'usr_default'\n    let rootPath = params.path\n    let projectId = params.projectId\n\n    if (params.githubUrl) {\n      // GitHub repo flow\n      const cleanProjId = projectId || `gh_${Date.now()}`\n      const syncResult = await syncGithubRepository(\n        params.githubUrl,\n        cleanProjId,\n        params.githubToken\n      )\n      rootPath = syncResult.repoPath\n      projectId = cleanProjId\n    }\n\n    if (!rootPath) {\n      rootPath = process.cwd()\n      projectId = projectId || this.defaultProjectId\n    }\n\n    const resolvedRoot = resolve(rootPath)\n    if (!existsSync(resolvedRoot)) {\n      throw new Error(`Directory not found: ${resolvedRoot}`)\n    }\n\n    const finalProjectId = projectId || `proj_${Date.now()}`\n    const existing = projectStore.getProject(finalProjectId, userId)\n\n    const indexed = await indexCodebase(\n      resolvedRoot,\n      finalProjectId,\n      userId,\n      params.name,\n      existing || undefined\n    )\n\n    projectStore.saveProject(indexed)\n    return indexed.metadata\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   * Hybrid semantic + BM25 search across indexed code chunks\n   */\n  public searchCodebase(\n    query: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    options: SearchCodebaseOptions = {}\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) {\n      return []\n    }\n\n    return searchCodebase(project.chunks, project.symbols, query, options)\n  }\n\n  /**\n   * Tool: get_file_context\n   * Retrieves precise file content, related symbols, and imports\n   */\n  public getFileContext(\n    filePath: string,\n    projectId = this.defaultProjectId,\n    userId?: string,\n    startLine?: number,\n    endLine?: number\n  ): FileContextResult | null {\n    return projectStore.getFileContext(projectId, filePath, userId, startLine, endLine)\n  }\n\n  /**\n   * Tool: find_symbol\n   * Finds symbol definitions across codebase\n   */\n  public findSymbol(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SymbolDef[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findSymbolInIndex(project.symbols, symbolName)\n  }\n\n  /**\n   * Tool: find_references\n   * Finds references / call sites of a symbol across the project\n   */\n  public findReferences(\n    symbolName: string,\n    projectId = this.defaultProjectId,\n    userId?: string\n  ): SearchResult[] {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return []\n\n    return findReferencesInIndex(project.chunks, symbolName)\n  }\n\n  /**\n   * Tool: get_project_structure\n   * Returns directory tree and project summary stats\n   */\n  public getProjectStructure(\n    projectId = this.defaultProjectId,\n    userId?: string,\n    depth = 3\n  ): ProjectStructure | null {\n    const project =\n      projectStore.getProject(projectId, userId) || projectStore.getProject(this.defaultProjectId)\n    if (!project) return null\n\n    return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)\n  }\n\n  /**\n   * List all projects\n   */\n  public listProjects(userId?: string): ProjectMetadata[] {\n    return projectStore.listProjects(userId)\n  }\n\n  /**\n   * Delete project\n   */\n  public deleteProject(projectId: string, userId?: string): boolean {\n    return projectStore.deleteProject(projectId, userId)\n  }\n}",
+                "score": 11.3599,
+                "matchType": "hybrid",
+                "symbolName": "CodebaseService",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "src/server/codebase/search.ts#func:findReferencesInIndex:L258",
+                "filePath": "src/server/codebase/search.ts",
+                "startLine": 258,
+                "endLine": 291,
+                "snippet": "export function findReferencesInIndex(\n  chunks: CodeChunk[],\n  symbolName: string,\n  limit = 10\n): SearchResult[] {\n  const query = symbolName.trim()\n  const regex = new RegExp(`\\\\b${query}\\\\b`, 'g')\n\n  const matches: SearchResult[] = []\n  for (const chunk of chunks) {\n    if (chunk.symbolName === query && chunk.type !== 'block') {\n      // This is the definition itself, lower priority or handle separately\n      continue\n    }\n    const count = (chunk.content.match(regex) || []).length\n    if (count > 0) {\n      matches.push({\n        chunkId: chunk.id,\n        filePath: chunk.filePath,\n        startLine: chunk.startLine,\n        endLine: chunk.endLine,\n        snippet: chunk.content,\n        score: count,\n        matchType: 'symbol',\n        symbolName: chunk.symbolName,\n        language: chunk.language\n      })\n    }\n    if (matches.length >= limit) break\n  }\n\n  matches.sort((a, b) => b.score - a.score)\n  return matches\n}",
+                "score": 11.1624,
+                "matchType": "hybrid",
+                "symbolName": "findReferencesInIndex",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "src/renderer/src/services/codebaseService.ts#class:ClientCodebaseService:L64",
+                "filePath": "src/renderer/src/services/codebaseService.ts",
+                "startLine": 64,
+                "endLine": 219,
+                "snippet": "class ClientCodebaseService {\n  private activeProjectId = 'current_workspace'\n\n  public setActiveProject(projectId: string) {\n    this.activeProjectId = projectId\n  }\n\n  public getActiveProject(): string {\n    return this.activeProjectId\n  }\n\n  /**\n   * Tool: index_project\n   */\n  public async indexProject(params: {\n    path?: string\n    githubUrl?: string\n    projectId?: string\n    name?: string\n  }): Promise<{ success: boolean; metadata?: ClientProjectMetadata; error?: string }> {\n    try {\n      const res = await fetch('/api/codebase/index', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(params)\n      })\n      const data = await res.json()\n      if (data.metadata?.projectId) {\n        this.activeProjectId = data.metadata.projectId\n      }\n      return data\n    } catch (err: any) {\n      return { success: false, error: err?.message || 'Network error' }\n    }\n  }\n\n  /**\n   * Tool: search_codebase / codebase_search\n   */\n  public async searchCodebase(\n    query: string,\n    projectId = this.activeProjectId,\n    limit = 6\n  ): Promise<ClientSearchResult[]> {\n    try {\n      const res = await fetch('/api/codebase/search', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ query, projectId, limit })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.results || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: get_file_context\n   */\n  public async getFileContext(\n    filePath: string,\n    projectId = this.activeProjectId,\n    startLine?: number,\n    endLine?: number\n  ): Promise<ClientFileContext | null> {\n    try {\n      const res = await fetch('/api/codebase/context', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ filePath, projectId, startLine, endLine })\n      })\n      if (!res.ok) return null\n      const data = await res.json()\n      return data.context || null\n    } catch (_e) {\n      return null\n    }\n  }\n\n  /**\n   * Tool: find_symbol\n   */\n  public async findSymbol(\n    symbol: string,\n    projectId = this.activeProjectId\n  ): Promise<ClientSymbolDef[]> {\n    try {\n      const res = await fetch('/api/codebase/symbol', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ symbol, projectId })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.symbols || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: find_references\n   */\n  public async findReferences(\n    symbol: string,\n    projectId = this.activeProjectId\n  ): Promise<ClientSearchResult[]> {\n    try {\n      const res = await fetch('/api/codebase/references', {\n        method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ symbol, projectId })\n      })\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.references || []\n    } catch (_e) {\n      return []\n    }\n  }\n\n  /**\n   * Tool: get_project_structure\n   */\n  public async getProjectStructure(\n    projectId = this.activeProjectId,\n    depth = 3\n  ): Promise<ClientProjectStructure | null> {\n    try {\n      const res = await fetch(\n        `/api/codebase/structure?projectId=${encodeURIComponent(projectId)}&depth=${depth}`\n      )\n      if (!res.ok) return null\n      const data = await res.json()\n      return data.structure || null\n    } catch (_e) {\n      return null\n    }\n  }\n\n  /**\n   * List all projects\n   */\n  public async listProjects(): Promise<ClientProjectMetadata[]> {\n    try {\n      const res = await fetch('/api/codebase/projects')\n      if (!res.ok) return []\n      const data = await res.json()\n      return data.projects || []\n    } catch (_e) {\n      return []\n    }\n  }\n}",
+                "score": 10.9701,
+                "matchType": "hybrid",
+                "symbolName": "ClientCodebaseService",
+                "language": "typescript"
+              },
+              {
+                "chunkId": "src/server/research/scientificResearch.ts#class:ScientificResearchEngine:L30",
+                "filePath": "src/server/research/scientificResearch.ts",
+                "startLine": 30,
+                "endLine": 94,
+                "snippet": "export class ScientificResearchEngine {\n  /**\n   * Conducts structured scientific research on a technical/scientific inquiry\n   */\n  public async conductResearch(topic: string): Promise<ScientificReport> {\n    // 1. Multi-query search targeting scientific literature and technical publications\n    const searchQueries = [\n      `${topic} empirical findings research paper`,\n      `${topic} mechanism methodology analysis`,\n      `${topic} state of the art benchmarks`\n    ]\n\n    const sources: { title: string; url: string; snippet: string }[] = []\n    for (const q of searchQueries) {\n      try {\n        const res = await searchOrchestrator.search(q, {\n          category: 'science',\n          limit: 3,\n          extractContent: true\n        })\n        for (const item of res.results) {\n          if (!sources.some((s) => s.url === item.url)) {\n            sources.push({\n              title: item.title,\n              url: item.url,\n              snippet: item.snippet\n            })\n          }\n        }\n      } catch (_e) {}\n    }\n\n    // 2. Synthesize structured findings\n    const references = sources.map((s, idx) => ({\n      index: idx + 1,\n      title: s.title,\n      url: s.url\n    }))\n\n    const evidenceMatrix: ScientificEvidence[] = sources.slice(0, 4).map((s) => ({\n      claim: s.snippet.slice(0, 150) + '...',\n      supportingSources: [s],\n      confidence: s.snippet.length > 80 ? 'HIGH' : 'MEDIUM'\n    }))\n\n    return {\n      topic,\n      abstract: `Empirical synthesis and structured literature evaluation of ${topic}.`,\n      hypothesis: {\n        statement: `The fundamental operational behavior and theoretical properties of ${topic} can be systematically analyzed through peer-reviewed evidence.`,\n        assumptions: [\n          'Standard technical and scientific definitions apply',\n          'Available literature reflects current peer consensus'\n        ],\n        testablePredictions: [\n          `Reproducible outcomes correlate with published benchmarks for ${topic}`,\n          `Methodological constraints align with empirical evidence`\n        ]\n      },\n      evidenceMatrix,\n      synthesis: `Evaluation based on ${sources.length} sources reveals cohesive architectural and theoretical patterns regarding ${topic}. Findings indicate solid convergence across published data points.`,\n      references\n    }\n  }\n}",
+                "score": 10.2978,
+                "matchType": "hybrid",
+                "symbolName": "ScientificResearchEngine",
+                "language": "typescript"
+              }
+            ]
+          }
+        },
+        "executionDurationMs": 83,
+        "verificationStatus": "VERIFIED",
+        "result": {
+          "query": "Extract AST symbols, class signatures, methods, and dependencies of 'MultiAgentOrchestrator'.",
+          "matchesCount": 5,
+          "matches": [
+            {
+              "chunkId": "src/server/agents/orchestrator.ts#class:MultiAgentOrchestrator:L26",
+              "filePath": "src/server/agents/orchestrator.ts",
+              "startLine": 26,
+              "endLine": 162,
+              "snippet": "export class MultiAgentOrchestrator {\n  /**\n   * Classifies user prompt into the most suitable specialized agent role\n   */\n  public routeIntent(prompt: string): SpecializedAgentRole {\n    const p = prompt.toLowerCase()\n\n    // 1. Android Device & App Launching\n    if (\n      p.includes('open app') ||\n      p.includes('launch app') ||\n      p.includes('tap') ||\n      p.includes('swipe') ||\n      p.includes('accessibility') ||\n      p.includes('on my android') ||\n      p.includes('on phone') ||\n      p.startsWith('open ') ||\n      p.startsWith('launch ')\n    ) {\n      return 'android_device'\n    }\n\n    // 2. Creative Image Generation (FLUX)\n    if (\n      p.includes('generate image') ||\n      p.includes('draw') ||\n      p.includes('paint') ||\n      p.includes('create an image') ||\n      p.includes('flux') ||\n      p.includes('illustration')\n    ) {\n      return 'creative_image'\n    }\n\n    // 3. Architecture & Diagrams (Mermaid)\n    if (\n      p.includes('diagram') ||\n      p.includes('flowchart') ||\n      p.includes('sequence diagram') ||\n      p.includes('architecture diagram') ||\n      p.includes('system architecture')\n    ) {\n      return 'architecture'\n    }\n\n    // 4. Codebase & Software Engineering\n    if (\n      p.includes('function') ||\n      p.includes('refactor') ||\n      p.includes('bug') ||\n      p.includes('codebase') ||\n      p.includes('typescript') ||\n      p.includes('syntax error') ||\n      p.includes('unit test')\n    ) {\n      return 'coding'\n    }\n\n    // 5. Scientific & Academic Research\n    if (\n      p.includes('research paper') ||\n      p.includes('scientific study') ||\n      p.includes('hypothesis') ||\n      p.includes('empirical') ||\n      p.includes('academic') ||\n      p.includes('doi:')\n    ) {\n      return 'research'\n    }\n\n    // 6. Security & Vulnerability Analysis\n    if (\n      p.includes('vulnerability') ||\n      p.includes('security audit') ||\n      p.includes('ssrf') ||\n      p.includes('prompt injection') ||\n      p.includes('sanitize') ||\n      p.includes('pii')\n    ) {\n      return 'security'\n    }\n\n    // 7. Live Web Browsing & Scraping\n    if (\n      p.startsWith('browse ') ||\n      p.startsWith('visit ') ||\n      p.includes('read webpage') ||\n      p.includes('extract page')\n    ) {\n      return 'browser'\n    }\n\n    return 'general'\n  }\n\n  /**\n   * Prepares agent execution package with privacy sanitization and security audit\n   */\n  public prepareExecution(\n    prompt: string,\n    userId: string,\n    explicitRole?: SpecializedAgentRole\n  ): OrchestrationResult {\n    const role = explicitRole || this.routeIntent(prompt)\n    const agentDef: AgentDefinition = AGENCY_AGENT_REGISTRY[role] || AGENCY_AGENT_REGISTRY.general\n\n    // 1. Cybersecurity check for prompt injection\n    const injectionCheck = cybersecurity.evaluatePromptInjection(prompt)\n    if (!injectionCheck.safe) {\n      console.warn('[Orchestrator] Security warning:', injectionCheck.reason)\n    }\n\n    // 2. PrivacyAlign sanitization\n    const piiCheck = privacyAlign.sanitize(prompt)\n\n    // 3. Harness trace initialization\n    const trace = agentHarness.startTrace(role)\n    agentHarness.logStep(trace.traceId, `Routed to specialized agent: ${agentDef.name}`)\n\n    // 4. Unified Memory context integration\n    const memoryContext = unifiedMemory.buildContextBlock(userId, piiCheck.redactedText)\n\n    const enhancedSystemInstruction = `${agentDef.systemInstruction}\\n\\n${memoryContext}`\n\n    return {\n      role,\n      agentName: agentDef.name,\n      traceId: trace.traceId,\n      systemInstruction: enhancedSystemInstruction,\n      sanitizedPrompt: piiCheck.redactedText,\n      privacyMinimization: {\n        applied: piiCheck.hasPII,\n        redactedTypes: piiCheck.detectedTypes\n      }\n    }\n  }\n}",
+              "score": 12.3699,
+              "matchType": "symbol",
+              "symbolName": "MultiAgentOrchestrator",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/agents/agencyAgents.ts#L1-L60",
+              "filePath": "src/server/agents/agencyAgents.ts",
+              "startLine": 1,
+              "endLine": 60,
+              "snippet": "/**\n * Specialized Agency Agents (Repository 21: msitarzewski/agency-agents)\n * Provides task-specialized agent personas and instructions\n * wrapped within immutable security, privacy, and permission boundaries.\n */\n\nimport type { AgentDefinition, SpecializedAgentRole } from './types'\n\nexport const AGENCY_AGENT_REGISTRY: Record<SpecializedAgentRole, AgentDefinition> = {\n  general: {\n    role: 'general',\n    name: 'IRIS General Intelligence',\n    description: 'Primary conversational voice-first neural assistant and device operating layer.',\n    systemInstruction:\n      'You are IRIS, an advanced voice-first neural AI assistant and device operating layer. Be concise, articulate, and direct.',\n    requiredCapabilities: ['chat', 'voice', 'device'],\n    temperature: 0.7,\n    maxIterations: 3\n  },\n\n  coding: {\n    role: 'coding',\n    name: 'IRIS Engineering Agent',\n    description:\n      'Specialized in codebase reasoning, debugging, architecture inspection, and clean refactoring.',\n    systemInstruction: `You are the IRIS Engineering Agent.\nYour focus is precise software architecture, AST analysis, clean modular code, and verifiable refactoring.\nRules:\n1. Always reference exact file paths and lines when discussing code.\n2. Produce production-grade TypeScript/JavaScript without syntax or typing flaws.\n3. Propose changes clearly with markdown diffs. Never hallucinate API methods.`,\n    requiredCapabilities: ['codebase', 'search', 'syntax_eval'],\n    temperature: 0.2,\n    maxIterations: 4\n  },\n\n  research: {\n    role: 'research',\n    name: 'IRIS Research & Science Agent',\n    description:\n      'Specialized in structured research, scientific literature synthesis, and empirical evidence verification.',\n    systemInstruction: `You are the IRIS Research Agent.\nYour focus is factual depth, empirical cross-checking, literature synthesis, and formal citation.\nRules:\n1. Ground answers in verified web sources and scientific literature.\n2. Provide numbered citations [1], [2] linked to source domains.\n3. Never state stale assumptions as current fact. If uncertain, state the evidence boundary.`,\n    requiredCapabilities: ['web_search', 'academic_synthesis', 'citations'],\n    temperature: 0.3,\n    maxIterations: 5\n  },\n\n  security: {\n    role: 'security',\n    name: 'IRIS Cybersecurity & Privacy Agent',\n    description:\n      'Specialized in vulnerability analysis, PII protection, secure coding, and threat defense.',\n    systemInstruction: `You are the IRIS Cybersecurity & Privacy Agent.\nYour focus is defensive security, prompt injection resilience, input validation, and zero data leakage.\nRules:",
+              "score": 8.1076,
+              "matchType": "hybrid",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/codebase/chunker.ts#func:parseJsTsFile:L137",
+              "filePath": "src/server/codebase/chunker.ts",
+              "startLine": 137,
+              "endLine": 270,
+              "snippet": "function parseJsTsFile(\n  filePath: string,\n  lines: string[],\n  language: string,\n  chunks: CodeChunk[],\n  symbols: SymbolDef[]\n) {\n  const funcRegex =\n    /^(?:export\\s+)?(?:async\\s+)?(?:function\\*?\\s+([a-zA-Z0-9_$]+)|(?:const|let|var)\\s+([a-zA-Z0-9_$]+)\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>|(?:const|let|var)\\s+([a-zA-Z0-9_$]+)\\s*=\\s*function)/\n  const classRegex = /^(?:export\\s+)?(?:abstract\\s+)?class\\s+([a-zA-Z0-9_$]+)/\n  const interfaceRegex = /^(?:export\\s+)?interface\\s+([a-zA-Z0-9_$]+)/\n  const typeRegex = /^(?:export\\s+)?type\\s+([a-zA-Z0-9_$]+)\\s*=/\n\n  let i = 0\n  while (i < lines.length) {\n    const rawLine = lines[i]\n    const trimmed = rawLine.trim()\n\n    // Match Classes\n    const classMatch = trimmed.match(classRegex)\n    if (classMatch) {\n      const name = classMatch[1]\n      const { endLine, blockContent } = extractBraceBlock(lines, i)\n      symbols.push({\n        name,\n        kind: 'class',\n        filePath,\n        line: i + 1,\n        signature: trimmed\n      })\n      chunks.push({\n        id: `${filePath}#class:${name}:L${i + 1}`,\n        filePath,\n        startLine: i + 1,\n        endLine,\n        content: blockContent,\n        type: 'class',\n        symbolName: name,\n        language,\n        hash: computeSha256(blockContent)\n      })\n      i = endLine\n      continue\n    }\n\n    // Match Interfaces\n    const interfaceMatch = trimmed.match(interfaceRegex)\n    if (interfaceMatch) {\n      const name = interfaceMatch[1]\n      const { endLine, blockContent } = extractBraceBlock(lines, i)\n      symbols.push({\n        name,\n        kind: 'interface',\n        filePath,\n        line: i + 1,\n        signature: trimmed\n      })\n      chunks.push({\n        id: `${filePath}#interface:${name}:L${i + 1}`,\n        filePath,\n        startLine: i + 1,\n        endLine,\n        content: blockContent,\n        type: 'interface',\n        symbolName: name,\n        language,\n        hash: computeSha256(blockContent)\n      })\n      i = endLine\n      continue\n    }\n\n    // Match Types\n    const typeMatch = trimmed.match(typeRegex)\n    if (typeMatch) {\n      const name = typeMatch[1]\n      let end = i\n      while (end < lines.length && !lines[end].includes(';') && end - i < 20) {\n        end++\n      }\n      const endLine = Math.min(end + 1, lines.length)\n      const blockContent = lines.slice(i, endLine).join('\\n')\n      symbols.push({\n        name,\n        kind: 'type',\n        filePath,\n        line: i + 1,\n        signature: trimmed\n      })\n      chunks.push({\n        id: `${filePath}#type:${name}:L${i + 1}`,\n        filePath,\n        startLine: i + 1,\n        endLine,\n        content: blockContent,\n        type: 'interface',\n        symbolName: name,\n        language,\n        hash: computeSha256(blockContent)\n      })\n      i = endLine\n      continue\n    }\n\n    // Match Functions\n    const funcMatch = trimmed.match(funcRegex)\n    if (funcMatch) {\n      const name = funcMatch[1] || funcMatch[2] || funcMatch[3]\n      const { endLine, blockContent } = extractBraceBlock(lines, i)\n      symbols.push({\n        name,\n        kind: 'function',\n        filePath,\n        line: i + 1,\n        signature: trimmed\n      })\n      chunks.push({\n        id: `${filePath}#func:${name}:L${i + 1}`,\n        filePath,\n        startLine: i + 1,\n        endLine,\n        content: blockContent,\n        type: 'function',\n        symbolName: name,\n        language,\n        hash: computeSha256(blockContent)\n      })\n      i = endLine\n      continue\n    }\n\n    i++\n  }\n}",
+              "score": 6.9056,
+              "matchType": "hybrid",
+              "symbolName": "parseJsTsFile",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/agents/orchestrator.ts#interface:OrchestrationResult:L14",
+              "filePath": "src/server/agents/orchestrator.ts",
+              "startLine": 14,
+              "endLine": 24,
+              "snippet": "export interface OrchestrationResult {\n  role: SpecializedAgentRole\n  agentName: string\n  traceId: string\n  systemInstruction: string\n  sanitizedPrompt: string\n  privacyMinimization: {\n    applied: boolean\n    redactedTypes: string[]\n  }\n}",
+              "score": 6.8497,
+              "matchType": "hybrid",
+              "symbolName": "OrchestrationResult",
+              "language": "typescript"
+            },
+            {
+              "chunkId": "src/server/browser/browserAgent.ts#class:BrowserUseAgent:L12",
+              "filePath": "src/server/browser/browserAgent.ts",
+              "startLine": 12,
+              "endLine": 139,
+              "snippet": "export class BrowserUseAgent {\n  private sessions = new Map<string, BrowserAgentSession>()\n\n  /**\n   * Starts or resumes a browser session\n   */\n  public getOrCreateSession(sessionId = 'default'): BrowserAgentSession {\n    if (!this.sessions.has(sessionId)) {\n      this.sessions.set(sessionId, {\n        id: sessionId,\n        currentUrl: '',\n        history: [],\n        pageTitle: '',\n        extractedText: '',\n        status: 'idle'\n      })\n    }\n    return this.sessions.get(sessionId)!\n  }\n\n  /**\n   * Executes a browser action with security check and recovery\n   */\n  public async executeAction(\n    action: BrowserAction,\n    sessionId = 'default'\n  ): Promise<BrowserActionResult> {\n    const session = this.getOrCreateSession(sessionId)\n    const startTime = Date.now()\n\n    try {\n      switch (action.type) {\n        case 'navigate': {\n          if (!action.url) {\n            return {\n              success: false,\n              action: 'navigate',\n              error: 'URL is required for navigation',\n              executionTimeMs: Date.now() - startTime\n            }\n          }\n\n          // 1. SSRF Validation (Cybersecurity Skill)\n          const ssrfCheck = cybersecurity.validateUrlForSSRF(action.url)\n          if (!ssrfCheck.safe) {\n            return {\n              success: false,\n              action: 'navigate',\n              error: `Security violation: ${ssrfCheck.reason}`,\n              executionTimeMs: Date.now() - startTime\n            }\n          }\n\n          session.status = 'navigating'\n\n          // 2. Fetch and extract page using Reader with timeout recovery\n          const page = await searchOrchestrator.browseUrl(action.url, 4000)\n\n          // 3. Privacy redaction on extracted content\n          const sanitizedContent = privacyAlign.sanitize(page.content).redactedText\n\n          session.currentUrl = action.url\n          session.history.push(action.url)\n          session.pageTitle = page.title\n          session.extractedText = sanitizedContent\n          session.status = 'completed'\n\n          return {\n            success: Boolean(page && (page.content || page.title)),\n            action: 'navigate',\n            url: action.url,\n            title: page.title,\n            content: sanitizedContent,\n            executionTimeMs: Date.now() - startTime\n          }\n        }\n\n        case 'extract_content': {\n          if (!session.currentUrl) {\n            return {\n              success: false,\n              action: 'extract_content',\n              error: 'No active webpage. Navigate to a URL first.',\n              executionTimeMs: Date.now() - startTime\n            }\n          }\n\n          return {\n            success: true,\n            action: 'extract_content',\n            url: session.currentUrl,\n            title: session.pageTitle,\n            content: session.extractedText,\n            executionTimeMs: Date.now() - startTime\n          }\n        }\n\n        case 'scroll': {\n          session.status = 'interacting'\n          // Simulation of scroll in extracted document context\n          return {\n            success: true,\n            action: 'scroll',\n            url: session.currentUrl,\n            content: `Scrolled ${action.direction || 'down'} ${action.pixels || 500}px in document.`,\n            executionTimeMs: Date.now() - startTime\n          }\n        }\n\n        default:\n          return {\n            success: false,\n            action: action.type,\n            error: `Unsupported browser action in headless environment: ${action.type}`,\n            executionTimeMs: Date.now() - startTime\n          }\n      }\n    } catch (err: any) {\n      session.status = 'failed'\n      return {\n        success: false,\n        action: action.type,\n        error: `Browser execution failed: ${err?.message || 'Unknown error'}. Initiating recovery.`,\n        executionTimeMs: Date.now() - startTime\n      }\n    }\n  }\n}",
+              "score": 6.6379,
+              "matchType": "hybrid",
+              "symbolName": "BrowserUseAgent",
+              "language": "typescript"
+            }
+          ]
+        },
+        "completedAt": 1790149996133
+      }
+    ],
+    "priority": "NORMAL",
+    "status": "COMPLETED",
+    "createdAt": 1790149978508,
+    "updatedAt": 1790149996135,
+    "contextMemory": {},
+    "retrievedMemories": [],
+    "completedAt": 1790149996135,
+    "finalSynthesis": "- [Coding Agent] Inspect the repository directory structure to map the codebase layout and identify core source modules.: {\"query\":\"Inspect the repository directory structure to map the codebase layout and identify core source modules.\",\"matchesCount\":5,\"matches\":[{\"chunkId\":\"docs/development/setup-guide.md#L1-L53\",\"filePath\":\"docs/development/setup-guide.md\",\"startLine\":1,\"endLine\":53,\"snippet\":\"# Development Setup Gu\n\n- [Coding Agent] Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.: {\"query\":\"Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.\",\"matchesCount\":5,\"matches\":[{\"chunkId\":\"src/server/agents/orchestrator.ts#class:MultiAgentOrchestrator:L26\",\"filePath\":\"src/server/agents/orchestrator.ts\",\"startLine\":26,\"endLine\":162,\"snippet\":\"e\n\n- [Coding Agent] Extract AST symbols, class signatures, methods, and dependencies of 'MultiAgentOrchestrator'.: {\"query\":\"Extract AST symbols, class signatures, methods, and dependencies of 'MultiAgentOrchestrator'.\",\"matchesCount\":5,\"matches\":[{\"chunkId\":\"src/server/agents/orchestrator.ts#class:MultiAgentOrchestrator:L26\",\"filePath\":\"src/server/agents/orchestrator.ts\",\"startLine\":26,\"endLine\":162,\"snippet\":\""
+  }
+]
