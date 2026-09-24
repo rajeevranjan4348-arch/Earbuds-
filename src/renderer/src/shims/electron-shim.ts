@@ -1,3 +1,4 @@
+import '../lib/safeJson'
 // IRIS Browser Shim for Electron IPC and Neural Operating Layer Bridge
 import { launch_app, get_installed_apps, resolve_app } from '../services/launcher'
 
@@ -128,6 +129,48 @@ function saveStoredGallery(gallery: GalleryItem[]) {
 }
 
 // Initialize window.electron shim
+const ipcListeners = new Map<string, Set<(...args: any[]) => void>>()
+
+const DEFAULT_GLOBAL_SHORTCUTS = [
+  {
+    accelerator: 'CommandOrControl+Shift+V',
+    action: 'toggle-voice-chat',
+    description: 'Toggle Real-Time Voice Chat Modal',
+    defaultKey: 'CommandOrControl+Shift+V',
+    enabled: true
+  },
+  {
+    accelerator: 'CommandOrControl+Shift+Space',
+    action: 'toggle-voice-chat',
+    description: 'Quick Voice Trigger',
+    defaultKey: 'CommandOrControl+Shift+Space',
+    enabled: true
+  },
+  {
+    accelerator: 'CommandOrControl+Shift+O',
+    action: 'toggle-os-workspace',
+    description: 'Toggle IRIS Neural OS Workspace',
+    defaultKey: 'CommandOrControl+Shift+O',
+    enabled: true
+  },
+  {
+    accelerator: 'CommandOrControl+Shift+M',
+    action: 'toggle-mute',
+    description: 'Toggle Microphone Mute / Unmute',
+    defaultKey: 'CommandOrControl+Shift+M',
+    enabled: true
+  },
+  {
+    accelerator: 'CommandOrControl+Shift+X',
+    action: 'stop-speech',
+    description: 'Interrupt & Stop AI Speech Output',
+    defaultKey: 'CommandOrControl+Shift+X',
+    enabled: true
+  }
+]
+
+let registeredWebShortcuts = [...DEFAULT_GLOBAL_SHORTCUTS]
+
 const electronShim = {
   process: {
     platform:
@@ -150,13 +193,58 @@ const electronShim = {
         console.log('[IRIS] Window close requested')
       }
     },
-    on: (_channel: string, _func: (...args: any[]) => void) => {
-      return () => {}
+    on: (channel: string, func: (...args: any[]) => void) => {
+      if (!ipcListeners.has(channel)) {
+        ipcListeners.set(channel, new Set())
+      }
+      ipcListeners.get(channel)!.add(func)
+      return () => {
+        ipcListeners.get(channel)?.delete(func)
+      }
+    },
+    removeListener: (channel: string, func: (...args: any[]) => void) => {
+      ipcListeners.get(channel)?.delete(func)
+    },
+    emit: (channel: string, ...args: any[]) => {
+      ipcListeners.get(channel)?.forEach((fn) => {
+        try {
+          fn(...args)
+        } catch (e) {
+          console.error(`[IRIS IPC Listener Error on ${channel}]:`, e)
+        }
+      })
     },
     invoke: async (channel: string, ...args: any[]) => {
       console.log(`[IRIS IPC invoke] ${channel}`, args)
 
       switch (channel) {
+        case 'get-global-shortcuts': {
+          return registeredWebShortcuts
+        }
+
+        case 'register-global-shortcut': {
+          const item = args[0]
+          if (item?.accelerator) {
+            registeredWebShortcuts = registeredWebShortcuts.filter(
+              (s) => s.accelerator !== item.accelerator
+            )
+            registeredWebShortcuts.push(item)
+          }
+          return { success: true, shortcuts: registeredWebShortcuts }
+        }
+
+        case 'unregister-global-shortcut': {
+          const accelerator = args[0]
+          registeredWebShortcuts = registeredWebShortcuts.filter(
+            (s) => s.accelerator !== accelerator
+          )
+          return { success: true, shortcuts: registeredWebShortcuts }
+        }
+
+        case 'reset-global-shortcuts': {
+          registeredWebShortcuts = [...DEFAULT_GLOBAL_SHORTCUTS]
+          return { success: true, shortcuts: registeredWebShortcuts }
+        }
         case 'get-system-stats': {
           const t = Date.now() / 1000
           const cpuVal = (18 + Math.sin(t * 0.8) * 8 + Math.random() * 4).toFixed(1)

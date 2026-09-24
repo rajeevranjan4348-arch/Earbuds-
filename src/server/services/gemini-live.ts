@@ -267,27 +267,28 @@ export class GeminiLiveService {
               // 5. Tool call handling
               if (message.toolCall?.functionCalls && liveSession) {
                 const calls = message.toolCall.functionCalls
-                const responses = []
+                const responses: Array<{ id?: string; name?: string; response: Record<string, any> }> = []
 
                 for (const call of calls) {
+                  const callName = call.name || ''
                   sendToClient({
                     type: 'tool_call',
-                    name: call.name,
+                    name: callName,
                     id: call.id,
                     args: call.args
                   })
 
                   try {
-                    const result = await toolRegistry.executeTool(call.name, (call.args as any) || {})
+                    const result = await toolRegistry.executeTool(callName, (call.args as any) || {})
                     responses.push({
                       id: call.id,
-                      name: call.name,
+                      name: callName,
                       response: { output: result }
                     })
                   } catch (toolErr: any) {
                     responses.push({
                       id: call.id,
-                      name: call.name,
+                      name: callName,
                       response: { error: toolErr?.message || 'Tool execution failed' }
                     })
                   }
@@ -500,7 +501,7 @@ export class GeminiLiveService {
     let spokenText = ''
     try {
       const textRes = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: fullPrompt
       })
       spokenText = textRes.text?.trim() || ''
@@ -586,7 +587,7 @@ export class GeminiLiveService {
     if (ai && chunkToProcess) {
       try {
         const audioResponse = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: [
             {
               parts: [

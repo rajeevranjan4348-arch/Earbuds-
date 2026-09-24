@@ -782,10 +782,10 @@ class GestureRecognitionService {
       let f1 = 587.33 // D5
       let f2 = 880.0 // A5
 
-      if (gesture === 'SWIPE_LEFT' || gesture === 'NEXT_TAB') {
+      if (gesture === 'SWIPE_LEFT') {
         f1 = 523.25 // C5
         f2 = 783.99 // G5
-      } else if (gesture === 'SWIPE_RIGHT' || gesture === 'PREV_TAB') {
+      } else if (gesture === 'SWIPE_RIGHT') {
         f1 = 783.99 // G5
         f2 = 523.25 // C5
       } else if (gesture === 'CLOSED_FIST') {

@@ -161,7 +161,7 @@ ${resultsSummary.join('\n')}
 Synthesize an articulate, complete, helpful final response answering the user's goal directly based on the verified execution results above. Keep tone intelligent, clear, and direct.`
 
         const resp = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-2.5-flash',
           contents: [{ text: prompt }]
         })
 

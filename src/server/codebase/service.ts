@@ -151,6 +151,14 @@ export class CodebaseService {
     return findSymbolInIndex(project.symbols, symbolName)
   }
 
+  public findSymbols(
+    symbolName: string,
+    projectId = this.defaultProjectId,
+    userId?: string
+  ): SymbolDef[] {
+    return this.findSymbol(symbolName, projectId, userId)
+  }
+
   /**
    * Tool: find_references
    * Finds references / call sites of a symbol across the project
@@ -181,6 +189,14 @@ export class CodebaseService {
     if (!project) return null
 
     return buildProjectStructure(project.metadata.rootPath, project.metadata.projectId, depth)
+  }
+
+  public getStructure(
+    projectId = this.defaultProjectId,
+    userId?: string,
+    depth = 3
+  ): ProjectStructure | null {
+    return this.getProjectStructure(projectId, userId, depth)
   }
 
   /**

@@ -117,7 +117,7 @@ export class EmbeddingsEngine {
   /**
    * Deterministic 128-dimensional frequency hash vector for fallback/offline scenarios
    */
-  private static fallbackTfIdfVector(text: string): number[] {
+  public static fallbackTfIdfVector(text: string): number[] {
     const dim = 128
     const vector = new Array(dim).fill(0)
     const tokens = text.toLowerCase().match(/\b[a-z0-9]{2,}\b/g) || []

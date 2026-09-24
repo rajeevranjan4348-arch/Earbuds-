@@ -34,10 +34,13 @@ import { GoogleWorkspaceService, WorkspaceItem } from '../services/workspace'
 import { User } from 'firebase/auth'
 import WorkspaceHub from '../components/UI/WorkspaceHub'
 import AuthFailureView from '../components/UI/AuthFailureView'
-import { ShieldAlert } from 'lucide-react'
+import WorkspaceTelemetryAnalytics from '../components/UI/WorkspaceTelemetryAnalytics'
+import { WorkspaceSkeleton } from '../components/UI/SkeletonLoader'
+import { ShieldAlert, Activity } from 'lucide-react'
 
 type WorkspaceTab =
   | 'HUB'
+  | 'TELEMETRY'
   | 'DIAGNOSTICS'
   | 'DRIVE'
   | 'GMAIL'
@@ -100,7 +103,19 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       const currentToken = getCachedAccessToken()
       if (currentToken) setToken(currentToken)
     })
-    return () => unsub()
+
+    const handleSelectService = (e: any) => {
+      const svc = (e.detail?.service || '').toUpperCase()
+      if (svc && ['HUB', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
+        setActiveSubTab(svc as WorkspaceTab)
+      }
+    }
+    window.addEventListener('iris:workspace-select-service', handleSelectService)
+
+    return () => {
+      unsub()
+      window.removeEventListener('iris:workspace-select-service', handleSelectService)
+    }
   }, [])
 
   // Google Sign-In Handler
@@ -410,6 +425,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
   const subTabs = [
     { id: 'HUB', label: 'Hub & Status', icon: <RiShieldCheckLine size={15} /> },
+    { id: 'TELEMETRY', label: 'Telemetry & Latency', icon: <Activity size={15} className="text-[#00ff41]" /> },
     { id: 'DIAGNOSTICS', label: 'Auth Failures', icon: <ShieldAlert size={15} className="text-red-400" /> },
     { id: 'DRIVE', label: 'Drive', icon: <RiDriveLine size={15} /> },
     { id: 'SHEETS', label: 'Sheets', icon: <RiFileExcelLine size={15} /> },
@@ -541,6 +557,10 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       {activeSubTab === 'HUB' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
           <WorkspaceHub onSelectServiceTab={(tabId) => setActiveSubTab(tabId as WorkspaceTab)} />
+        </div>
+      ) : activeSubTab === 'TELEMETRY' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <WorkspaceTelemetryAnalytics />
         </div>
       ) : activeSubTab === 'DIAGNOSTICS' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
@@ -726,9 +746,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
               ) && (
                 <div className="space-y-2">
                   {isLoading ? (
-                    <div className="text-center py-10 text-zinc-500 text-xs animate-pulse">
-                      Retrieving live data from Google {activeSubTab}...
-                    </div>
+                    <WorkspaceSkeleton />
                   ) : items.length === 0 ? (
                     <div className="text-center py-10 text-zinc-500 text-xs">
                       No records found for {activeSubTab}.

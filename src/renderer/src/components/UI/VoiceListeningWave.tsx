@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
 import {
   Mic,
   MicOff,
@@ -11,6 +11,8 @@ import {
   Square,
   CornerDownLeft
 } from 'lucide-react'
+import { RealtimeAudioVisualizer, VisualizerMode } from './RealtimeAudioVisualizer'
+import { ActiveVoiceWaveformVisualizer, WaveformMode } from './ActiveVoiceWaveformVisualizer'
 
 interface VoiceListeningWaveProps {
   isConnected: boolean
@@ -18,6 +20,9 @@ interface VoiceListeningWaveProps {
   isSpeaking: boolean
   isMuted: boolean
   micLevel: number
+  frequencyData?: Uint8Array | null
+  stream?: MediaStream | null
+  analyser?: AnalyserNode | null
   interimTranscript: string
   lastFinalTranscript: string
   voiceStatus: string
@@ -34,6 +39,9 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
   isSpeaking,
   isMuted,
   micLevel,
+  frequencyData,
+  stream,
+  analyser,
   interimTranscript,
   lastFinalTranscript,
   voiceStatus,
@@ -43,162 +51,9 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
   onStopSpeaking,
   onSubmitPrompt
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const animFrameRef = useRef<number | null>(null)
-  const smoothedLevelRef = useRef<number>(0)
-  const phaseRef = useRef<number>(0)
+  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>('waves')
   const [manualText, setManualText] = useState('')
   const [isInputFocused, setIsInputFocused] = useState(false)
-
-  // Smooth audio level interpolation & high-fidelity multi-wave canvas rendering
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let width = (canvas.width = canvas.parentElement?.clientWidth || 400)
-    let height = (canvas.height = 110)
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect && canvas) {
-          width = canvas.width = Math.floor(entry.contentRect.width) || 400
-          height = canvas.height = 110
-        }
-      }
-    })
-
-    if (canvas.parentElement) {
-      resizeObserver.observe(canvas.parentElement)
-    }
-
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    const render = () => {
-      // Pause drawing if tab is in the background to save GPU & CPU cycles
-      if (document.hidden) {
-        animFrameRef.current = requestAnimationFrame(render)
-        return
-      }
-
-      // Lerp smoothed audio level
-      const targetLevel = !isConnected
-        ? 0
-        : isSpeaking
-          ? 0.45 + Math.sin(Date.now() * 0.008) * 0.25
-          : isMuted
-            ? 0
-            : Math.max(0.05, Math.min(1, micLevel * 2.2))
-
-      smoothedLevelRef.current += (targetLevel - smoothedLevelRef.current) * 0.18
-      const lvl = smoothedLevelRef.current
-      const motionSpeed = prefersReducedMotion ? 0.3 : 1.0
-      phaseRef.current += (isSpeaking ? 0.12 : isListening ? 0.06 + lvl * 0.1 : 0.02) * motionSpeed
-
-      ctx.clearRect(0, 0, width, height)
-
-      const centerY = height / 2
-
-      // Wave configurations: 4 layered sine harmonics
-      const waves = [
-        {
-          color: isSpeaking
-            ? 'rgba(6, 182, 212, 0.85)'
-            : isMuted
-              ? 'rgba(239, 68, 68, 0.4)'
-              : 'rgba(0, 255, 65, 0.9)',
-          freq: 0.015,
-          ampMult: 34,
-          speedMult: 1.0,
-          lineWidth: 2.2
-        },
-        {
-          color: isSpeaking
-            ? 'rgba(34, 211, 238, 0.5)'
-            : isMuted
-              ? 'rgba(239, 68, 68, 0.2)'
-              : 'rgba(52, 211, 153, 0.5)',
-          freq: 0.022,
-          ampMult: 24,
-          speedMult: -0.8,
-          lineWidth: 1.6
-        },
-        {
-          color: isSpeaking
-            ? 'rgba(147, 197, 253, 0.35)'
-            : isMuted
-              ? 'rgba(252, 165, 165, 0.15)'
-              : 'rgba(110, 231, 183, 0.35)',
-          freq: 0.009,
-          ampMult: 18,
-          speedMult: 1.4,
-          lineWidth: 1.2
-        },
-        {
-          color: isSpeaking
-            ? 'rgba(6, 182, 212, 0.2)'
-            : isMuted
-              ? 'rgba(239, 68, 68, 0.1)'
-              : 'rgba(0, 255, 65, 0.2)',
-          freq: 0.035,
-          ampMult: 12,
-          speedMult: -1.2,
-          lineWidth: 1.0
-        }
-      ]
-
-      waves.forEach((w) => {
-        ctx.beginPath()
-        ctx.lineWidth = w.lineWidth
-        ctx.strokeStyle = w.color
-
-        for (let x = 0; x < width; x += 2) {
-          // Envelope: taper edges to zero smoothly
-          const envelope = Math.sin((x / width) * Math.PI)
-          const amp = w.ampMult * (0.15 + lvl * 1.2) * envelope
-          const y =
-            centerY +
-            Math.sin(x * w.freq + phaseRef.current * w.speedMult) * amp +
-            Math.sin(x * 0.005 + phaseRef.current * 0.5) * (amp * 0.3)
-
-          if (x === 0) {
-            ctx.moveTo(x, y)
-          } else {
-            ctx.lineTo(x, y)
-          }
-        }
-        ctx.stroke()
-      })
-
-      // Center glowing pulse point
-      if (isConnected && !isMuted) {
-        const centerPulseX = width / 2
-        const pulseAmp = Math.max(3, lvl * 18)
-        ctx.beginPath()
-        ctx.arc(centerPulseX, centerY, pulseAmp, 0, Math.PI * 2)
-        ctx.fillStyle = isSpeaking
-          ? 'rgba(34, 211, 238, 0.7)'
-          : 'rgba(0, 255, 65, 0.75)'
-        ctx.shadowColor = isSpeaking ? '#22d3ee' : '#00ff41'
-        ctx.shadowBlur = 12
-        ctx.fill()
-        ctx.shadowBlur = 0
-      }
-
-      animFrameRef.current = requestAnimationFrame(render)
-    }
-
-    render()
-
-    return () => {
-      resizeObserver.disconnect()
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-    }
-  }, [isConnected, isListening, isSpeaking, isMuted, micLevel])
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -285,6 +140,22 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
               </div>
             )}
 
+            {isConnected && (
+              <button
+                type="button"
+                onClick={onToggleMic}
+                className={`cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-mono transition-all ${
+                  isMuted
+                    ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300 border-red-500/40'
+                    : 'bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 border-white/10'
+                }`}
+                title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+              >
+                {isMuted ? <MicOff size={11} className="text-red-400" /> : <Mic size={11} className="text-emerald-400" />}
+                <span>{isMuted ? 'UNMUTE' : 'MUTE'}</span>
+              </button>
+            )}
+
             {isSpeaking && onStopSpeaking && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -300,31 +171,46 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
           </div>
         </div>
 
-        {/* Live Audio Sine Wave Canvas Visualizer */}
-        <div className="relative w-full h-[90px] sm:h-[105px] flex items-center justify-center overflow-hidden rounded-2xl bg-black/50 border border-white/5">
-          <canvas ref={canvasRef} className="w-full h-full block" />
-
-          {/* Center Overlay if Offline / Disconnected */}
-          {!isConnected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 backdrop-blur-sm z-10">
+        {/* Real-Time Audio Sensitivity Waveform Visualizer Canvas */}
+        <div className="relative w-full overflow-hidden rounded-2xl">
+          {isConnected ? (
+            <ActiveVoiceWaveformVisualizer
+              stream={stream}
+              frequencyData={frequencyData}
+              audioLevel={micLevel}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              isMuted={isMuted}
+              status={voiceStatus}
+              height={95}
+              showTelemetry={true}
+              allowModeSwitch={true}
+              variant="inline"
+              onToggleMute={onToggleMic}
+            />
+          ) : (
+            <div className="w-full h-16 bg-black/50 rounded-2xl flex items-center justify-between px-4 border border-white/5">
+              <div className="flex flex-col">
+                <span className="text-xs font-mono font-bold text-zinc-300">Voice Core Standby</span>
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  Microphone & Voice interface offline
+                </span>
+              </div>
               <motion.button
-                whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(0,255,65,0.4)' }}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(0,255,65,0.4)' }}
                 whileTap={{ scale: 0.95 }}
                 onClick={onToggleConnect}
-                className="cursor-pointer px-4 py-2 rounded-full bg-[#00ff41] hover:bg-[#33ff66] text-black font-mono font-bold text-xs tracking-wider uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,65,0.25)] transition-all"
+                className="cursor-pointer px-3.5 py-1.5 rounded-full bg-[#00ff41] hover:bg-[#33ff66] text-black font-mono font-bold text-[11px] tracking-wider uppercase flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,255,65,0.25)] transition-all"
               >
-                <Mic size={14} className="stroke-[2.5]" />
-                <span>Activate Voice AI</span>
+                <Mic size={13} className="stroke-[2.5]" />
+                <span>Activate</span>
               </motion.button>
-              <span className="text-[10px] text-zinc-400 font-mono">
-                Click to start voice recognition & commands
-              </span>
             </div>
           )}
 
           {/* Wake Word Glow Pill */}
-          {isConnected && isListening && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ff41]/10 border border-[#00ff41]/20 text-[9px] font-mono text-[#00ff41]">
+          {isConnected && isListening && !isMuted && (
+            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ff41]/10 border border-[#00ff41]/20 text-[9px] font-mono text-[#00ff41] z-20 pointer-events-none">
               <Sparkles size={10} />
               <span>Wake: "Hey IRIS"</span>
             </div>

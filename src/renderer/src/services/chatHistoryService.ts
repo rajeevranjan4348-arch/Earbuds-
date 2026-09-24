@@ -1,6 +1,7 @@
 import { firebaseAuthService } from './firebaseAuth'
 import { firestore } from '../lib/firebase'
 import { collection, doc, setDoc, deleteDoc, getDocs, query, orderBy } from 'firebase/firestore'
+import { irisIndexedDBCache } from './irisIndexedDBCache'
 
 export interface Message {
   id: string
@@ -13,6 +14,7 @@ export interface Message {
   timestamp?: number
   inputType?: 'voice' | 'text'
   status?: 'success' | 'failed' | 'streaming'
+  provider?: string
   audioMetadata?: {
     duration?: number
     sampleRate?: number
@@ -142,6 +144,9 @@ class ChatHistoryService {
       }
     } catch (_e) {}
 
+    // Non-volatile IndexedDB local persistence
+    irisIndexedDBCache.saveSessionsBatch(deduplicated, uid).catch(() => {})
+
     // Async background sync to Firestore with persistent offline cache
     this.syncToFirestore(uid, deduplicated).catch(() => {})
   }
@@ -208,11 +213,30 @@ class ChatHistoryService {
   }
 
   /**
-   * Appends or updates a message in the active session directly in local storage
+   * Adds or appends a message to a session (or active session if sessionId omitted)
    */
-  public appendMessageToActiveSession(message: Message, userId?: string): ChatSession {
+  public addMessage(
+    sessionIdOrMessage: string | Message,
+    maybeMessage?: Message,
+    userId?: string
+  ): ChatSession {
+    const message = (typeof sessionIdOrMessage === 'string' ? maybeMessage : sessionIdOrMessage) as Message
+    const targetSessionId = typeof sessionIdOrMessage === 'string' ? sessionIdOrMessage : undefined
+
+    if (!message) {
+      return (
+        this.getActiveSession(userId) || {
+          id: targetSessionId || '',
+          title: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messages: []
+        }
+      )
+    }
+
     const uid = userId || this.activeUserId || firebaseAuthService.getUserId()
-    const activeId = this.getActiveSessionId(uid)
+    const activeId = targetSessionId || this.getActiveSessionId(uid)
     const sessions = this.getSessions(uid)
     const existingIdx = sessions.findIndex((s) => s.id === activeId)
 
@@ -263,6 +287,13 @@ class ChatHistoryService {
   }
 
   /**
+   * Appends or updates a message in the active session directly in local storage
+   */
+  public appendMessageToActiveSession(message: Message, userId?: string): ChatSession {
+    return this.addMessage(this.getActiveSessionId(userId), message, userId)
+  }
+
+  /**
    * Updates an existing message in the active session
    */
   public updateMessageInActiveSession(
@@ -310,19 +341,36 @@ class ChatHistoryService {
     const sessions = this.getSessions(uid)
     const targetSession = sessions.find((s) => s.id === targetSessionId)
 
-    if (!targetSession || !Array.isArray(targetSession.messages) || targetSession.messages.length === 0) {
+    if (
+      !targetSession ||
+      !Array.isArray(targetSession.messages) ||
+      targetSession.messages.length === 0
+    ) {
       return []
     }
 
     // Filter out pure system messages and empty text, take last N turns
     const validMessages = targetSession.messages
-      .filter((m) => m && m.text && m.text.trim() && (m.role === 'user' || m.role === 'model' || m.role === 'assistant'))
+      .filter(
+        (m) =>
+          m &&
+          m.text &&
+          m.text.trim() &&
+          (m.role === 'user' || m.role === 'model' || m.role === 'assistant')
+      )
       .map((m) => ({
         role: (m.role === 'assistant' ? 'model' : m.role) as 'user' | 'model',
         text: m.text.trim()
       }))
 
     return validMessages.slice(-maxTurns)
+  }
+
+  /**
+   * Clears all sessions and resets to initial fresh session
+   */
+  public clear(userId?: string): void {
+    this.clearAllSessions(userId)
   }
 
   /**
@@ -375,6 +423,9 @@ class ChatHistoryService {
     this.saveSessions(sessions, uid)
     this.clearDraft(id, uid)
 
+    // Delete from IndexedDB
+    irisIndexedDBCache.deleteSession(id).catch(() => {})
+
     // Delete from Firestore
     try {
       const sessionDocRef = doc(firestore, 'users', uid, 'chatSessions', id)
@@ -395,6 +446,7 @@ class ChatHistoryService {
       localStorage.removeItem(this.getDraftsStorageKey(uid))
       localStorage.removeItem(ACTIVE_SESSION_CACHE_KEY)
     } catch (_e) {}
+    irisIndexedDBCache.clearAllSessions().catch(() => {})
     this.createNewSession(uid)
 
     // Clear Firestore documents for this user
@@ -500,4 +552,3 @@ class ChatHistoryService {
 }
 
 export const chatHistoryService = new ChatHistoryService()
-

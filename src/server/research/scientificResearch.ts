@@ -91,6 +91,14 @@ export class ScientificResearchEngine {
       references
     }
   }
+
+  public async synthesizeResearch(topic: string, _options?: { category?: string }): Promise<ScientificReport> {
+    return this.conductResearch(topic)
+  }
+
+  public async investigate(topic: string, _options?: Record<string, any>): Promise<ScientificReport> {
+    return this.conductResearch(topic)
+  }
 }
 
 export const scientificResearch = new ScientificResearchEngine()

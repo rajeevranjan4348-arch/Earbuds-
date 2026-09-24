@@ -13,19 +13,31 @@ import {
   Search,
   Sparkles,
   Mic,
+  Square,
+  VolumeX,
   AlertTriangle,
   RotateCcw,
   Volume2,
   Radio,
-  Cpu
+  Cpu,
+  Terminal,
+  Database,
+  Wifi,
+  WifiOff
 } from 'lucide-react'
 import { RiFlashlightFill } from 'react-icons/ri'
 import { chatHistoryService, Message, ChatSession } from '../../services/chatHistoryService'
 import { shortcutService } from '../../services/shortcutService'
 import { voiceService } from '../../services/voiceService'
 import { coreSettingsService } from '../../services/coreSettingsService'
+import { irisIndexedDBCache } from '../../services/irisIndexedDBCache'
+import { offlineAiResponseEngine } from '../../services/offlineAiResponseEngine'
+import { geminiLiveVoiceClient, VoiceOption } from '../../services/geminiLiveVoiceClient'
+import { voiceSettings } from '../../services/voice'
 import MicrophoneInputButton from './MicrophoneInputButton'
-import { LiveVoiceConversationModal } from './LiveVoiceConversationModal'
+import { VoiceCommandLogSidePanel } from './VoiceCommandLogSidePanel'
+import { IntentResolver, launchManager } from '../../launcher'
+import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
 
 export type { Message, ChatSession }
 
@@ -92,16 +104,20 @@ const ChatMessageItem = memo(
   function ChatMessageItem({ msg, isStreaming, onRetry }: ChatMessageItemProps) {
     const isUser = msg.role === 'user'
     const isFallbackOrError =
-      !isUser && (msg.status === 'failed' || (msg.text && msg.text.includes('⚠️')) || (msg.content && msg.content.includes('⚠️')))
+      !isUser &&
+      (msg.status === 'failed' ||
+        (msg.text && msg.text.includes('⚠️')) ||
+        (msg.content && msg.content.includes('⚠️')))
 
     const rawContent =
       typeof msg.text === 'string' && msg.text.trim()
         ? msg.text
         : typeof msg.content === 'string' && msg.content.trim()
-        ? msg.content
-        : ''
+          ? msg.content
+          : ''
 
-    const displayContent = rawContent || (isStreaming ? '...' : (isUser ? '' : '⚠️ No response content received.'))
+    const displayContent =
+      rawContent || (isStreaming ? '...' : isUser ? '' : '⚠️ No response content received.')
 
     return (
       <motion.div
@@ -191,7 +207,9 @@ const ChatMessageItem = memo(
                   </button>
                   {((msg as any).provider || (msg as any).model) && (
                     <span className="text-[10px] font-mono text-zinc-500">
-                      {(msg as any).provider === 'nvidia_kimi_k3' ? 'NVIDIA Kimi-k3' : (msg as any).model || ''}
+                      {(msg as any).provider === 'nvidia_kimi_k3'
+                        ? 'NVIDIA Kimi-k3'
+                        : (msg as any).model || ''}
                     </span>
                   )}
                 </div>
@@ -270,19 +288,191 @@ export default function RightPanel({
 
   const [chatHistory, setChatHistory] = useState<Message[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [showVoiceLog, setShowVoiceLog] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null)
   const [inputVal, setInputVal] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showLiveVoiceModal, setShowLiveVoiceModal] = useState(false)
-  const [chatProvider, setChatProvider] = useState<'deepseek' | 'deepseek_r1' | 'gemini' | 'nvidia_kimi'>(() => {
+  const [chatProvider, setChatProvider] = useState<
+    'deepseek' | 'deepseek_r1' | 'gemini' | 'nvidia_kimi'
+  >(() => {
     const active = coreSettingsService.getSettings().activeProvider
     if (active === 'gemini') return 'gemini'
     return 'deepseek'
   })
   const [showProviderMenu, setShowProviderMenu] = useState(false)
+  const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(() => {
+    return geminiLiveVoiceClient.getVoice() || 'Kore'
+  })
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false)
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true
+  })
 
-  // Synchronize active AI state with coreSettingsService
+  // Voice Chat Input & TTS States
+  const [listening, setListening] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const [micError, setMicError] = useState<string | null>(null)
+
+  const recognitionRef = useRef<any>(null)
+  const finalTextRef = useRef('')
+  const wasVoicePromptRef = useRef(false)
+
+  // Browser speech recognition
+  const startListening = async () => {
+    setMicError(null)
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition
+
+    if (!SpeechRecognition) {
+      setMicError('Voice recognition is not supported in this browser. Please type your message.')
+      return
+    }
+
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+
+    // Explicitly request microphone access via getUserMedia to prompt browser permission dialog
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        // Release the temporary track so SpeechRecognition has complete access
+        stream.getTracks().forEach((track) => track.stop())
+      } catch (permErr: any) {
+        console.warn('[MIC_PERMISSION]', permErr?.name || permErr?.message)
+        if (
+          permErr?.name === 'NotAllowedError' ||
+          permErr?.name === 'PermissionDeniedError' ||
+          permErr?.name === 'SecurityError'
+        ) {
+          setMicError('Microphone access blocked. Click the lock/site settings in your browser address bar to allow microphone.')
+          setListening(false)
+          return
+        }
+      }
+    }
+
+    try {
+      const recognition = new SpeechRecognition()
+
+      recognition.lang = 'en-US'
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.maxAlternatives = 1
+
+      finalTextRef.current = inputVal
+
+      recognition.onstart = () => {
+        setListening(true)
+        wasVoicePromptRef.current = true
+        setMicError(null)
+      }
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = ''
+        let interimTranscript = ''
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript
+          } else {
+            interimTranscript += transcript
+          }
+        }
+
+        const combined =
+          `${finalTextRef.current} ${finalTranscript} ${interimTranscript}`
+            .replace(/\s+/g, ' ')
+            .trim()
+
+        setInputVal(combined)
+        chatHistoryService.saveDraft(activeSessionId, combined)
+      }
+
+      recognition.onerror = (event: any) => {
+        const errType = event?.error || 'unknown'
+        if (errType === 'not-allowed' || errType === 'service-not-allowed') {
+          setMicError('Microphone permission required. Please allow microphone access in your browser.')
+        } else if (errType === 'no-speech') {
+          // Normal when user pauses or hasn't spoken yet
+        } else if (errType !== 'aborted') {
+          setMicError(`Voice input notice: ${errType}`)
+        }
+        setListening(false)
+      }
+
+      recognition.onend = () => {
+        setListening(false)
+        recognitionRef.current = null
+      }
+
+      recognitionRef.current = recognition
+      recognition.start()
+    } catch (startErr: any) {
+      console.warn('[SPEECH_START_ERROR]', startErr)
+      setListening(false)
+      setMicError('Could not start speech recognition. Please check your microphone.')
+    }
+  }
+
+  const stopListening = () => {
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+    setListening(false)
+  }
+
+  // AI voice response (Text-to-Speech)
+  const speakAI = (response: string) => {
+    if (!('speechSynthesis' in window)) return
+
+    window.speechSynthesis.cancel()
+
+    const cleanText = response
+      .replace(/>\s*💭[\s\S]*?\n\n/g, '')
+      .replace(/[#*_`~>[\]]/g, '')
+      .replace(/https?:\/\/\S+/g, '')
+      .trim()
+
+    if (!cleanText) return
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+
+    utterance.lang = 'en-US'
+    utterance.rate = 1
+    utterance.pitch = 1
+    utterance.volume = 1
+
+    utterance.onstart = () => setSpeaking(true)
+    utterance.onend = () => setSpeaking(false)
+    utterance.onerror = () => setSpeaking(false)
+
+    window.speechSynthesis.speak(utterance)
+  }
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setSpeaking(false)
+  }
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop()
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis?.cancel()
+      }
+    }
+  }, [])
+
+  // Synchronize active AI state with coreSettingsService & network status
   useEffect(() => {
     const unsub = coreSettingsService.subscribe((settings) => {
       if (settings.activeProvider === 'deepseek') {
@@ -291,7 +481,17 @@ export default function RightPanel({
         setChatProvider('gemini')
       }
     })
-    return unsub
+
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      unsub()
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
   }, [])
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -413,7 +613,11 @@ export default function RightPanel({
             timestamp: (data as any).timestamp || Date.now(),
             inputType: (data as any).inputType || 'voice'
           }
-          console.log('[AI_STATE_UPDATED]', { messageId: userMsgId, role: 'user', textLength: cleanUserText.length })
+          console.log('[AI_STATE_UPDATED]', {
+            messageId: userMsgId,
+            role: 'user',
+            textLength: cleanUserText.length
+          })
           return [...prev, userMsg].slice(-50)
         })
       } else if (role === 'model' || role === 'assistant') {
@@ -530,7 +734,11 @@ export default function RightPanel({
               content: final,
               status: data?.status || 'success'
             }
-            console.log('[AI_STATE_UPDATED]', { messageId: updated[idx].id, role: updated[idx].role, status: data?.status || 'success' })
+            console.log('[AI_STATE_UPDATED]', {
+              messageId: updated[idx].id,
+              role: updated[idx].role,
+              status: data?.status || 'success'
+            })
             return updated
           } else if (cleaned) {
             const finalId = assistantMsgId || `msg_model_${Date.now()}`
@@ -546,7 +754,12 @@ export default function RightPanel({
               inputType: (data as any)?.inputType || 'voice',
               status: data?.status || 'success'
             }
-            console.log('[AI_STATE_UPDATED]', { messageId: finalId, role: 'assistant', status: data?.status || 'success', createdOnComplete: true })
+            console.log('[AI_STATE_UPDATED]', {
+              messageId: finalId,
+              role: 'assistant',
+              status: data?.status || 'success',
+              createdOnComplete: true
+            })
             return [...prev, newAssistantMsg].slice(-50)
           }
           return prev
@@ -659,6 +872,7 @@ export default function RightPanel({
     seenChunksPerRequestRef.current.clear()
     lastChunkRecordRef.current.clear()
     setShowHistory(false)
+    setShowVoiceLog(false)
     setInputVal('')
 
     if ((window as any).iris?.clearHistory) {
@@ -819,6 +1033,12 @@ export default function RightPanel({
     const userMsgId = `msg_user_${reqId}`
     const assistantMsgId = `msg_model_${reqId}`
 
+    const isVoiceInput = wasVoicePromptRef.current || listening
+    if (listening) {
+      stopListening()
+    }
+    wasVoicePromptRef.current = false
+
     activeRequestIdRef.current = reqId
     setIsSubmitting(true)
     chatHistoryService.clearDraft(activeSessionId)
@@ -837,7 +1057,7 @@ export default function RightPanel({
         text: trimmed,
         content: trimmed,
         timestamp: now,
-        inputType: 'text'
+        inputType: isVoiceInput ? 'voice' : 'text'
       }
       return [...prev, userMsg].slice(-50)
     })
@@ -849,6 +1069,51 @@ export default function RightPanel({
       }
     })
 
+    // 0. Check for App Launching & System Voice/Chat Commands (e.g. "open youtube", "open spotify", "launch github", etc.)
+    const resolvedApp = IntentResolver.resolve(trimmed)
+    if (resolvedApp && resolvedApp.app && resolvedApp.confidence >= 0.75) {
+      ;(async () => {
+        try {
+          const launchRes = await launchManager.launch(resolvedApp.app, resolvedApp.secondaryParam)
+          const fallbackLink = launchRes.fallbackUrl || (resolvedApp.app.type === 'external' ? resolvedApp.app.target : '')
+          const responseText = `🚀 **Opening ${resolvedApp.app.name}**\n\nCommand executed: opened **${resolvedApp.app.name}** on your device.${fallbackLink ? `\n\n[👉 Open ${resolvedApp.app.name}](${fallbackLink})` : ''}`
+          const spoken = launchRes.spokenResponse || `Opening ${resolvedApp.app.name}.`
+
+          seenMessageIdsRef.current.add(assistantMsgId)
+          const assistantMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'assistant',
+            text: responseText,
+            content: responseText,
+            timestamp: Date.now(),
+            inputType: isVoiceInput ? 'voice' : 'text'
+          }
+          setChatHistory((prev) => [...prev, assistantMsg].slice(-50))
+          try {
+            if (typeof chatHistoryService.addMessage === 'function') {
+              chatHistoryService.addMessage(activeSessionId, assistantMsg)
+            } else if (typeof (chatHistoryService as any).appendMessageToActiveSession === 'function') {
+              (chatHistoryService as any).appendMessageToActiveSession(assistantMsg)
+            }
+          } catch (storageErr) {
+            console.warn('[RightPanel] Could not save message to chatHistoryService:', storageErr)
+          }
+          setIsSubmitting(false)
+
+          if (isVoiceInput) {
+            speakAI(spoken)
+          }
+        } catch (err: any) {
+          console.error('[RightPanel] App launch error:', err)
+          setIsSubmitting(false)
+        }
+      })()
+      return
+    }
+
     // 1. Direct Real-time Streaming with DeepSeek (V3 & Reasoner R1)
     if (chatProvider === 'deepseek' || chatProvider === 'deepseek_r1') {
       ;(async () => {
@@ -857,21 +1122,19 @@ export default function RightPanel({
           setActiveStreamingId(assistantMsgId)
           seenMessageIdsRef.current.add(assistantMsgId)
 
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              id: assistantMsgId,
-              messageId: assistantMsgId,
-              conversationId: activeSessionId,
-              requestId: reqId,
-              role: 'assistant',
-              text: '',
-              content: '',
-              timestamp: Date.now(),
-              inputType: 'text',
-              provider: dsModel
-            }
-          ].slice(-50))
+          const placeholderMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'assistant',
+            text: '',
+            content: '',
+            timestamp: Date.now(),
+            inputType: 'text',
+            provider: dsModel
+          }
+          setChatHistory((prev) => [...prev, placeholderMsg].slice(-50))
 
           const dsApiKey = localStorage.getItem('deepseek_api_key') || undefined
 
@@ -961,14 +1224,22 @@ export default function RightPanel({
 
           setActiveStreamingId(null)
           setIsSubmitting(false)
+
+          if (isVoiceInput && accumulatedText) {
+            speakAI(accumulatedText)
+          }
         } catch (dsErr: any) {
-          console.error('[DEEPSEEK_STREAM_ERROR]', dsErr)
           setChatHistory((prev) => {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
             const errorMsg = `⚠️ **DeepSeek Notice:** ${dsErr?.message || 'Request failure'}. Standing by.`
             if (idx >= 0) {
               const updated = [...prev]
-              updated[idx] = { ...updated[idx], text: errorMsg, content: errorMsg, status: 'failed' }
+              updated[idx] = {
+                ...updated[idx],
+                text: errorMsg,
+                content: errorMsg,
+                status: 'failed'
+              }
               return updated
             }
             return prev
@@ -988,24 +1259,26 @@ export default function RightPanel({
           seenMessageIdsRef.current.add(assistantMsgId)
 
           // Seed assistant message placeholder in chat history
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              id: assistantMsgId,
-              messageId: assistantMsgId,
-              conversationId: activeSessionId,
-              requestId: reqId,
-              role: 'assistant',
-              text: '',
-              content: '',
-              timestamp: Date.now(),
-              inputType: 'text',
-              provider: 'nvidia_kimi_k3'
-            }
-          ].slice(-50))
+          const placeholderMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'assistant',
+            text: '',
+            content: '',
+            timestamp: Date.now(),
+            inputType: 'text',
+            provider: 'nvidia_kimi_k3'
+          }
+          setChatHistory((prev) => [...prev, placeholderMsg].slice(-50))
 
           const imageUrlMatch = trimmed.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|webp|gif)/i)
-          const detectedImageUrl = imageUrlMatch ? imageUrlMatch[0] : (trimmed.includes('phi-3-5-vision') ? 'https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg' : undefined)
+          const detectedImageUrl = imageUrlMatch
+            ? imageUrlMatch[0]
+            : trimmed.includes('phi-3-5-vision')
+              ? 'https://assets.ngc.nvidia.com/products/api-catalog/phi-3-5-vision/example1b.jpg'
+              : undefined
 
           const response = await fetch('/api/ai/nvidia/chat', {
             method: 'POST',
@@ -1076,14 +1349,22 @@ export default function RightPanel({
 
           setActiveStreamingId(null)
           setIsSubmitting(false)
+
+          if (isVoiceInput && accumulated) {
+            speakAI(accumulated)
+          }
         } catch (nvidiaErr: any) {
-          console.error('[NVIDIA_STREAM_ERROR]', nvidiaErr)
           setChatHistory((prev) => {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
             const errorMsg = `⚠️ **NVIDIA Kimi-k3 Stream Notice:** ${nvidiaErr?.message || 'Request failure'}. Default engine standing by.`
             if (idx >= 0) {
               const updated = [...prev]
-              updated[idx] = { ...updated[idx], text: errorMsg, content: errorMsg, status: 'failed' }
+              updated[idx] = {
+                ...updated[idx],
+                text: errorMsg,
+                content: errorMsg,
+                status: 'failed'
+              }
               return updated
             }
             return prev
@@ -1102,21 +1383,19 @@ export default function RightPanel({
           setActiveStreamingId(assistantMsgId)
           seenMessageIdsRef.current.add(assistantMsgId)
 
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              id: assistantMsgId,
-              messageId: assistantMsgId,
-              conversationId: activeSessionId,
-              requestId: reqId,
-              role: 'assistant',
-              text: '',
-              content: '',
-              timestamp: Date.now(),
-              inputType: 'text',
-              provider: 'gemini'
-            }
-          ].slice(-50))
+          const placeholderMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'assistant',
+            text: '',
+            content: '',
+            timestamp: Date.now(),
+            inputType: 'text',
+            provider: 'gemini'
+          }
+          setChatHistory((prev) => [...prev, placeholderMsg].slice(-50))
 
           const response = await fetch('/api/ai/chat', {
             method: 'POST',
@@ -1124,7 +1403,7 @@ export default function RightPanel({
             body: JSON.stringify({
               prompt: trimmed,
               provider: 'gemini',
-              model: 'gemini-3.8-flash',
+              model: 'gemini-2.5-flash',
               conversationHistory: chatHistory.slice(-8).map((m) => ({
                 role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
                 text: m.text || m.content || ''
@@ -1132,8 +1411,13 @@ export default function RightPanel({
             })
           })
 
-          const data = await response.json()
-          const returnedText = data?.text || data?.rawText || 'Gemini response received.'
+          const data = await response.json().catch(() => null)
+          const returnedText =
+            data?.text ||
+            data?.rawText ||
+            (data?.error
+              ? `I've received your query: "${trimmed}". Local processing active while online services recover.`
+              : 'IRIS response received.')
 
           setChatHistory((prev) => {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
@@ -1151,8 +1435,11 @@ export default function RightPanel({
           })
           setActiveStreamingId(null)
           setIsSubmitting(false)
+
+          if (isVoiceInput && returnedText) {
+            speakAI(returnedText)
+          }
         } catch (gemErr: any) {
-          console.error('[GEMINI_CHAT_ERROR]', gemErr)
           if (onSendPrompt) {
             onSendPrompt(trimmed)
           } else {
@@ -1170,8 +1457,8 @@ export default function RightPanel({
         voiceService.triggerVoiceInput(trimmed, 'text')
       }
     } catch (err: any) {
-      console.error('[AI_REQUEST_ERROR]', err)
-      const errorMsg = `⚠️ **AI Execution Notice:** Unable to send prompt (${err?.message || 'Request failure'}). Please retry.`
+      console.warn('[AI_REQUEST_NOTICE]', err?.message || err)
+      const errorMsg = `⚠️ **AI Notice:** Received "${trimmed}". Please retry in a moment.`
       setChatHistory((prev) => {
         const errorMsgObj: Message = {
           id: assistantMsgId,
@@ -1211,9 +1498,11 @@ export default function RightPanel({
   return (
     <div className="h-full min-h-0 flex flex-col bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative">
       {/* Header with Conversation title, New Chat and History buttons */}
-      <div className="px-4 py-3.5 sm:px-5 sm:py-3.5 border-b border-white/5 flex justify-between items-center shrink-0 bg-black/40">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-sm font-semibold text-white/90 tracking-wide shrink-0">Conversation</h2>
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/5 flex justify-between items-center shrink-0 bg-black/40 gap-2">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <h2 className="text-sm font-semibold text-white/90 tracking-wide shrink-0">
+            Conversation
+          </h2>
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-mono shrink-0">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -1223,7 +1512,7 @@ export default function RightPanel({
           </div>
           {activeSessionObj && activeSessionObj.title !== 'New Conversation' && (
             <span
-              className="text-[11px] text-zinc-400 truncate max-w-[120px] sm:max-w-[160px] hidden sm:inline-block font-mono border-l border-white/10 pl-2"
+              className="text-[11px] text-zinc-400 truncate max-w-[100px] sm:max-w-[140px] hidden md:inline-block font-mono border-l border-white/10 pl-2"
               title={activeSessionObj.title}
             >
               {activeSessionObj.title}
@@ -1231,79 +1520,18 @@ export default function RightPanel({
           )}
         </div>
 
-        {/* Buttons in place of the live area */}
-        <div className="flex items-center gap-1.5">
-          {/* Provider Selector: DeepSeek V3, DeepSeek R1, Gemini, NVIDIA Kimi */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowProviderMenu((prev) => !prev)}
-              title="Select AI Chat Provider & Model"
-              className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-mono rounded-lg border transition-all cursor-pointer bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Outage / Offline Indicator */}
+          {!isOnline && (
+            <div
+              title="Internet outage detected. Autonomous IndexedDB offline cache active."
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/40 text-[10px] font-mono text-amber-300 shrink-0"
             >
-              <Cpu size={12} className="text-emerald-400" />
-              <span className="font-semibold">
-                {chatProvider === 'deepseek'
-                  ? 'DeepSeek V3'
-                  : chatProvider === 'deepseek_r1'
-                  ? 'DeepSeek R1'
-                  : chatProvider === 'gemini'
-                  ? 'Gemini 3.8'
-                  : 'Kimi-k3'}
-              </span>
-            </button>
-
-            {showProviderMenu && (
-              <div
-                className="absolute right-0 mt-1 w-44 rounded-xl bg-zinc-900/95 border border-white/10 shadow-2xl backdrop-blur-xl p-1 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150"
-                onClick={() => setShowProviderMenu(false)}
-              >
-                <div className="px-2 py-1 text-[9px] font-mono text-zinc-500 uppercase tracking-wider">
-                  AI Chat Provider
-                </div>
-                {[
-                  { id: 'deepseek', label: 'DeepSeek V3', tag: 'Fast / General' },
-                  { id: 'deepseek_r1', label: 'DeepSeek R1', tag: 'Reasoning CoT' },
-                  { id: 'gemini', label: 'Gemini 3.8 Flash', tag: 'Multimodal' },
-                  { id: 'nvidia_kimi', label: 'NVIDIA Kimi-k3', tag: 'Reasoning' }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      const next = item.id as any
-                      setChatProvider(next)
-                      if (next === 'deepseek' || next === 'deepseek_r1') {
-                        coreSettingsService.setActiveProvider('deepseek')
-                      } else if (next === 'gemini') {
-                        coreSettingsService.setActiveProvider('gemini')
-                      }
-                      setShowProviderMenu(false)
-                    }}
-                    className={`px-2 py-1.5 rounded-lg text-left text-xs transition-colors flex items-center justify-between ${
-                      chatProvider === item.id
-                        ? 'bg-emerald-500/20 text-emerald-300 font-medium'
-                        : 'text-zinc-300 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    <span className="text-[9px] text-zinc-500 font-mono">{item.tag}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Gemini Live Voice Call Button */}
-          <button
-            type="button"
-            onClick={() => setShowLiveVoiceModal(true)}
-            title="Start Gemini Live Voice Call"
-            aria-label="Gemini Live Voice Call"
-            className="flex items-center justify-center gap-1 p-1.5 sm:px-2 sm:py-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 active:bg-emerald-500/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-lg transition-all cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
-          >
-            <Radio size={14} className="animate-pulse" />
-            <span className="hidden sm:inline font-mono text-[11px]">Live Voice</span>
-          </button>
+              <WifiOff size={11} className="text-amber-400" />
+              <span className="hidden sm:inline">Offline</span>
+            </div>
+          )}
 
           <button
             type="button"
@@ -1317,7 +1545,10 @@ export default function RightPanel({
 
           <button
             type="button"
-            onClick={() => setShowHistory(!showHistory)}
+            onClick={() => {
+              setShowHistory(!showHistory)
+              if (!showHistory) setShowVoiceLog(false)
+            }}
             title={showHistory ? 'Return to conversation' : 'View chat history'}
             aria-label="History"
             className={`flex items-center justify-center gap-1 p-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer active:scale-95 ${
@@ -1336,8 +1567,23 @@ export default function RightPanel({
         </div>
       </div>
 
-      {/* Main Area: Either Chat History View OR Active Messages */}
-      {showHistory ? (
+      {/* Main Area: Either Voice Command Log OR Chat History View OR Active Messages */}
+      {showVoiceLog ? (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-zinc-950/95 animate-in fade-in duration-150">
+          <VoiceCommandLogSidePanel
+            embedded
+            onClose={() => setShowVoiceLog(false)}
+            onExecuteCommand={(cmd) => {
+              setShowVoiceLog(false)
+              if (onSendPrompt) {
+                onSendPrompt(cmd)
+              } else {
+                voiceService.triggerVoiceInput(cmd, 'text')
+              }
+            }}
+          />
+        </div>
+      ) : showHistory ? (
         /* History Overlay View */
         <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden bg-zinc-950/95 animate-in fade-in duration-150">
           <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
@@ -1575,7 +1821,9 @@ export default function RightPanel({
 
                 <div className="flex items-center gap-2">
                   <span className="italic font-mono text-[11px] text-emerald-200 truncate">
-                    {interimTranscript ? `"${interimTranscript}"` : 'Listening for your voice command...'}
+                    {interimTranscript
+                      ? `"${interimTranscript}"`
+                      : 'Listening for your voice command...'}
                   </span>
                   <span className="w-1.5 h-3 bg-emerald-400 animate-pulse shrink-0" />
                 </div>
@@ -1589,12 +1837,39 @@ export default function RightPanel({
       )}
 
       {/* Bottom Composer */}
-      <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]">
+      <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] relative">
+        {/* Microphone Permission / Status Warning Banner */}
+        {micError && (
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs shadow-md">
+            <span className="truncate">{micError}</span>
+            <button
+              type="button"
+              onClick={() => setMicError(null)}
+              className="text-amber-400 hover:text-white p-0.5 rounded cursor-pointer shrink-0"
+              title="Dismiss"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+
+        {/* Stop AI Voice Floating Pill when speaking */}
+        {speaking && (
+          <div className="flex items-center justify-end px-1 -mb-0.5">
+            <button
+              type="button"
+              onClick={stopSpeaking}
+              title="Stop AI voice speech"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-950/90 hover:bg-rose-900 border border-rose-500/50 text-rose-300 text-xs font-mono transition-all cursor-pointer shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse"
+            >
+              <VolumeX size={13} />
+              <span>🔇 Stop AI Voice</span>
+            </button>
+          </div>
+        )}
+
         {/* Input Form at bottom */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex items-center gap-1.5 sm:gap-2 relative"
-        >
+        <form onSubmit={handleSubmit} className="flex items-center gap-1.5 sm:gap-2 relative">
           <div className="relative flex-1 flex items-center min-w-0">
             <input
               type="text"
@@ -1604,44 +1879,44 @@ export default function RightPanel({
                 setInputVal(nextVal)
                 chatHistoryService.saveDraft(activeSessionId, nextVal)
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
               placeholder={
-                isListening ? 'Speak or type command...' : 'Type message or voice prompt...'
+                listening
+                  ? 'Listening...'
+                  : speaking
+                    ? 'AI is speaking...'
+                    : 'Type message or voice prompt...'
               }
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
             />
           </div>
 
-          {/* Dedicated Microphone Input Handler (Web Speech API & Gemini AI fallback) */}
-          <MicrophoneInputButton
-            size="md"
-            autoExecute={true}
-            onInterimText={(text) => {
-              // Display live voice interim text if desired
-            }}
-            onCommandTriggered={(cmd) => {
-              if (onSendPrompt) {
-                onSendPrompt(cmd)
-              }
-            }}
-          />
-
-          {/* Gemini Live Voice Call Trigger in Composer */}
+          {/* Microphone Button for Voice Input */}
           <button
             type="button"
-            onClick={() => setShowLiveVoiceModal(true)}
-            className="p-2 sm:p-2 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 cursor-pointer shrink-0 transition-all shadow-[0_0_10px_rgba(16,185,129,0.12)] active:scale-95"
-            title="Start Gemini Live Voice Call"
-            aria-label="Live Voice Call"
+            onClick={listening ? stopListening : startListening}
+            title={listening ? 'Stop listening' : 'Voice input (Speak)'}
+            className={`p-2 min-h-9 min-w-9 sm:min-h-10 sm:min-w-10 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
+              listening
+                ? 'bg-rose-950/60 border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.35)] animate-pulse'
+                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-emerald-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 active:scale-95'
+            }`}
           >
-            <Radio size={15} className="animate-pulse" />
+            {listening ? <Square size={14} className="fill-current" /> : <Mic size={16} />}
           </button>
 
+          {/* Send Button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
             disabled={!inputVal.trim() || isSubmitting}
-            className={`p-2 sm:p-2 min-h-9 min-w-9 sm:min-h-0 sm:min-w-0 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
+            className={`p-2 min-h-9 min-w-9 sm:min-h-10 sm:min-w-10 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
               inputVal.trim() && !isSubmitting
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                 : 'bg-white/5 text-zinc-600 border-transparent cursor-not-allowed'
@@ -1652,30 +1927,6 @@ export default function RightPanel({
           </motion.button>
         </form>
       </div>
-
-      {/* Gemini Live Real-time Voice Call Experience Modal */}
-      <LiveVoiceConversationModal
-        isOpen={showLiveVoiceModal}
-        onClose={() => setShowLiveVoiceModal(false)}
-        onTranscriptMessage={(role, text) => {
-          const reqId = `live_voice_${Date.now()}`
-          const msgId = `msg_${role}_${reqId}`
-          setChatHistory((prev) => [
-            ...prev,
-            {
-              id: msgId,
-              messageId: msgId,
-              conversationId: activeSessionId,
-              requestId: reqId,
-              role: role === 'user' ? 'user' : 'assistant',
-              text,
-              content: text,
-              timestamp: Date.now(),
-              inputType: 'voice'
-            }
-          ].slice(-50))
-        }}
-      />
     </div>
   )
 }

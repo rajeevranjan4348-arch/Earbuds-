@@ -32,6 +32,7 @@ interface DashboardProps {
   interimTranscript?: string
   lastFinalTranscript?: string
   micLevel?: number
+  frequencyData?: Uint8Array | null
   voiceStatus?: string
   statusMessage?: string
   submitVoicePrompt?: (text: string) => void
@@ -50,6 +51,7 @@ export default function Dashboard({
   interimTranscript = '',
   lastFinalTranscript = '',
   micLevel = 0,
+  frequencyData = null,
   voiceStatus = 'idle',
   statusMessage = '',
   submitVoicePrompt,
@@ -81,7 +83,7 @@ export default function Dashboard({
   ]
 
   return (
-    <div className="h-full w-full bg-transparent flex flex-col relative selection:bg-[#00ff41]/30 overflow-hidden">
+    <div className="h-full w-full bg-transparent flex flex-col relative selection:bg-[#00ff41]/30 min-h-0 flex-1 overflow-hidden">
       <div className="absolute top-[10%] left-[-5%] w-[40vw] h-[40vw] bg-[#00ff41] rounded-full mix-blend-screen blur-[180px] opacity-[0.03] pointer-events-none z-0"></div>
       <div className="absolute bottom-[10%] right-[-5%] w-[30vw] h-[30vw] bg-[#00ff41] rounded-full mix-blend-screen blur-[150px] opacity-[0.03] pointer-events-none z-0"></div>
 
@@ -144,7 +146,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      <main className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-6 p-2.5 sm:p-4 lg:p-6 relative z-10 overflow-hidden">
+      <main className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-12 gap-3 lg:gap-6 p-2 sm:p-4 lg:p-6 relative z-10 h-full overflow-hidden">
         {/* Left Panels (Telemetry / Optics Feed / Live Location) */}
         <div
           className={`${
@@ -159,7 +161,7 @@ export default function Dashboard({
         <div
           className={`${
             mobileSection === 'core' ? 'flex' : 'hidden'
-          } lg:flex col-span-12 lg:col-span-6 relative flex-col justify-end items-center pb-3 lg:pb-6 min-h-0 h-full`}
+          } lg:flex col-span-12 lg:col-span-6 relative flex-col justify-end items-center pb-2 lg:pb-4 min-h-[460px] sm:min-h-[520px] lg:min-h-0 h-full flex-1 w-full`}
         >
           <AICore
             isConnected={isConnected}
@@ -167,24 +169,22 @@ export default function Dashboard({
             isListening={isListening}
             micLevel={micLevel}
             onClick={() => {
-              if (!isConnected) {
-                toggleConnection()
-              } else if (isSpeaking) {
-                stopSpeaking?.()
-              } else {
-                handleMicToggle()
-              }
+              toggleConnection()
             }}
           />
 
+          {/* Spacer to push controls to bottom while keeping 3D Orb visible in center */}
+          <div className="w-full flex-1 pointer-events-none min-h-[140px] sm:min-h-[200px]" />
+
           {/* Real-time Voice Listening Wave & Speech Recognition Feedback */}
-          <div className="w-full max-w-xl mb-2 lg:mb-3 flex flex-col items-center gap-2 z-20 px-1 sm:px-0">
+          <div className="w-full max-w-xl mb-2 lg:mb-3 flex flex-col items-center gap-2 z-20 px-1 sm:px-0 relative pointer-events-auto">
             <VoiceListeningWave
               isConnected={isConnected}
               isListening={isListening}
               isSpeaking={isSpeaking}
               isMuted={isMuted}
               micLevel={micLevel}
+              frequencyData={frequencyData}
               interimTranscript={interimTranscript}
               lastFinalTranscript={lastFinalTranscript}
               voiceStatus={voiceStatus}
@@ -227,7 +227,7 @@ export default function Dashboard({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] z-20"
+            className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] z-20 shrink-0"
           >
             <div className="relative flex items-center justify-center">
               <AnimatePresence>
@@ -336,29 +336,21 @@ export default function Dashboard({
             <motion.button
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              onClick={async () => {
-                if (!isConnected) {
-                  await toggleConnection()
-                } else {
-                  handleMicToggle()
-                }
+              onClick={() => {
+                toggleConnection()
               }}
               className={`group w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border transition-all duration-300 cursor-pointer ${
                 !isConnected
                   ? 'bg-zinc-900/80 text-zinc-400 border-white/10 hover:border-[#00ff41]/40 hover:text-[#00ff41] hover:bg-zinc-900'
-                  : isMuted
-                    ? 'bg-red-500/10 text-red-500 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)] hover:bg-red-500/20'
-                    : 'bg-zinc-800/50 text-[#00ff41] border-[#00ff41]/20 shadow-[0_0_15px_rgba(0,255,65,0.1)] hover:border-[#00ff41]/40 hover:bg-zinc-800'
+                  : 'bg-red-500/10 text-red-400 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20'
               }`}
               title={
                 !isConnected
                   ? 'Click to start voice listening'
-                  : isMuted
-                    ? 'Unmute microphone'
-                    : 'Mute microphone'
+                  : 'Click to stop voice listening'
               }
             >
-              {isMuted ? (
+              {isConnected ? (
                 <MicOff
                   size={16}
                   strokeWidth={1.5}

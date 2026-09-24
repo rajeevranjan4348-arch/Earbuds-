@@ -136,6 +136,17 @@ export class BrowserUseAgent {
       }
     }
   }
+  public createSession(sessionId = 'default'): BrowserAgentSession {
+    return this.getOrCreateSession(sessionId)
+  }
+
+  public async navigateAndExtract(url: string, sessionId = 'default'): Promise<BrowserActionResult> {
+    return this.executeAction({ type: 'navigate', url }, sessionId)
+  }
+
+  public async extractData(url: string, sessionId = 'default'): Promise<BrowserActionResult> {
+    return this.executeAction({ type: 'navigate', url }, sessionId)
+  }
 }
 
 export const browserUseAgent = new BrowserUseAgent()

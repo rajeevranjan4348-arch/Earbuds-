@@ -15,10 +15,14 @@ const _scaleVec = new THREE.Vector3()
 function ParticleShell({
   isConnected,
   isSpeaking,
+  isListening = false,
+  micLevel = 0,
   config
 }: {
   isConnected: boolean
   isSpeaking: boolean
+  isListening?: boolean
+  micLevel?: number
   config: ParticleCoreConfig
 }) {
   const ref = useRef<THREE.Points>(null)
@@ -78,16 +82,19 @@ function ParticleShell({
     if (isSpeaking) {
       const pulse = Math.abs(Math.sin(t * 9) * 0.6 + Math.sin(t * 4.3) * 0.4)
       targetVol = (pulse * 0.6 + Math.random() * 0.1) * intensityMult
+    } else if (isListening) {
+      const micBoost = micLevel ? Math.min(micLevel * 2.8, 1) : Math.abs(Math.sin(t * 5.2)) * 0.35 + 0.15
+      targetVol = (0.2 + micBoost * 0.8) * intensityMult
     } else if (isConnected) {
       targetVol = Math.abs(Math.sin(t * 1.6)) * 0.035 * intensityMult
     }
-    const lerpSpeed = isSpeaking ? 0.14 : 0.09
+    const lerpSpeed = isSpeaking || isListening ? 0.15 : 0.09
     volRef.current += (targetVol - volRef.current) * lerpSpeed
     const vol = volRef.current
 
     _blendColor.lerpColors(idleCol, activeCol, Math.min(vol * 2, 1))
     mat.color.copy(_blendColor)
-    const targetOp = (isConnected ? 0.65 + vol * 0.3 : 0.2) * (config.glow || 1.0)
+    const targetOp = (isConnected ? 0.65 + vol * 0.35 : 0.2) * (config.glow || 1.0)
     mat.opacity += (targetOp - mat.opacity) * 0.07
 
     if (vol > 0.002 && !isReduced) {
@@ -97,7 +104,8 @@ function ParticleShell({
         const phase = seeds[i * 2]
         const weight = seeds[i * 2 + 1]
 
-        const wave = Math.sin(t * 7 + phase) * vol * weight * 0.2 * intensityMult
+        const waveMult = isListening ? 9 : 7
+        const wave = Math.sin(t * waveMult + phase) * vol * weight * 0.22 * intensityMult
 
         const ox = original[ix]
         const oy = original[ix + 1]
@@ -144,6 +152,8 @@ function OrbitalRing({
   rotSpeed,
   isConnected,
   isSpeaking,
+  isListening = false,
+  micLevel = 0,
   phase = 0,
   config
 }: {
@@ -153,6 +163,8 @@ function OrbitalRing({
   rotSpeed: number
   isConnected: boolean
   isSpeaking: boolean
+  isListening?: boolean
+  micLevel?: number
   phase?: number
   config: ParticleCoreConfig
 }) {
@@ -171,12 +183,16 @@ function OrbitalRing({
     const speedMult = config.speed || 1.0
     const intensityMult = config.intensity || 1.0
 
-    ref.current.rotation.y += safeDelta * rotSpeed * speedMult
+    const rotBoost = isListening ? 1.6 : 1.0
+    ref.current.rotation.y += safeDelta * rotSpeed * speedMult * rotBoost
 
     const t = performance.now() * 0.001 * speedMult + phase
     let targetVol = 0
     if (isSpeaking) {
       targetVol = (Math.abs(Math.sin(t * 8)) * 0.55 + 0.15) * intensityMult
+    } else if (isListening) {
+      const micBoost = micLevel ? Math.min(micLevel * 2.2, 1) : Math.abs(Math.sin(t * 4.5)) * 0.4 + 0.15
+      targetVol = (0.2 + micBoost * 0.6) * intensityMult
     } else if (isConnected) {
       targetVol = Math.abs(Math.sin(t * 1.4)) * 0.1 * intensityMult
     }
@@ -209,10 +225,14 @@ function OrbitalRing({
 function AIOrb({
   isConnected,
   isSpeaking,
+  isListening = false,
+  micLevel = 0,
   config
 }: {
   isConnected: boolean
   isSpeaking: boolean
+  isListening?: boolean
+  micLevel?: number
   config: ParticleCoreConfig
 }) {
   const groupRef = useRef<THREE.Group>(null)
@@ -221,16 +241,24 @@ function AIOrb({
     if (!groupRef.current) return
 
     const intensityScale = config.intensity || 1.0
-    const baseScale = !isConnected ? 0.44 : isSpeaking ? 0.72 : 0.62
+    const micExpansion = isListening ? (micLevel || 0) * 0.35 : 0
+    const baseScale = !isConnected ? 0.44 : isSpeaking ? 0.72 : isListening ? 0.67 + micExpansion : 0.62
     const targetScale = baseScale * (0.85 + intensityScale * 0.15)
     _scaleVec.set(targetScale, targetScale, targetScale)
-    groupRef.current.scale.lerp(_scaleVec, delta * 3)
-    groupRef.current.rotation.y += delta * 0.03 * (config.speed || 1.0)
+    groupRef.current.scale.lerp(_scaleVec, delta * 3.5)
+    const spinSpeed = isSpeaking ? 1.4 : isListening ? 1.25 : 1.0
+    groupRef.current.rotation.y += delta * 0.03 * (config.speed || 1.0) * spinSpeed
   })
 
   return (
     <group ref={groupRef}>
-      <ParticleShell isConnected={isConnected} isSpeaking={isSpeaking} config={config} />
+      <ParticleShell
+        isConnected={isConnected}
+        isSpeaking={isSpeaking}
+        isListening={isListening}
+        micLevel={micLevel}
+        config={config}
+      />
 
       <OrbitalRing
         radius={1.5}
@@ -239,6 +267,8 @@ function AIOrb({
         rotSpeed={0.16}
         isConnected={isConnected}
         isSpeaking={isSpeaking}
+        isListening={isListening}
+        micLevel={micLevel}
         phase={0}
         config={config}
       />
@@ -249,6 +279,8 @@ function AIOrb({
         rotSpeed={-0.1}
         isConnected={isConnected}
         isSpeaking={isSpeaking}
+        isListening={isListening}
+        micLevel={micLevel}
         phase={1.5}
         config={config}
       />
@@ -344,10 +376,12 @@ export default function AICore({
         <AIOrb
           isConnected={isConnected}
           isSpeaking={isSpeaking}
+          isListening={isListening}
+          micLevel={micLevel}
           config={{
             ...coreConfig,
-            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.4 : isHovered ? 1.2 : 1),
-            intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.5 : isListening ? 1.25 : 1)
+            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.4 : isListening ? 1.25 : isHovered ? 1.2 : 1),
+            intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.5 : isListening ? 1.3 : 1)
           }}
         />
       </Canvas>

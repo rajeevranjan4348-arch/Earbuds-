@@ -38,20 +38,27 @@ export async function requestMicrophonePermission(): Promise<boolean> {
 
     console.log('[VOICE] requesting microphone')
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    })
+    let stream: MediaStream | null = null
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      })
+    } catch (_firstErr) {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    }
 
-    stream.getTracks().forEach((track) => track.stop())
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+    }
 
     console.log('[VOICE] microphone granted')
     return true
   } catch (error: any) {
-    console.error('[VOICE] Microphone permission failed:', error)
+    console.warn('[VOICE] Microphone permission notice:', error?.message || error)
 
     if (
       error.name === 'NotAllowedError' ||
@@ -99,11 +106,10 @@ export async function startVoiceRecognition(): Promise<any> {
   }
 
   const SpeechRecognition =
-    (window as any).SpeechRecognition ||
-    (window as any).webkitSpeechRecognition
+    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
   if (!SpeechRecognition) {
-    console.error('[VOICE] Speech Recognition is not supported')
+    console.warn('[VOICE] Speech Recognition is not supported in this browser environment')
     voiceStarting = false
     return null
   }
@@ -234,8 +240,7 @@ export class VoiceRecognition {
     if (typeof window === 'undefined') return
 
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (!SpeechRecognition) {
       this.onError({
@@ -289,8 +294,7 @@ export class VoiceRecognition {
 
         this.onError({
           type: 'permission',
-          message:
-            'Microphone access is blocked. Please allow microphone permission and try again.'
+          message: 'Microphone access is blocked. Please allow microphone permission and try again.'
         })
         return
       }
@@ -311,8 +315,7 @@ export class VoiceRecognition {
         console.warn('[VOICE] Speech service not allowed')
         this.onError({
           type: 'permission',
-          message:
-            'Microphone access is blocked. Please allow microphone permission and try again.'
+          message: 'Microphone access is blocked. Please allow microphone permission and try again.'
         })
         return
       }
@@ -372,8 +375,7 @@ export class VoiceRecognition {
       this.isStarting = false
       this.onError({
         type: 'permission',
-        message:
-          'Microphone access is blocked. Please allow microphone permission and try again.'
+        message: 'Microphone access is blocked. Please allow microphone permission and try again.'
       })
       return
     }

@@ -7,7 +7,9 @@
  */
 
 import { SensitiveActionPayload } from './types'
-import { launchManager } from '../../launcher'
+import { IntentResolver, launchManager } from '../../launcher'
+import { notifyVoiceCommandProcessed } from '../voiceToastService'
+import { voiceCommandLogService } from '../voiceCommandLogService'
 
 export type CommandExecutionResult =
   | { type: 'handled'; message?: string; actionTaken?: string }
@@ -37,6 +39,28 @@ export class VoiceCommandService {
    * Evaluates if the spoken text matches an immediate short command or system control action.
    */
   public evaluateSpokenIntent(text: string): CommandExecutionResult {
+    const result = this.evaluateSpokenIntentInternal(text)
+    if (result.type === 'handled' && (result.message || result.actionTaken)) {
+      notifyVoiceCommandProcessed(text, {
+        intent: result.actionTaken || 'SYSTEM_COMMAND',
+        actionExecuted: result.actionTaken || result.message,
+        response: result.message || 'Action executed',
+        status: 'success'
+      })
+
+      voiceCommandLogService.addEntry({
+        command: text,
+        intent: result.actionTaken || 'SYSTEM_COMMAND',
+        status: 'completed',
+        spokenResponse: result.message,
+        displayText: result.message || result.actionTaken,
+        actionExecuted: result.actionTaken
+      })
+    }
+    return result
+  }
+
+  private evaluateSpokenIntentInternal(text: string): CommandExecutionResult {
     const clean = text.trim().toLowerCase()
     if (!clean) return { type: 'handled' }
 
@@ -82,12 +106,30 @@ export class VoiceCommandService {
       return { type: 'handled', actionTaken: 'REPEAT_ANSWER' }
     }
 
-    if (/^(turn voice mode off|close voice mode|exit voice|close voice chat|stop voice chat)$/i.test(clean)) {
+    if (
+      /^(turn voice mode off|close voice mode|exit voice|close voice chat|stop voice chat)$/i.test(
+        clean
+      )
+    ) {
       this.handlers.onCloseVoiceMode?.()
       return { type: 'handled', actionTaken: 'CLOSE_VOICE_MODE' }
     }
 
-    // 2. Navigation Actions
+    // 2. Resolve Universal App Launch & System Intent (e.g. "open youtube", "launch spotify", "open github")
+    const resolvedAppIntent = IntentResolver.resolve(text)
+    if (resolvedAppIntent && resolvedAppIntent.app && resolvedAppIntent.confidence >= 0.75) {
+      launchManager.launch(resolvedAppIntent.app, resolvedAppIntent.secondaryParam).catch((err) => {
+        console.warn('[VoiceCommandService] Launch app error:', err)
+      })
+      const actionLabel = `LAUNCH_${resolvedAppIntent.app.name.toUpperCase().replace(/\s+/g, '_')}`
+      return {
+        type: 'handled',
+        message: `Opening ${resolvedAppIntent.app.name}`,
+        actionTaken: actionLabel
+      }
+    }
+
+    // 3. Navigation Actions
     if (/^(open|go to|show|switch to)?\s*(settings|preferences)$/i.test(clean)) {
       window.dispatchEvent(new CustomEvent('iris:navigate', { detail: { tab: 'SETTINGS' } }))
       return { type: 'handled', message: 'Opening Settings' }
@@ -109,7 +151,7 @@ export class VoiceCommandService {
       return { type: 'handled', message: 'Opening Google Workspace' }
     }
 
-    if (/^(open|go to|show|switch to)?\s*(youtube|youtube studio|channel)$/i.test(clean)) {
+    if (/^(open|go to|show|switch to)?\s*(youtube studio|channel|youtube analytics)$/i.test(clean)) {
       window.dispatchEvent(new CustomEvent('iris:navigate', { detail: { tab: 'YOUTUBE' } }))
       return { type: 'handled', message: 'Opening YouTube Studio' }
     }
@@ -134,21 +176,19 @@ export class VoiceCommandService {
       return { type: 'handled', message: 'Opening Mobile Sync' }
     }
 
-    // 3. Launcher & App triggers
+    // 4. Launcher & App triggers
     if (/^(open|launch|show)\s*(launcher|apps|app launcher|command palette)$/i.test(clean)) {
       window.dispatchEvent(new CustomEvent('iris:toggle-launcher'))
       return { type: 'handled', message: 'Opening App Launcher' }
     }
 
-    // App launch commands like "open github", "launch youtube", "open calculator"
+    // App launch fallback matching like "open github", "launch youtube", "open calculator"
     const launchMatch = clean.match(/^(?:open|launch|start)\s+(.+)$/i)
     if (launchMatch && launchMatch[1]) {
       const appQuery = launchMatch[1].trim()
       if (appQuery && !['settings', 'chat', 'dashboard', 'notes'].includes(appQuery)) {
-        const opened = launchManager.launchAppByName(appQuery)
-        if (opened) {
-          return { type: 'handled', message: `Launching ${appQuery}` }
-        }
+        launchManager.launchAppByName(appQuery).catch(() => {})
+        return { type: 'handled', message: `Launching ${appQuery}`, actionTaken: `LAUNCH_${appQuery.toUpperCase()}` }
       }
     }
 
@@ -171,7 +211,8 @@ export class VoiceCommandService {
       const payload: SensitiveActionPayload = {
         actionId: 'CLEAR_DATA',
         title: 'Confirm Data Deletion',
-        description: 'You requested to clear or delete conversation history. This action cannot be undone.',
+        description:
+          'You requested to clear or delete conversation history. This action cannot be undone.',
         commandText: text,
         onConfirm: () => {
           window.dispatchEvent(new CustomEvent('iris:clear-chat'))

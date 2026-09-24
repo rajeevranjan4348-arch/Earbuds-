@@ -1,15 +1,64 @@
 @import 'tailwindcss';
 
+:root {
+  /* Default dark cyber theme variables */
+  --iris-bg-main: #050508;
+  --iris-bg-surface: #09090d;
+  --iris-bg-card: rgba(18, 18, 24, 0.75);
+  --iris-bg-card-hover: rgba(28, 28, 36, 0.85);
+  --iris-bg-glass: rgba(9, 9, 13, 0.85);
+  --iris-bg-input: rgba(20, 20, 28, 0.8);
+  --iris-text-primary: #f4f4f5;
+  --iris-text-secondary: #a1a1aa;
+  --iris-text-muted: #71717a;
+  --iris-border-subtle: rgba(255, 255, 255, 0.08);
+  --iris-border-medium: rgba(255, 255, 255, 0.14);
+  --iris-border-strong: rgba(255, 255, 255, 0.22);
+  --iris-border-accent: rgba(0, 255, 65, 0.3);
+  --iris-accent-primary: #00ff41;
+  --iris-accent-secondary: #10b981;
+  --iris-accent-rgb: 0, 255, 65;
+  --iris-accent-glow: rgba(0, 255, 65, 0.35);
+  --iris-bg-accent-subtle: rgba(0, 255, 65, 0.12);
+  --iris-bg-accent-hover: rgba(0, 255, 65, 0.22);
+  --iris-shadow-ambient: 0 12px 40px rgba(0, 0, 0, 0.7);
+  --iris-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --iris-backdrop-filter: blur(20px);
+  --iris-grid-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='light'] {
+  --iris-bg-main: #f8fafc;
+  --iris-bg-surface: #ffffff;
+  --iris-bg-card: rgba(255, 255, 255, 0.88);
+  --iris-bg-card-hover: rgba(241, 245, 249, 0.95);
+  --iris-bg-glass: rgba(255, 255, 255, 0.82);
+  --iris-bg-input: rgba(241, 245, 249, 0.92);
+  --iris-text-primary: #0f172a;
+  --iris-text-secondary: #334155;
+  --iris-text-muted: #64748b;
+  --iris-border-subtle: rgba(15, 23, 42, 0.10);
+  --iris-border-medium: rgba(15, 23, 42, 0.18);
+  --iris-border-strong: rgba(15, 23, 42, 0.28);
+  --iris-shadow-ambient: 0 12px 40px rgba(15, 23, 42, 0.08);
+  --iris-shadow-card: 0 4px 20px rgba(15, 23, 42, 0.06);
+  --iris-backdrop-filter: blur(20px);
+  --iris-grid-color: rgba(15, 23, 42, 0.04);
+}
+
 html,
 body {
   height: 100%;
   width: 100%;
+  background-color: var(--iris-bg-main);
+  color: var(--iris-text-primary);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 * {
@@ -47,11 +96,20 @@ body {
 
 /* Smooth Fluid Container Transitions */
 .smooth-transition {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .smooth-spring {
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease-out;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.smooth-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.smooth-card:hover {
+  transform: translateY(-2px);
 }
 
 /* Hardware Acceleration Helpers */

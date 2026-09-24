@@ -1,6 +1,6 @@
 /**
  * VoiceSettings - Centralized Persistent Voice & Privacy Controls
- * 
+ *
  * Rules:
  * - Never activate the microphone without permission.
  * - Store all settings in persistent local storage.
@@ -115,11 +115,23 @@ export class VoiceSettingsManager {
     }
   }
 
+  public setMicPermissionStatus(status: 'prompt' | 'granted' | 'denied' | 'unsupported'): void {
+    if (this.settings.micPermissionStatus !== status) {
+      this.updateSettings({ micPermissionStatus: status })
+    }
+  }
+
   /**
    * Safe non-invasive microphone permission check
    */
-  public async checkMicrophonePermission(): Promise<'prompt' | 'granted' | 'denied' | 'unsupported'> {
-    if (typeof navigator === 'undefined' || !navigator.permissions || !navigator.permissions.query) {
+  public async checkMicrophonePermission(): Promise<
+    'prompt' | 'granted' | 'denied' | 'unsupported'
+  > {
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.permissions ||
+      !navigator.permissions.query
+    ) {
       this.settings.micPermissionStatus = 'prompt'
       return 'prompt'
     }

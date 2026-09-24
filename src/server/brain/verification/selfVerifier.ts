@@ -148,7 +148,7 @@ export class BrainSelfVerifier {
     // If File Agent failed because file not found, try fallback search in codebase
     if (isFileNotFound && task.assignedAgent === 'File Agent') {
       const targetPath = task.parameters?.filePath || task.parameters?.path || ''
-      const fileName = targetPath.split(/[\/\\]/).pop() || targetPath
+      const fileName = targetPath.split(/[/\\]/).pop() || targetPath
       return {
         passed: false,
         verificationStatus: 'PENDING',

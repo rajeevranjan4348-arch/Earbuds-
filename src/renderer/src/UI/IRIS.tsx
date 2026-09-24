@@ -10,15 +10,17 @@ import {
   RiCompass3Line,
   RiChat3Line
 } from 'react-icons/ri'
-import { FileText, Database, Maximize2, MessageSquare, Mic } from 'lucide-react'
+import { FileText, Database, Maximize2, MessageSquare, Mic, Cloud, Terminal } from 'lucide-react'
 import { shortcutService, formatKeyCombo } from '../services/shortcutService'
+import { workspacePersistenceService } from '../services/workspacePersistenceService'
 
 import DashboardView from '../views/Dashboard'
 import PhoneView from '../views/Phone'
 import SettingsView from '../views/Settings'
 import RightPanel from '../components/UI/RightPanel'
 import DocumentStatusOverlay from '../components/UI/DocumentStatusOverlay'
-import WorkspaceStatusIndicator from '../components/UI/WorkspaceStatusIndicator'
+import VoiceCommandLogSidePanel from '../components/UI/VoiceCommandLogSidePanel'
+import { ModuleViewSkeleton } from '../components/UI/SkeletonLoader'
 
 const NotesView = lazy(() => import('../views/Notes'))
 const GalleryView = lazy(() => import('../views/Gallery'))
@@ -40,6 +42,7 @@ interface IrisProps {
   interimTranscript?: string
   lastFinalTranscript?: string
   micLevel?: number
+  frequencyData?: Uint8Array | null
   voiceStatus?: string
   statusMessage?: string
   submitVoicePrompt?: (text: string) => void
@@ -66,6 +69,7 @@ const IRIS = ({
   interimTranscript,
   lastFinalTranscript,
   micLevel,
+  frequencyData,
   voiceStatus,
   statusMessage,
   submitVoicePrompt,
@@ -81,12 +85,29 @@ const IRIS = ({
 
   const activeTab = propActiveTab !== undefined ? propActiveTab : internalActiveTab
   const setActiveTab = propSetActiveTab !== undefined ? propSetActiveTab : setInternalActiveTab
-  const isDocOverlayOpen = propIsDocOverlayOpen !== undefined ? propIsDocOverlayOpen : internalDocOverlayOpen
-  const setIsDocOverlayOpen = propSetIsDocOverlayOpen !== undefined ? propSetIsDocOverlayOpen : setInternalDocOverlayOpen
+  const isDocOverlayOpen =
+    propIsDocOverlayOpen !== undefined ? propIsDocOverlayOpen : internalDocOverlayOpen
+  const setIsDocOverlayOpen =
+    propSetIsDocOverlayOpen !== undefined ? propSetIsDocOverlayOpen : setInternalDocOverlayOpen
   const isCoreUiMinimal = propIsCoreUiMinimal !== undefined ? propIsCoreUiMinimal : internalMinimal
-  const setIsCoreUiMinimal = propSetIsCoreUiMinimal !== undefined ? propSetIsCoreUiMinimal : setInternalMinimal
+  const setIsCoreUiMinimal =
+    propSetIsCoreUiMinimal !== undefined ? propSetIsCoreUiMinimal : setInternalMinimal
 
   const [coreUiShortcutDisplay, setCoreUiShortcutDisplay] = useState('Ctrl+\\')
+  const [isVoiceLogOpen, setIsVoiceLogOpen] = useState(false)
+
+  useEffect(() => {
+    const handleOpenLog = () => setIsVoiceLogOpen(true)
+    const handleToggleLog = () => setIsVoiceLogOpen((prev) => !prev)
+
+    window.addEventListener('iris:open-voice-log', handleOpenLog)
+    window.addEventListener('iris:toggle-voice-log', handleToggleLog)
+
+    return () => {
+      window.removeEventListener('iris:open-voice-log', handleOpenLog)
+      window.removeEventListener('iris:toggle-voice-log', handleToggleLog)
+    }
+  }, [])
 
   useEffect(() => {
     const unsub = shortcutService.subscribe((list) => {
@@ -161,19 +182,8 @@ const IRIS = ({
 
             {/* Desktop Tabs with Animated Sliding Pill */}
             <div className="hidden md:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative">
-              {/* Unified Voice & Command Dual Mode Switcher */}
+              {/* Command Center Mode Switcher */}
               <div className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
-                <motion.button
-                  onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.96 }}
-                  className="relative cursor-pointer px-3 py-1.5 text-[11px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 border border-cyan-500/50 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-400 hover:text-cyan-300 transition-all shadow-[0_0_12px_rgba(6,182,212,0.15)]"
-                  title="Open Voice System (ChatGPT / JARVIS Voice Mode)"
-                >
-                  <Mic size={14} className="text-cyan-400 animate-pulse" />
-                  <span>VOICE</span>
-                </motion.button>
-
                 <motion.button
                   onClick={() => setActiveTab('DASHBOARD')}
                   whileHover={{ scale: 1.03 }}
@@ -199,7 +209,9 @@ const IRIS = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
                     className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-colors duration-200 ${
-                      activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
+                      activeTab === tab.id
+                        ? 'text-emerald-400'
+                        : 'text-zinc-500 hover:text-zinc-200'
                     }`}
                   >
                     {activeTab === tab.id && (
@@ -216,33 +228,6 @@ const IRIS = ({
             </div>
 
             <div className="flex items-center justify-end gap-2 md:gap-3 w-auto shrink-0">
-              {/* Google Workspace Real-Time Status Indicator */}
-              <WorkspaceStatusIndicator onNavigateWorkspace={() => setActiveTab('WORKSPACE')} />
-
-              {/* Document Knowledge & PDF Status Trigger Button */}
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsDocOverlayOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 text-zinc-300 hover:text-emerald-300 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer"
-                title="Open PDF Ingestion Status Dashboard"
-              >
-                <Database size={13} className="text-emerald-400" />
-                <span className="hidden sm:inline">PDF Knowledge</span>
-              </motion.button>
-
-              {/* Dedicated Real-Time Voice Chat Mode Trigger */}
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 text-[11px] font-mono font-bold tracking-wider uppercase transition-colors cursor-pointer shadow-[0_0_12px_rgba(6,182,212,0.15)]"
-                title="Launch Real-Time Voice Chat Mode (ChatGPT / JARVIS Style)"
-              >
-                <Mic size={13} className="text-cyan-400 animate-pulse" />
-                <span className="hidden sm:inline">Voice Chat</span>
-              </motion.button>
-
               <div className="flex flex-col items-end leading-none">
                 <span className="text-[9px] md:text-[10px] font-mono tracking-widest uppercase text-zinc-400">
                   Voice Core
@@ -293,16 +278,6 @@ const IRIS = ({
             className="md:hidden flex items-center gap-1 px-2.5 py-1.5 bg-zinc-950/95 border-b border-white/5 overflow-x-auto no-scrollbar shrink-0 z-40"
           >
             <motion.button
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))
-              }}
-              whileTap={{ scale: 0.95 }}
-              className="relative cursor-pointer shrink-0 px-2.5 py-1.5 text-[10px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1 border border-cyan-500/50 bg-cyan-950/30 text-cyan-400"
-            >
-              <Mic size={12} className="text-cyan-400 animate-pulse" />
-              <span>VOICE</span>
-            </motion.button>
-            <motion.button
               onClick={() => setActiveTab('DASHBOARD')}
               whileTap={{ scale: 0.95 }}
               className={`relative cursor-pointer shrink-0 px-2.5 py-1.5 text-[10px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1 border transition-all ${
@@ -325,23 +300,23 @@ const IRIS = ({
                     activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
-                {activeTab === tab.id && (
-                  <motion.div
-                    layoutId="activeTabBadgeMobile"
-                    className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-lg shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  />
-                )}
-                <span className="relative z-10">{tab.icon}</span>
-                <span className="relative z-10">{tab.label}</span>
-              </motion.button>
-            ))}
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="activeTabBadgeMobile"
+                      className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-lg shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.icon}</span>
+                  <span className="relative z-10">{tab.label}</span>
+                </motion.button>
+              ))}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex-1 min-h-0 overflow-hidden relative bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-950 via-black to-black">
-        <div className="relative h-full w-full p-2 sm:p-4 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-950 via-black to-black scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent flex flex-col">
+        <div className="relative flex-1 min-h-full h-full w-full p-1 sm:p-3 lg:p-4 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -349,7 +324,7 @@ const IRIS = ({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.995 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full w-full"
+              className="flex-1 min-h-full h-full w-full flex flex-col"
             >
               {activeTab === 'DASHBOARD' && (
                 <DashboardView
@@ -364,6 +339,7 @@ const IRIS = ({
                   interimTranscript={interimTranscript}
                   lastFinalTranscript={lastFinalTranscript}
                   micLevel={micLevel}
+                  frequencyData={frequencyData}
                   voiceStatus={voiceStatus}
                   statusMessage={statusMessage}
                   submitVoicePrompt={submitVoicePrompt}
@@ -384,13 +360,7 @@ const IRIS = ({
 
               {activeTab === 'PHONE' && <PhoneView glassPanel={glassPanel} />}
 
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center font-mono text-zinc-500 text-xs tracking-wider animate-pulse">
-                    Synchronizing Module Neural Weights...
-                  </div>
-                }
-              >
+              <Suspense fallback={<ModuleViewSkeleton title="Synchronizing Module Weights" />}>
                 {activeTab === 'YOUTUBE' && <YouTubeStudioView glassPanel={glassPanel} />}
                 {activeTab === 'WORKSPACE' && <GoogleWorkspaceView glassPanel={glassPanel} />}
                 {activeTab === 'MAPS' && <GoogleMapsView glassPanel={glassPanel} />}
@@ -408,6 +378,23 @@ const IRIS = ({
         isOpen={isDocOverlayOpen}
         onClose={() => setIsDocOverlayOpen(false)}
         onOpen={() => setIsDocOverlayOpen(true)}
+      />
+
+      {/* Voice Command & Task Ledger Slide-Panel */}
+      <VoiceCommandLogSidePanel
+        isOpen={isVoiceLogOpen}
+        onClose={() => setIsVoiceLogOpen(false)}
+        onExecuteCommand={(cmd) => {
+          if (submitVoicePrompt) {
+            submitVoicePrompt(cmd)
+          } else {
+            window.dispatchEvent(
+              new CustomEvent('iris:run-voice-command', {
+                detail: { text: cmd }
+              })
+            )
+          }
+        }}
       />
     </div>
   )

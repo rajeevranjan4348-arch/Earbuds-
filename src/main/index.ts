@@ -17,6 +17,7 @@ import { registerIpcHandlers } from './ipc'
 import { applyKeysToEnvironment } from './lib/keys'
 import * as adb from './lib/adb'
 import { resolveGalleryFile } from './lib/store'
+import { shortcutManager } from './shortcuts'
 
 /**
  * `iris-media://gallery/<file>` streams locally captured optics/media into the
@@ -151,6 +152,9 @@ app.whenReady().then(async () => {
 
   await startEmbeddedServer()
   createWindow()
+
+  // Initialize Global Keyboard Shortcut Manager for OS-level hotkeys
+  shortcutManager.init(() => mainWindow)
 
   // Reconnect to the last paired Android device, if any.
   void adb.autoReconnect()

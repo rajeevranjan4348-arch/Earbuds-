@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import IRIS from './UI/IRIS'
 import { useIrisVoice } from './hooks/useIrisVoice'
-import { shortcutService, ShortcutConfig, formatKeyCombo } from './services/shortcutService'
+import { shortcutService, ShortcutTriggerToast } from './services/shortcutService'
 import { gestureRecognitionService } from './services/gestureRecognitionService'
 import { soundEffects } from './services/soundEffectsService'
 import { LauncherModal, launchManager } from './launcher'
-import { VoiceChatModal } from './components/Voice/VoiceChatModal'
+import { VoiceCommandToastHUD } from './components/UI/VoiceCommandToastHUD'
+import { workspacePersistenceService } from './services/workspacePersistenceService'
 import { Zap } from 'lucide-react'
 
 export type VisionMode = 'off' | 'camera' | 'screen'
@@ -19,6 +20,7 @@ export type ActiveTab =
   | 'MAPS'
   | 'NOTES'
   | 'GALLERY'
+  | 'SMOOTHNESS'
   | 'PHONE'
   | 'SETTINGS'
 
@@ -30,19 +32,67 @@ const TAB_ORDER: ActiveTab[] = [
   'MAPS',
   'NOTES',
   'GALLERY',
+  'SMOOTHNESS',
   'PHONE',
   'SETTINGS'
 ]
 
 const IndexRoot = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('DASHBOARD')
-  const [visionMode, setVisionMode] = useState<VisionMode>('off')
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    const saved = workspacePersistenceService.getConfig()
+    return (saved?.activeTab as ActiveTab) || 'DASHBOARD'
+  })
+  const [visionMode, setVisionMode] = useState<VisionMode>(() => {
+    const saved = workspacePersistenceService.getConfig()
+    return (saved?.visionMode as VisionMode) || 'off'
+  })
   const [isDocOverlayOpen, setIsDocOverlayOpen] = useState(false)
-  const [isCoreUiMinimal, setIsCoreUiMinimal] = useState(false)
-  const [isVoiceChatModalOpen, setIsVoiceChatModalOpen] = useState(false)
+  const [isCoreUiMinimal, setIsCoreUiMinimal] = useState<boolean>(() => {
+    const saved = workspacePersistenceService.getConfig()
+    return Boolean(saved?.isMinimalHud)
+  })
+
+  const isFirstMount = useRef(true)
+
+  // Initialize Firestore Workspace Config Sync
+  useEffect(() => {
+    const cleanupSync = workspacePersistenceService.initSync()
+    const unsub = workspacePersistenceService.subscribe((config) => {
+      if (config.activeTab) {
+        setActiveTab((prev) => (prev !== config.activeTab ? (config.activeTab as ActiveTab) : prev))
+      }
+      if (config.visionMode) {
+        setVisionMode((prev) =>
+          prev !== config.visionMode ? (config.visionMode as VisionMode) : prev
+        )
+      }
+      if (typeof config.isMinimalHud === 'boolean') {
+        setIsCoreUiMinimal((prev) => (prev !== config.isMinimalHud ? config.isMinimalHud : prev))
+      }
+    })
+
+    return () => {
+      cleanupSync()
+      unsub()
+    }
+  }, [])
+
+  // Auto-save changes to workspace configuration only when state actually changes after mount
+  useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false
+      return
+    }
+
+    workspacePersistenceService.saveConfig({
+      activeTab,
+      visionMode,
+      isMinimalHud: isCoreUiMinimal
+    })
+  }, [activeTab, visionMode, isCoreUiMinimal])
 
   // Live shortcut toast banner
-  const [toast, setToast] = useState<{ shortcut: ShortcutConfig; timestamp: number } | null>(null)
+  const [toast, setToast] = useState<ShortcutTriggerToast | null>(null)
 
   const {
     isConnected,
@@ -52,6 +102,7 @@ const IndexRoot = () => {
     interimTranscript,
     lastFinalTranscript,
     micLevel,
+    frequencyData,
     voiceStatus,
     statusMessage,
     toggleConnection,
@@ -89,20 +140,9 @@ const IndexRoot = () => {
     window.addEventListener('iris:navigate', handleNavEvent)
     window.addEventListener('iris:vision-mode', handleVisionEvent)
 
-    const handleOpenVoice = () => setIsVoiceChatModalOpen(true)
-    const handleCloseVoice = () => setIsVoiceChatModalOpen(false)
-    const handleToggleVoice = () => setIsVoiceChatModalOpen((prev) => !prev)
-
-    window.addEventListener('iris:open-voice-modal', handleOpenVoice)
-    window.addEventListener('iris:close-voice-modal', handleCloseVoice)
-    window.addEventListener('iris:toggle-voice-modal', handleToggleVoice)
-
     return () => {
       window.removeEventListener('iris:navigate', handleNavEvent)
       window.removeEventListener('iris:vision-mode', handleVisionEvent)
-      window.removeEventListener('iris:open-voice-modal', handleOpenVoice)
-      window.removeEventListener('iris:close-voice-modal', handleCloseVoice)
-      window.removeEventListener('iris:toggle-voice-modal', handleToggleVoice)
     }
   }, [])
 
@@ -112,13 +152,8 @@ const IndexRoot = () => {
       if (isSpeaking) {
         stopSpeaking()
       }
-      if (!isConnected) {
-        soundEffects.play('activate')
-        toggleConnection()
-      } else {
-        soundEffects.play('toggle')
-        toggleMute()
-      }
+      soundEffects.play(!isConnected ? 'activate' : 'toggle')
+      toggleConnection()
     })
 
     const unregCoreUI = shortcutService.registerActionHandler('TOGGLE_CORE_UI', () => {
@@ -151,7 +186,8 @@ const IndexRoot = () => {
 
     // Listen for shortcut HUD notifications
     const unsubToast = shortcutService.subscribeToast((item) => {
-      setToast({ shortcut: item, timestamp: Date.now() })
+      setToast(item)
+      setTimeout(() => setToast(null), 2500)
     })
 
     // Register Hands-Free Camera Gesture Actions
@@ -176,27 +212,39 @@ const IndexRoot = () => {
       scrollTarget.scrollBy({ top: -350, behavior: 'smooth' })
     })
 
-    const unregGestScrollDown = gestureRecognitionService.registerActionHandler('SCROLL_DOWN', () => {
-      const scrollTarget = document.querySelector('main') || window
-      scrollTarget.scrollBy({ top: 350, behavior: 'smooth' })
-    })
-
-    const unregGestQuick = gestureRecognitionService.registerActionHandler('TOGGLE_QUICK_ACTIONS', () => {
-      shortcutService.triggerAction('TOGGLE_QUICK_MENU')
-    })
-
-    const unregGestHalt = gestureRecognitionService.registerActionHandler('STOP_SPEECH_OR_MUTE', () => {
-      if (isSpeaking) {
-        stopSpeaking()
-      } else {
-        toggleMute()
+    const unregGestScrollDown = gestureRecognitionService.registerActionHandler(
+      'SCROLL_DOWN',
+      () => {
+        const scrollTarget = document.querySelector('main') || window
+        scrollTarget.scrollBy({ top: 350, behavior: 'smooth' })
       }
-      setIsDocOverlayOpen(false)
-    })
+    )
 
-    const unregGestMinHud = gestureRecognitionService.registerActionHandler('TOGGLE_MINIMAL_HUD', () => {
-      setIsCoreUiMinimal((prev) => !prev)
-    })
+    const unregGestQuick = gestureRecognitionService.registerActionHandler(
+      'TOGGLE_QUICK_ACTIONS',
+      () => {
+        shortcutService.triggerAction('TOGGLE_QUICK_MENU')
+      }
+    )
+
+    const unregGestHalt = gestureRecognitionService.registerActionHandler(
+      'STOP_SPEECH_OR_MUTE',
+      () => {
+        if (isSpeaking) {
+          stopSpeaking()
+        } else {
+          toggleMute()
+        }
+        setIsDocOverlayOpen(false)
+      }
+    )
+
+    const unregGestMinHud = gestureRecognitionService.registerActionHandler(
+      'TOGGLE_MINIMAL_HUD',
+      () => {
+        setIsCoreUiMinimal((prev) => !prev)
+      }
+    )
 
     const unregGestDash = gestureRecognitionService.registerActionHandler('NAV_DASHBOARD', () => {
       setActiveTab('DASHBOARD')
@@ -213,9 +261,12 @@ const IndexRoot = () => {
       }
     })
 
-    const unregGestDocs = gestureRecognitionService.registerActionHandler('TOGGLE_KNOWLEDGE_OVERLAY', () => {
-      setIsDocOverlayOpen((prev) => !prev)
-    })
+    const unregGestDocs = gestureRecognitionService.registerActionHandler(
+      'TOGGLE_KNOWLEDGE_OVERLAY',
+      () => {
+        setIsDocOverlayOpen((prev) => !prev)
+      }
+    )
 
     return () => {
       unregVoice()
@@ -257,6 +308,7 @@ const IndexRoot = () => {
           interimTranscript={interimTranscript}
           lastFinalTranscript={lastFinalTranscript}
           micLevel={micLevel}
+          frequencyData={frequencyData}
           voiceStatus={voiceStatus}
           statusMessage={statusMessage}
           submitVoicePrompt={submitVoicePrompt}
@@ -268,10 +320,12 @@ const IndexRoot = () => {
         />
 
         {/* Floating HUD Shortcut Trigger Banner Toast */}
+        <VoiceCommandToastHUD />
+
         <AnimatePresence>
           {toast && (
             <motion.div
-              key={toast.timestamp}
+              key={toast.id}
               initial={{ opacity: 0, y: -24, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -282,19 +336,10 @@ const IndexRoot = () => {
                 <Zap size={12} />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-200">
-                  {toast.shortcut.name}
-                </span>
-                <div className="flex items-center gap-1">
-                  {formatKeyCombo(toast.shortcut).map((k, i) => (
-                    <kbd
-                      key={i}
-                      className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-[10px] font-mono text-emerald-300 font-bold"
-                    >
-                      {k}
-                    </kbd>
-                  ))}
-                </div>
+                <span className="text-xs font-medium text-zinc-200">{toast.title}</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-[10px] font-mono text-emerald-300 font-bold">
+                  {toast.comboDisplay}
+                </kbd>
               </div>
             </motion.div>
           )}
@@ -304,12 +349,6 @@ const IndexRoot = () => {
         <LauncherModal
           currentTab={activeTab}
           onNavigate={(tab) => setActiveTab(tab as ActiveTab)}
-        />
-
-        {/* Dedicated Real-Time Voice Chat Modal (ChatGPT / JARVIS Style) */}
-        <VoiceChatModal
-          isOpen={isVoiceChatModalOpen}
-          onClose={() => setIsVoiceChatModalOpen(false)}
         />
       </main>
     </div>

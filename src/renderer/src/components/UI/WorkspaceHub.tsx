@@ -31,6 +31,8 @@ import {
 } from 'react-icons/ri'
 import { signInWithGoogle, logOutGoogle, getCachedAccessToken, setCachedAccessToken } from '../../lib/firebase'
 import AuthFailureView from './AuthFailureView'
+import WorkspaceTelemetryAnalytics from './WorkspaceTelemetryAnalytics'
+import { RiPulseLine } from 'react-icons/ri'
 
 export interface AuthFailureLog {
   service: string
@@ -205,7 +207,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   onSelectServiceTab,
   glassPanel = 'bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl'
 }) => {
-  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT'>('SERVICES')
+  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT' | 'TELEMETRY'>('SERVICES')
   const [session, setSession] = useState<WorkspaceSessionData | null>(null)
   const [authLogs, setAuthLogs] = useState<AuthFailureLog[]>([])
   const [serviceHealth, setServiceHealth] = useState<Record<string, ServiceHealth>>({})
@@ -647,6 +649,19 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
             </span>
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('TELEMETRY')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'TELEMETRY'
+              ? 'border-[#00ff41] text-[#00ff41]'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <RiPulseLine size={15} />
+          <span>Telemetry & AI Latency</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00ff41] animate-ping" />
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -819,6 +834,13 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
               onReauthenticate={handleReAuthenticate}
               onNavigateService={(svc) => onSelectServiceTab?.(svc)}
             />
+          </div>
+        )}
+
+        {/* TAB 4: REAL-TIME SYSTEM TELEMETRY & AI RESPONSE LATENCY ANALYTICS */}
+        {activeTab === 'TELEMETRY' && (
+          <div className="h-full w-full">
+            <WorkspaceTelemetryAnalytics />
           </div>
         )}
       </div>

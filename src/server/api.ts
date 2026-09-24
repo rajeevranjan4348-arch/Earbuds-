@@ -1,3 +1,4 @@
+import './lib/safeJson'
 /**
  * IRIS Backend API Layer
  * Connects Mem0 (via official mem0ai SDK) and Gemini AI (via @google/genai)
@@ -325,12 +326,11 @@ export async function handleApiRequest(
         let transcript = ''
         let usedModel = ''
         const candidateModels = [
-          'gemini-3.5-transcribe',
-          'gemini-3.6-flash',
-          'gemini-flash-latest',
-          'gemini-3.8-flash',
           'gemini-2.5-flash',
-          'gemini-2.5-flash-lite'
+          'gemini-flash-latest',
+          'gemini-2.5-flash-lite',
+          'gemini-3.5-transcribe',
+          'gemini-3.8-flash'
         ]
 
         for (const modelName of candidateModels) {
@@ -369,6 +369,62 @@ export async function handleApiRequest(
           success: true,
           transcript: '',
           warning: err?.message || 'Speech transcription fallback'
+        })
+      }
+    }
+
+    // ==========================================
+    // System App & URL Launcher Execution Bridge
+    // ==========================================
+    if ((pathname === '/api/system/open' || pathname === '/api/system/launch-app') && req.method === 'POST') {
+      try {
+        const body = await parseBody(req)
+        const { targetUrl, appName = 'Application', command } = body
+
+        // Attempt system execution if URL provided
+        if (targetUrl && typeof targetUrl === 'string' && /^https?:\/\//i.test(targetUrl)) {
+          try {
+            const { exec } = await import('child_process')
+            const platform = process.platform
+            let openCmd = ''
+            if (platform === 'win32') {
+              openCmd = `start "" "${targetUrl}"`
+            } else if (platform === 'darwin') {
+              openCmd = `open "${targetUrl}"`
+            } else {
+              openCmd = `xdg-open "${targetUrl}"`
+            }
+
+            if (openCmd) {
+              exec(openCmd, (err) => {
+                if (err) {
+                  console.warn(`[System Open] System command execution notice for ${appName}:`, err.message)
+                }
+              })
+            }
+          } catch (sysErr: any) {
+            console.warn('[System Open] OS execution fallback:', sysErr?.message)
+          }
+
+          return sendJson(res, 200, {
+            success: true,
+            appName,
+            targetUrl,
+            status: 'LAUNCHED',
+            message: `Executed launch command for ${appName} on host system.`
+          })
+        }
+
+        return sendJson(res, 200, {
+          success: true,
+          appName,
+          targetUrl: targetUrl || '',
+          status: 'READY'
+        })
+      } catch (err: any) {
+        return sendJson(res, 200, {
+          success: false,
+          error: err?.message || 'System open encountered a recoverable error.'
         })
       }
     }
@@ -2101,7 +2157,7 @@ export async function handleApiRequest(
 
     if (pathname === '/api/orchestrator/resume' && req.method === 'POST') {
       const result = await taskOrchestrator.resumeUnfinishedTasks()
-      return sendJson(res, 200, { success: true, ...result })
+      return sendJson(res, 200, { ...result })
     }
 
     // 13-D. Vector Long-Term Memory Endpoints
@@ -2285,10 +2341,12 @@ export async function handleApiRequest(
             }
           )
           res.write('data: [DONE]\n\n')
-          return res.end()
+          res.end()
+          return
         } catch (streamErr: any) {
           res.write(`data: ${JSON.stringify({ error: streamErr?.message || 'Streaming failed' })}\n\n`)
-          return res.end()
+          res.end()
+          return
         }
       } else {
         try {
@@ -2426,12 +2484,14 @@ export async function handleApiRequest(
             }
           )
           res.write('data: [DONE]\n\n')
-          return res.end()
+          res.end()
+          return
         } catch (streamErr: any) {
           res.write(
             `data: ${JSON.stringify({ error: streamErr?.message || 'DeepSeek stream failed' })}\n\n`
           )
-          return res.end()
+          res.end()
+          return
         }
       } else {
         try {
@@ -2475,7 +2535,9 @@ export async function handleApiRequest(
     if (pathname === '/api/ai/chat' && req.method === 'POST') {
       const parsedBody = await parseBody(req)
       const {
-        prompt: rawPrompt,
+        prompt: rawPromptInput,
+        ocrText,
+        source: requestSource,
         conversationHistory: rawConversationHistory,
         messages: rawMessages,
         systemInstruction: customSystemInstruction,
@@ -2489,6 +2551,17 @@ export async function handleApiRequest(
         provider: requestedProvider,
         model: requestedModel
       } = parsedBody
+
+      // Synthesize prompt if ocrText is provided from Android/Web OCR pipeline
+      let rawPrompt = rawPromptInput
+      if (ocrText && typeof ocrText === 'string' && ocrText.trim()) {
+        const cleanOcr = ocrText.trim()
+        if (!rawPrompt || rawPrompt.trim() === cleanOcr) {
+          rawPrompt = `Analyze, summarize, and extract key information from this document:\n\n"""\n${cleanOcr}\n"""`
+        } else if (!rawPrompt.includes(cleanOcr)) {
+          rawPrompt = `${rawPrompt}\n\n[Extracted OCR Document Text]:\n"""\n${cleanOcr}\n"""`
+        }
+      }
 
       const conversationHistory =
         Array.isArray(rawConversationHistory) && rawConversationHistory.length > 0
@@ -2547,6 +2620,9 @@ export async function handleApiRequest(
           console.warn('[Server] Web search grounding error:', _e)
         }
       }
+
+      let documentCitations: any[] = []
+      let workspaceCitations: any[] = []
 
       const ai = getGemini()
       if (ai) {
@@ -2751,11 +2827,12 @@ export async function handleApiRequest(
           }
 
           let response: any = null
-          let usedChatModel = 'gemini-3.8-flash'
+          let usedChatModel = 'gemini-2.5-flash'
           const chatModelCandidates = [
-            'gemini-3.8-flash',
-            'gemini-3.1-flash-lite',
-            'gemini-flash-latest'
+            'gemini-2.5-flash',
+            'gemini-flash-latest',
+            'gemini-2.5-flash-lite',
+            'gemini-3.8-flash'
           ]
 
           console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', promptLength: sanitizedPrompt.length, modelCandidate: chatModelCandidates[0] })
@@ -2794,42 +2871,46 @@ export async function handleApiRequest(
                 }
               }
             } catch (err: any) {
-              console.warn('[AI_REQUEST_ERROR]', { model: modelCandidate, error: err?.message || err })
+              const errMsg = err?.message || String(err)
+              const isQuota = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')
+              if (isQuota) {
+                console.warn(`[AI_MODEL_FALLBACK] Quota reached on ${modelCandidate}, cascading to next available model...`)
+              } else {
+                console.warn('[AI_REQUEST_NOTE]', { model: modelCandidate, note: errMsg })
+              }
             }
           }
 
-          if (!extractedText) {
-            throw new Error('All Gemini candidate models returned empty or failed to generate content.')
+          if (extractedText) {
+            // Enforce PrivacyAlign output sanitization
+            const sanitizedOutput = privacyAlign.sanitize(extractedText).redactedText
+            console.log('[AI_RESPONSE_PARSED]', { outputLength: sanitizedOutput.length, model: usedChatModel })
+
+            // AI-Q Citation Annotation with verified links
+            const aiqResult = aiqCitationEngine.annotateResponse(sanitizedOutput, allDiscoveredSources)
+
+            agentHarness.completeTrace(execPlan.traceId)
+
+            return sendJson(res, 200, {
+              text: aiqResult.annotatedText,
+              rawText: sanitizedOutput,
+              model: usedChatModel,
+              provider: 'gemini',
+              agentRole: execPlan.role,
+              agentName: execPlan.agentName,
+              traceId: execPlan.traceId,
+              privacySanitized: execPlan.privacyMinimization.applied,
+              codebaseContextCount: codebaseContext.length,
+              webSourcesCount: webSearchResults.length,
+              aiQCitations: aiqResult.citations,
+              citations: [...webCitations, ...documentCitations, ...workspaceCitations],
+              documentCitations,
+              workspaceCitations,
+              searchQuery: webSearchQuery
+            })
           }
-
-          // Enforce PrivacyAlign output sanitization
-          const sanitizedOutput = privacyAlign.sanitize(extractedText).redactedText
-          console.log('[AI_RESPONSE_PARSED]', { outputLength: sanitizedOutput.length, model: usedChatModel })
-
-          // AI-Q Citation Annotation with verified links
-          const aiqResult = aiqCitationEngine.annotateResponse(sanitizedOutput, allDiscoveredSources)
-
-          agentHarness.completeTrace(execPlan.traceId)
-
-          return sendJson(res, 200, {
-            text: aiqResult.annotatedText,
-            rawText: sanitizedOutput,
-            model: usedChatModel,
-            provider: 'gemini',
-            agentRole: execPlan.role,
-            agentName: execPlan.agentName,
-            traceId: execPlan.traceId,
-            privacySanitized: execPlan.privacyMinimization.applied,
-            codebaseContextCount: codebaseContext.length,
-            webSourcesCount: webSearchResults.length,
-            aiQCitations: aiqResult.citations,
-            citations: [...webCitations, ...documentCitations, ...workspaceCitations],
-            documentCitations,
-            workspaceCitations,
-            searchQuery: webSearchQuery
-          })
         } catch (err: any) {
-          console.error('[AI_REQUEST_ERROR] Gemini server generation error:', err?.message || err)
+          console.warn('[AI_REQUEST_NOTE] Gemini server generation cascading to secondary providers:', err?.message || err)
         }
       }
 

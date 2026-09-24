@@ -1,6 +1,6 @@
 /**
  * VoiceSessionManager - Unified Production-Ready JARVIS Voice Session Engine
- * 
+ *
  * Formal Finite State Machine:
  * IDLE
  * → LISTENING_FOR_WAKE_WORD
@@ -10,7 +10,7 @@
  * → SPEAKING
  * → INTERRUPTED
  * → IDLE
- * 
+ *
  * Rules:
  * - Centralized synchronized state snapshot.
  * - Hands-free wake word detection ("Hey JARVIS" / "JARVIS") with local matching.
@@ -38,6 +38,7 @@ import { AudioManager } from './AudioManager'
 import { VoiceCommandRouter } from './VoiceCommandRouter'
 import { voiceSettings, VoiceSettingsManager } from './VoiceSettings'
 import { agentClientService } from '../agentClientService'
+import { voiceTranscriptStorage, VoiceInteractionSession } from './VoiceTranscriptStorage'
 
 export type SessionStateListener = (state: VoiceSessionState, payload?: any) => void
 
@@ -47,6 +48,7 @@ export class VoiceSessionManager {
   private conversationHistory: VoiceTurnMessage[] = []
   private lastSpokenAnswer: string = ''
   private activeAbortController: AbortController | null = null
+  private activeStorageSessionId: string | null = null
 
   public audioManager: AudioManager
   public commandRouter: VoiceCommandRouter
@@ -231,7 +233,8 @@ export class VoiceSessionManager {
       wakeWordEnabled: this.config.wakeWordEnabled,
       microphoneActive: this.audioManager.micManager.getIsActive(),
       vadActive: this.audioManager.vad.getIsEnabled(),
-      isListening: this.formalState === 'LISTENING' || this.formalState === 'LISTENING_FOR_WAKE_WORD',
+      isListening:
+        this.formalState === 'LISTENING' || this.formalState === 'LISTENING_FOR_WAKE_WORD',
       isProcessing: this.formalState === 'PROCESSING',
       isSpeaking: this.formalState === 'SPEAKING' && this.audioManager.tts.getIsSpeaking(),
       isInterrupted: this.formalState === 'INTERRUPTED',
@@ -250,6 +253,22 @@ export class VoiceSessionManager {
 
   public getHistory(): VoiceTurnMessage[] {
     return [...this.conversationHistory]
+  }
+
+  public getActiveStorageSessionId(): string | null {
+    return this.activeStorageSessionId
+  }
+
+  public clearCurrentSessionHistory(): void {
+    this.conversationHistory = []
+    this.activeStorageSessionId = null
+    this.notify('transcript_updated', { history: [] })
+  }
+
+  public loadHistoricalSession(messages: VoiceTurnMessage[], sessionId?: string): void {
+    this.conversationHistory = [...messages]
+    this.activeStorageSessionId = sessionId || null
+    this.notify('transcript_updated', { history: this.conversationHistory })
   }
 
   public getMicLevel(): number {
@@ -320,6 +339,15 @@ export class VoiceSessionManager {
       this.activeAbortController = null
     }
 
+    // Initialize or continue a persistent transcript session
+    if (!this.activeStorageSessionId) {
+      const storageSession = voiceTranscriptStorage.startNewSession({
+        personality: this.config.personality,
+        language: this.config.language
+      })
+      this.activeStorageSessionId = storageSession.id
+    }
+
     if (this.formalState !== 'IDLE' && this.formalState !== 'LISTENING_FOR_WAKE_WORD') {
       this.transitionTo('LISTENING')
       return true
@@ -376,6 +404,10 @@ export class VoiceSessionManager {
     if (this.formalState === 'SPEAKING' || this.formalState === 'PROCESSING') {
       this.transitionTo('LISTENING')
     }
+  }
+
+  public async sendTextMessage(text: string): Promise<void> {
+    await this.handleTurnSubmission(text, 'en')
   }
 
   // ==========================================
@@ -437,9 +469,15 @@ export class VoiceSessionManager {
     }
 
     this.conversationHistory.push(userMsg)
-    if (this.conversationHistory.length > 20) {
-      this.conversationHistory = this.conversationHistory.slice(-20)
+    if (this.conversationHistory.length > 30) {
+      this.conversationHistory = this.conversationHistory.slice(-30)
     }
+
+    const savedSession = voiceTranscriptStorage.recordTurn(this.activeStorageSessionId, userMsg, {
+      personality: this.config.personality,
+      language: this.config.language
+    })
+    this.activeStorageSessionId = savedSession.id
 
     this.notify('transcript_updated', { message: userMsg, history: this.conversationHistory })
 
@@ -505,7 +543,14 @@ export class VoiceSessionManager {
           timestamp: Date.now()
         }
         this.conversationHistory.push(assistantMsg)
-        this.notify('transcript_updated', { message: assistantMsg, history: this.conversationHistory })
+        voiceTranscriptStorage.recordTurn(this.activeStorageSessionId, assistantMsg, {
+          personality: this.config.personality,
+          language: this.config.language
+        })
+        this.notify('transcript_updated', {
+          message: assistantMsg,
+          history: this.conversationHistory
+        })
         this.audioManager.tts.speakFullResponse(spokenResponse)
       } catch (err: any) {
         const errMsg = `Error running agent orchestrator: ${err?.message || 'Execution error'}`
@@ -572,7 +617,14 @@ export class VoiceSessionManager {
       }
 
       this.conversationHistory.push(assistantMsg)
-      this.notify('transcript_updated', { message: assistantMsg, history: this.conversationHistory })
+      voiceTranscriptStorage.recordTurn(this.activeStorageSessionId, assistantMsg, {
+        personality: this.config.personality,
+        language: this.config.language
+      })
+      this.notify('transcript_updated', {
+        message: assistantMsg,
+        history: this.conversationHistory
+      })
 
       // Forward to existing conversation system
       if (typeof window !== 'undefined' && (window as any).iris?.emitTranscript) {
@@ -618,6 +670,10 @@ export class VoiceSessionManager {
       }
 
       this.conversationHistory.push(fallbackMsg)
+      voiceTranscriptStorage.recordTurn(this.activeStorageSessionId, fallbackMsg, {
+        personality: this.config.personality,
+        language: this.config.language
+      })
       this.notify('transcript_updated', { message: fallbackMsg, history: this.conversationHistory })
 
       this.audioManager.tts.speakFullResponse(fallback)
@@ -668,16 +724,35 @@ export class VoiceSessionManager {
   // ==========================================
 
   private handleError(errorStr: string) {
-    console.error('[VoiceSessionManager Error]', errorStr)
+    const isPermissionError =
+      errorStr.toLowerCase().includes('permission') ||
+      errorStr.toLowerCase().includes('denied') ||
+      errorStr.toLowerCase().includes('not allowed')
+
+    if (isPermissionError) {
+      console.warn('[VoiceSessionManager Notice]', errorStr)
+      voiceSettings.setMicPermissionStatus('denied')
+    } else {
+      console.warn('[VoiceSessionManager Warning]', errorStr)
+    }
+
     this.errorMessage = errorStr
     this.audioManager.tts.stopSpeaking()
-    this.notify('state_change', { state: 'error', error: errorStr })
+    this.notify('state_change', {
+      state: 'error',
+      error: errorStr,
+      isPermissionDenied: isPermissionError
+    })
 
-    // Auto-recover after 2.5 seconds
+    // Auto-recover after 4 seconds if permission issue or general glitch
     setTimeout(() => {
-      this.errorMessage = ''
-      this.transitionTo('IDLE')
-    }, 2500)
+      if (this.formalState === 'IDLE' || this.errorMessage === errorStr) {
+        this.errorMessage = ''
+        if (this.formalState !== 'IDLE') {
+          this.transitionTo('IDLE')
+        }
+      }
+    }, 4000)
   }
 
   // ==========================================

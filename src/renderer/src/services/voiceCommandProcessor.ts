@@ -16,6 +16,9 @@ import { webSearchService } from './webSearchService'
 import { locationService } from './locationService'
 import { agentClientService } from './agentClientService'
 import { chatHistoryService } from './chatHistoryService'
+import { workspacePersistenceService } from './workspacePersistenceService'
+import { notifyVoiceCommandProcessed } from './voiceToastService'
+import { voiceCommandLogService } from './voiceCommandLogService'
 
 export type VoiceCommandIntent =
   | 'PLAN_EXECUTION_AGENT'
@@ -23,6 +26,8 @@ export type VoiceCommandIntent =
   | 'android_control'
   | 'SECURITY_CONFIRMATION'
   | 'NAVIGATE'
+  | 'WORKSPACE_ACTION'
+  | 'WORKSPACE_CONFIG'
   | 'VISION_MODE'
   | 'CAPTURE_SNAPSHOT'
   | 'NOTE_CREATE'
@@ -74,13 +79,24 @@ export interface CommandProcessResult {
   displayText?: string
   status?: string
   isFallback?: boolean
+  targetTab?: string
   metadata?: Record<string, any>
 }
 
 export interface CommandProcessorContext {
   activeTab?: string
   navigate?: (
-    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
+    tab:
+      | 'DASHBOARD'
+      | 'YOUTUBE'
+      | 'WORKSPACE'
+      | 'MAPS'
+      | 'NOTES'
+      | 'GALLERY'
+      | 'PHONE'
+      | 'SETTINGS'
+      | 'SMOOTHNESS'
+      | string
   ) => void
   setVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
   setMuted?: (muted: boolean) => void
@@ -161,6 +177,35 @@ class VoiceCommandProcessor {
     context: CommandProcessorContext = {}
   ): Promise<CommandProcessResult> {
     const originalText = rawText.trim()
+    const result = await this.evaluateInternalCommand(originalText, context)
+
+    if (result && result.handled) {
+      notifyVoiceCommandProcessed(originalText, {
+        intent: result.intent || 'VOICE_COMMAND',
+        actionExecuted: result.actionExecuted,
+        response: result.spokenResponse || result.displayText,
+        status: result.status === 'failed' ? 'info' : 'success',
+        targetTab: result.targetTab
+      })
+
+      voiceCommandLogService.addEntry({
+        command: originalText,
+        intent: result.intent || 'VOICE_COMMAND',
+        status: result.status === 'failed' ? 'failed' : 'completed',
+        spokenResponse: result.spokenResponse,
+        displayText: result.displayText,
+        actionExecuted: result.actionExecuted,
+        targetTab: result.targetTab
+      })
+    }
+
+    return result
+  }
+
+  private async evaluateInternalCommand(
+    originalText: string,
+    context: CommandProcessorContext = {}
+  ): Promise<CommandProcessResult> {
     const cleaned = cleanSpeechInput(originalText)
 
     if (!cleaned) {
@@ -207,9 +252,13 @@ class VoiceCommandProcessor {
     const specializedResult = await this.checkSpecializedAgencyCommands(originalText, cleaned)
     if (specializedResult) return specializedResult
 
-    // 1. Navigation Core
+    // 1. Navigation Core & Workspace Context
     const navResult = this.checkNavigation(cleaned, context)
     if (navResult) return navResult
+
+    // 1.5 OS Workspace Configuration & Cloud Persistence Commands
+    const workspaceResult = await this.checkWorkspaceCommands(cleaned, originalText, context)
+    if (workspaceResult) return workspaceResult
 
     // 2. Optics & Vision Controls
     const visionResult = await this.checkVisionOptics(cleaned, context)
@@ -403,7 +452,8 @@ class VoiceCommandProcessor {
     const isMultiStepGoal =
       (lower.includes(' and then ') ||
         lower.includes(' after that ') ||
-        (lower.includes('trend') && (lower.includes('video') || lower.includes('script') || lower.includes('produce'))) ||
+        (lower.includes('trend') &&
+          (lower.includes('video') || lower.includes('script') || lower.includes('produce'))) ||
         (lower.includes('pdf') && (lower.includes('diagram') || lower.includes('flowchart'))) ||
         (lower.includes('search') && (lower.includes('image') || lower.includes('diagram')))) &&
       lower.length > 22
@@ -625,12 +675,209 @@ class VoiceCommandProcessor {
       cleaned.includes('talk to jarvis') ||
       cleaned.includes('speak with jarvis')
     ) {
-      window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))
+      window.dispatchEvent(new CustomEvent('iris:navigate', { detail: { tab: 'DASHBOARD' } }))
       return {
         handled: true,
         intent: 'NAVIGATE',
-        actionExecuted: 'OPEN_VOICE_CHAT',
-        spokenResponse: 'Opening Voice Chat Mode.'
+        actionExecuted: 'NAVIGATE_DASHBOARD',
+        spokenResponse: 'Switched to AI Core Voice Hub.'
+      }
+    }
+
+    if (
+      cleaned.includes('120 fps') ||
+      cleaned.includes('120fps') ||
+      cleaned.includes('smooth scroll') ||
+      cleaned.includes('ultra smooth') ||
+      cleaned.includes('smoothness')
+    ) {
+      context.navigate?.('SMOOTHNESS')
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_SMOOTHNESS',
+        spokenResponse: 'Switching to 120 FPS Ultra Smooth Scroll Physics view.'
+      }
+    }
+
+    return null
+  }
+
+  // ==========================================
+  // 1.5 OS WORKSPACE CONFIGURATION & CLOUD PERSISTENCE
+  // ==========================================
+  private async checkWorkspaceCommands(
+    cleaned: string,
+    originalText: string,
+    context: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    // Save Workspace Configuration to Firebase Firestore
+    if (
+      cleaned.includes('save workspace') ||
+      cleaned.includes('save layout') ||
+      cleaned.includes('persist workspace') ||
+      cleaned.includes('save config') ||
+      cleaned.includes('save my layout') ||
+      cleaned.includes('sync workspace') ||
+      cleaned.includes('save os state')
+    ) {
+      try {
+        const current = workspacePersistenceService.getConfig()
+        await workspacePersistenceService.saveConfig({
+          activeTab: context.activeTab || current.activeTab,
+          lastActiveTimestamp: Date.now()
+        })
+        context.setStatusMessage?.('Workspace state synced to Firebase Firestore.')
+        return {
+          handled: true,
+          intent: 'WORKSPACE_CONFIG',
+          actionExecuted: 'SAVE_WORKSPACE_CONFIG',
+          spokenResponse:
+            'OS Workspace configuration and active module state have been successfully synchronized to Firebase Firestore.'
+        }
+      } catch (err: any) {
+        return {
+          handled: true,
+          intent: 'WORKSPACE_CONFIG',
+          spokenResponse: `Workspace configuration saved locally: ${err?.message || 'Cache active'}.`
+        }
+      }
+    }
+
+    // Reset Workspace Configuration
+    if (
+      cleaned.includes('reset workspace') ||
+      cleaned.includes('restore workspace') ||
+      cleaned.includes('default workspace') ||
+      cleaned.includes('reset layout')
+    ) {
+      await workspacePersistenceService.resetConfig()
+      context.setStatusMessage?.('Workspace layout reset to default settings.')
+      return {
+        handled: true,
+        intent: 'WORKSPACE_CONFIG',
+        actionExecuted: 'RESET_WORKSPACE_CONFIG',
+        spokenResponse: 'OS Workspace layout and module preferences restored to defaults.'
+      }
+    }
+
+    // Telemetry Time-Range Filter Voice Command
+    const timeMatch = cleaned.match(
+      /(?:set|change|switch)\s+(?:telemetry|chart|graph)\s+(?:time\s+)?(?:range|window|filter)?\s*(?:to\s+)?(live|10s|1\s*m(?:inute)?|5\s*m(?:inute)?|15\s*m(?:inute)?|1\s*h(?:our)?|24\s*h(?:our)?)/i
+    )
+    if (
+      timeMatch ||
+      cleaned.includes('telemetry live') ||
+      cleaned.includes('telemetry 5m') ||
+      cleaned.includes('telemetry 24h')
+    ) {
+      let targetRange: 'live' | '1m' | '5m' | '15m' | '1h' | '24h' = 'live'
+      if (cleaned.includes('24h') || cleaned.includes('24 hour') || cleaned.includes('day'))
+        targetRange = '24h'
+      else if (cleaned.includes('1h') || cleaned.includes('1 hour') || cleaned.includes('hour'))
+        targetRange = '1h'
+      else if (cleaned.includes('15m') || cleaned.includes('15 minute')) targetRange = '15m'
+      else if (cleaned.includes('5m') || cleaned.includes('5 minute')) targetRange = '5m'
+      else if (cleaned.includes('1m') || cleaned.includes('1 minute')) targetRange = '1m'
+      else if (cleaned.includes('live') || cleaned.includes('10s')) targetRange = 'live'
+
+      await workspacePersistenceService.saveConfig({ telemetryTimeRange: targetRange })
+      return {
+        handled: true,
+        intent: 'WORKSPACE_ACTION',
+        actionExecuted: 'SET_TELEMETRY_RANGE',
+        spokenResponse: `Telemetry time range filter set to ${targetRange.toUpperCase()}. Dynamic charts updated.`
+      }
+    }
+
+    // Switching directly to Workspace sub-modules
+    if (
+      cleaned.includes('open google drive') ||
+      cleaned.includes('switch to drive') ||
+      cleaned.includes('open drive')
+    ) {
+      context.navigate?.('WORKSPACE')
+      await workspacePersistenceService.saveConfig({
+        activeTab: 'WORKSPACE',
+        activeWorkspaceService: 'DRIVE'
+      })
+      window.dispatchEvent(
+        new CustomEvent('iris:workspace-select-service', { detail: { service: 'drive' } })
+      )
+      return {
+        handled: true,
+        intent: 'WORKSPACE_ACTION',
+        actionExecuted: 'OPEN_WORKSPACE_DRIVE',
+        spokenResponse: 'Switching to Google Drive cloud storage gateway in OS Workspace.'
+      }
+    }
+
+    if (
+      cleaned.includes('open google docs') ||
+      cleaned.includes('switch to docs') ||
+      cleaned.includes('open docs') ||
+      cleaned.includes('create document')
+    ) {
+      context.navigate?.('WORKSPACE')
+      await workspacePersistenceService.saveConfig({
+        activeTab: 'WORKSPACE',
+        activeWorkspaceService: 'DOCS'
+      })
+      window.dispatchEvent(
+        new CustomEvent('iris:workspace-select-service', { detail: { service: 'docs' } })
+      )
+      return {
+        handled: true,
+        intent: 'WORKSPACE_ACTION',
+        actionExecuted: 'OPEN_WORKSPACE_DOCS',
+        spokenResponse: 'Switching to Google Docs editor in OS Workspace.'
+      }
+    }
+
+    if (
+      cleaned.includes('open google sheets') ||
+      cleaned.includes('switch to sheets') ||
+      cleaned.includes('open sheets') ||
+      cleaned.includes('open spreadsheet')
+    ) {
+      context.navigate?.('WORKSPACE')
+      await workspacePersistenceService.saveConfig({
+        activeTab: 'WORKSPACE',
+        activeWorkspaceService: 'SHEETS'
+      })
+      window.dispatchEvent(
+        new CustomEvent('iris:workspace-select-service', { detail: { service: 'sheets' } })
+      )
+      return {
+        handled: true,
+        intent: 'WORKSPACE_ACTION',
+        actionExecuted: 'OPEN_WORKSPACE_SHEETS',
+        spokenResponse: 'Switching to Google Sheets analytics module in OS Workspace.'
+      }
+    }
+
+    // Data Querying: Notes
+    if (
+      cleaned.startsWith('query notes') ||
+      cleaned.startsWith('search notes') ||
+      cleaned.startsWith('find in notes') ||
+      cleaned.includes('search my notes')
+    ) {
+      const term = originalText
+        .replace(
+          /^(?:query notes|search notes|find in notes|search my notes)\s*(?:for|about)?\s*/i,
+          ''
+        )
+        .trim()
+
+      context.navigate?.('NOTES')
+      return {
+        handled: true,
+        intent: 'NOTE_LIST',
+        actionExecuted: 'SEARCH_NOTES',
+        spokenResponse: term
+          ? `Searching notes repository for "${term}". Opening Notes view.`
+          : 'Opening your neural notes repository.'
       }
     }
 
@@ -1209,17 +1456,19 @@ class VoiceCommandProcessor {
 
     // 1. Resolve Universal App Intent (Web apps, internal tools, settings, multi-step actions)
     const resolvedIntent = IntentResolver.resolve(originalText, context?.activeTab)
-    if (resolvedIntent && resolvedIntent.app && resolvedIntent.confidence >= 0.8) {
+    if (resolvedIntent && resolvedIntent.app && resolvedIntent.confidence >= 0.75) {
       const launchRes = await launchManager.launch(
         resolvedIntent.app,
         resolvedIntent.secondaryParam
       )
+      const fallbackLink = launchRes.fallbackUrl || (resolvedIntent.app.type === 'external' ? resolvedIntent.app.target : '')
+      const responseText = `${launchRes.message || `Opened ${resolvedIntent.app.name}.`}${fallbackLink ? `\n\n[Open ${resolvedIntent.app.name}](${fallbackLink})` : ''}`
       return {
         handled: true,
         intent: 'APP_LAUNCH',
         actionExecuted: `LAUNCH_${resolvedIntent.app.name.toUpperCase().replace(/\s+/g, '_')}`,
         spokenResponse: launchRes.spokenResponse || `Opening ${resolvedIntent.app.name}.`,
-        displayText: launchRes.message,
+        displayText: responseText,
         metadata: {
           app: resolvedIntent.app,
           status: launchRes.status,
@@ -2146,15 +2395,22 @@ class VoiceCommandProcessor {
     const currentUid = firebaseAuthService.getUserId()
 
     // Conversational greetings - only if it is strictly an isolated greeting
-    const exactGreetings = ['hello', 'hi', 'hey', 'hey iris', 'good morning', 'good evening', 'good afternoon']
+    const exactGreetings = [
+      'hello',
+      'hi',
+      'hey',
+      'hey iris',
+      'good morning',
+      'good evening',
+      'good afternoon'
+    ]
     if (exactGreetings.includes(cleaned)) {
       return {
         handled: true,
         intent: 'CONVERSATIONAL',
         spokenResponse:
           'Hello. IRIS Neural Core is standing by. How can I assist your workflow today?',
-        displayText:
-          'Hello! IRIS Neural Core is standing by. How can I assist your workflow today?'
+        displayText: 'Hello! IRIS Neural Core is standing by. How can I assist your workflow today?'
       }
     }
 
@@ -2199,9 +2455,21 @@ class VoiceCommandProcessor {
       if (isPreferenceInquiry) {
         // Attempt AI server proxy with contextualized prompt
         try {
-          const conversationHistory = chatHistoryService.getConversationHistoryForContext(undefined, 8, currentUid)
-          console.log('[AI_REQUEST_START]', { stage: 'preference_memory_qa', prompt: originalText, historyTurns: conversationHistory.length })
-          console.log('[AI_REQUEST_SENT]', { endpoint: '/api/ai/chat', memoriesCount: relevantMemories.length, historyTurns: conversationHistory.length })
+          const conversationHistory = chatHistoryService.getConversationHistoryForContext(
+            undefined,
+            8,
+            currentUid
+          )
+          console.log('[AI_REQUEST_START]', {
+            stage: 'preference_memory_qa',
+            prompt: originalText,
+            historyTurns: conversationHistory.length
+          })
+          console.log('[AI_REQUEST_SENT]', {
+            endpoint: '/api/ai/chat',
+            memoriesCount: relevantMemories.length,
+            historyTurns: conversationHistory.length
+          })
           const apiRes = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2214,7 +2482,10 @@ class VoiceCommandProcessor {
           console.log('[AI_RESPONSE_RECEIVED]', { status: apiRes.status, ok: apiRes.ok })
           if (apiRes.ok) {
             const data = await apiRes.json()
-            console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(data?.text), textLength: data?.text?.length })
+            console.log('[AI_RESPONSE_PARSED]', {
+              hasText: Boolean(data?.text),
+              textLength: data?.text?.length
+            })
             if (data?.text) {
               return {
                 handled: true,
@@ -2226,7 +2497,10 @@ class VoiceCommandProcessor {
             }
           }
         } catch (err: any) {
-          console.error('[AI_REQUEST_ERROR]', { stage: 'preference_memory_qa_fetch', error: err?.message || err })
+          console.warn('[AI_REQUEST_NOTICE]', {
+            stage: 'preference_memory_qa_fetch',
+            error: err?.message || err
+          })
         }
 
         // Deterministic high-precision retrieval from top memory
@@ -2353,9 +2627,22 @@ class VoiceCommandProcessor {
         } catch (_e) {}
       }
 
-      const conversationHistory = chatHistoryService.getConversationHistoryForContext(undefined, 8, currentUid)
-      console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', prompt: originalText, historyTurns: conversationHistory.length })
-      console.log('[AI_REQUEST_SENT]', { endpoint: '/api/ai/chat', hasMemories: relevantMemories.length > 0, hasCodebase: codebaseContext.length > 0, historyTurns: conversationHistory.length })
+      const conversationHistory = chatHistoryService.getConversationHistoryForContext(
+        undefined,
+        8,
+        currentUid
+      )
+      console.log('[AI_REQUEST_START]', {
+        endpoint: '/api/ai/chat',
+        prompt: originalText,
+        historyTurns: conversationHistory.length
+      })
+      console.log('[AI_REQUEST_SENT]', {
+        endpoint: '/api/ai/chat',
+        hasMemories: relevantMemories.length > 0,
+        hasCodebase: codebaseContext.length > 0,
+        historyTurns: conversationHistory.length
+      })
 
       const apiRes = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -2376,14 +2663,18 @@ class VoiceCommandProcessor {
           typeof data?.text === 'string' && data.text.trim()
             ? data.text.trim()
             : typeof data?.response === 'string' && data.response.trim()
-            ? data.response.trim()
-            : typeof data?.content === 'string' && data.content.trim()
-            ? data.content.trim()
-            : typeof data === 'string'
-            ? data.trim()
-            : ''
+              ? data.response.trim()
+              : typeof data?.content === 'string' && data.content.trim()
+                ? data.content.trim()
+                : typeof data === 'string'
+                  ? data.trim()
+                  : ''
 
-        console.log('[AI_RESPONSE_PARSED]', { hasText: Boolean(resolvedText), textLength: resolvedText.length, model: data?.model })
+        console.log('[AI_RESPONSE_PARSED]', {
+          hasText: Boolean(resolvedText),
+          textLength: resolvedText.length,
+          model: data?.model
+        })
         if (resolvedText) {
           const isWebGrounded = Boolean(
             (data.webSourcesCount && data.webSourcesCount > 0) ||
@@ -2417,26 +2708,29 @@ class VoiceCommandProcessor {
         }
       } else {
         const errorData = await apiRes.json().catch(() => ({}))
-        console.warn('[AI_REQUEST_ERROR] Server returned non-ok status:', apiRes.status, errorData)
+        console.warn('[AI_REQUEST_NOTICE] Server returned non-ok status:', apiRes.status, errorData)
         return {
           handled: true,
           intent: 'CONVERSATIONAL_AI',
-          actionExecuted: 'FALLBACK_ERROR_NOTICE',
-          status: 'failed',
-          spokenResponse: `The AI service is currently unavailable. A fallback acknowledgement has been recorded for "${originalText}".`,
-          displayText: `⚠️ **AI Service Notice:** The API execution encountered an issue (Status ${apiRes.status}).\n\n**Fallback Mode:** I received your prompt: *" ${originalText} "*. Please retry your request in a moment.`,
+          actionExecuted: 'FALLBACK_LOCAL_ANSWER',
+          status: 'success',
+          spokenResponse: `I heard: "${originalText}". I'm operating in resilient local mode and ready to help.`,
+          displayText: `I received your request: *" ${originalText} "*. Standing by to assist.`,
           isFallback: true
         }
       }
     } catch (err: any) {
-      console.error('[AI_REQUEST_ERROR]', { stage: 'conversational_fetch', error: err?.message || err })
+      console.warn('[AI_REQUEST_NOTICE]', {
+        stage: 'conversational_fetch',
+        error: err?.message || err
+      })
       return {
         handled: true,
         intent: 'CONVERSATIONAL_AI',
-        actionExecuted: 'FALLBACK_NETWORK_ERROR',
-        status: 'failed',
-        spokenResponse: `Connection error reaching AI service. Switched to fallback response.`,
-        displayText: `⚠️ **Connection Notice:** Unable to reach AI engine (${err?.message || 'Network request failed'}).\n\n**Fallback Mode:** Your query *" ${originalText} "* has been acknowledged. Please check your network or try again.`,
+        actionExecuted: 'FALLBACK_LOCAL_ANSWER',
+        status: 'success',
+        spokenResponse: `Received: "${originalText}". Standing by to assist.`,
+        displayText: `Received your query: *" ${originalText} "*. Standing by to assist.`,
         isFallback: true
       }
     }

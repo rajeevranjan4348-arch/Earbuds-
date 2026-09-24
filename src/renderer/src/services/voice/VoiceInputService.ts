@@ -304,8 +304,25 @@ export class StreamingSpeechRecognition {
     }
     // 2. Common Hinglish phonetic tokens
     const hinglishTokens = [
-      'kya', 'hai', 'kaise', 'ho', 'batao', 'namaste', 'shukriya', 'theek', 'karo',
-      'sunao', 'achha', 'nahi', 'haan', 'mera', 'meri', 'tum', 'aap', 'mujhe', 'kuch'
+      'kya',
+      'hai',
+      'kaise',
+      'ho',
+      'batao',
+      'namaste',
+      'shukriya',
+      'theek',
+      'karo',
+      'sunao',
+      'achha',
+      'nahi',
+      'haan',
+      'mera',
+      'meri',
+      'tum',
+      'aap',
+      'mujhe',
+      'kuch'
     ]
     const words = text.toLowerCase().split(/\s+/)
     const hasHinglish = words.some((w) => hinglishTokens.includes(w))
@@ -382,9 +399,7 @@ export class StreamingSpeechRecognition {
           this.lastFinalTime = now
 
           const detectedLang =
-            this.language === 'auto'
-              ? this.detectLanguageHeuristic(trimmedFinal)
-              : this.language
+            this.language === 'auto' ? this.detectLanguageHeuristic(trimmedFinal) : this.language
 
           this.handlers.onInterim('')
           this.handlers.onFinal(trimmedFinal, detectedLang)
@@ -399,7 +414,10 @@ export class StreamingSpeechRecognition {
         }
         if (err === 'not-allowed' || err === 'service-not-allowed') {
           this.isListening = false
-          this.handlers.onError('Microphone permission was denied.')
+          console.warn('[STT] Microphone permission denied by browser.')
+          this.handlers.onError(
+            'Microphone permission was denied. Please allow microphone access in your browser.'
+          )
           return
         }
         if (err === 'network') {
@@ -679,7 +697,10 @@ export class VoiceInputService {
           }
         )
       } catch (streamErr: any) {
-        console.warn('[VoiceInputService] Raw microphone stream could not be acquired, proceeding to speech recognition directly:', streamErr?.message)
+        console.warn(
+          '[VoiceInputService] Raw microphone stream could not be acquired, proceeding to speech recognition directly:',
+          streamErr?.message
+        )
       }
 
       const recStarted = this.speechRec.start(stream || undefined)

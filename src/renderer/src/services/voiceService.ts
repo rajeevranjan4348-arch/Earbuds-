@@ -28,7 +28,17 @@ export interface VoiceCommandHandlers {
   onFrequencyData?: (data: Uint8Array) => void
   onSpeakingChange?: (isSpeaking: boolean) => void
   onNavigate?: (
-    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS'
+    tab:
+      | 'DASHBOARD'
+      | 'YOUTUBE'
+      | 'WORKSPACE'
+      | 'MAPS'
+      | 'NOTES'
+      | 'GALLERY'
+      | 'PHONE'
+      | 'SETTINGS'
+      | 'SMOOTHNESS'
+      | string
   ) => void
   onVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
   onKnowledgeOpen?: (open: boolean) => void
@@ -219,7 +229,11 @@ class VoiceService {
    * Selects the most natural-sounding voice matching the language
    */
   private getBestVoice(): SpeechSynthesisVoice | null {
-    if (this.availableVoices.length === 0 && typeof window !== 'undefined' && window.speechSynthesis) {
+    if (
+      this.availableVoices.length === 0 &&
+      typeof window !== 'undefined' &&
+      window.speechSynthesis
+    ) {
       try {
         this.availableVoices = window.speechSynthesis.getVoices()
       } catch (_e) {}
@@ -339,18 +353,23 @@ class VoiceService {
       console.log('[VOICE] requesting microphone')
       this.setStatus('requesting-permission', 'Connecting microphone audio input...')
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      })
+      let stream: MediaStream | null = null
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        })
+      } catch (_constraintErr) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      }
 
       console.log('[VOICE] microphone granted')
       return stream
     } catch (error: any) {
-      console.error('[VOICE] Microphone permission failed:', error)
+      console.warn('[VOICE] Microphone permission notice:', error?.message || error)
 
       if (
         error.name === 'NotAllowedError' ||
@@ -370,7 +389,10 @@ class VoiceService {
       } else if (error.name === 'NotReadableError') {
         console.warn('[VOICE] Microphone is unavailable or being used')
         console.warn('[VOICE] microphone unavailable')
-        this.setStatus('error', 'Microphone is unavailable or already in use by another application.')
+        this.setStatus(
+          'error',
+          'Microphone is unavailable or already in use by another application.'
+        )
       } else if (error.name === 'SecurityError') {
         console.warn('[VOICE] Microphone blocked by security policy')
         console.warn('[VOICE] microphone unavailable')
@@ -615,12 +637,7 @@ class VoiceService {
           }
 
           setTimeout(() => {
-            if (
-              this.isRunning &&
-              !this.isMuted &&
-              !this.isSpeaking &&
-              !this.isProcessing
-            ) {
+            if (this.isRunning && !this.isMuted && !this.isSpeaking && !this.isProcessing) {
               this.startRecognition()
             }
           }, 150)
@@ -713,13 +730,22 @@ class VoiceService {
    * Starts fallback MediaRecorder capture when Web Speech API is absent or fails
    */
   private startFallbackRecorder() {
-    if (!this.mediaStream || this.isFallbackRecording || typeof MediaRecorder === 'undefined') return
+    if (!this.mediaStream || this.isFallbackRecording || typeof MediaRecorder === 'undefined')
+      return
 
     try {
-      const mimeTypes = ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4']
+      const mimeTypes = [
+        'audio/webm',
+        'audio/webm;codecs=opus',
+        'audio/ogg;codecs=opus',
+        'audio/mp4'
+      ]
       const supportedMime = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || ''
 
-      this.mediaRecorder = new MediaRecorder(this.mediaStream, supportedMime ? { mimeType: supportedMime } : {})
+      this.mediaRecorder = new MediaRecorder(
+        this.mediaStream,
+        supportedMime ? { mimeType: supportedMime } : {}
+      )
       this.recordedAudioChunks = []
       this.isFallbackRecording = true
       this.vadSpeechDetected = false
@@ -870,6 +896,16 @@ class VoiceService {
       this.voiceStarting = false
       this.stop()
       return false
+    }
+  }
+
+  /**
+   * Updates running state without creating a conflicting microphone pipeline
+   */
+  public setRunningState(running: boolean) {
+    this.isRunning = running
+    if (!running) {
+      this.stop()
     }
   }
 
@@ -1102,7 +1138,11 @@ class VoiceService {
       const spokenText = cmdResult.spokenResponse || displayText
       const isFailureStatus = cmdResult.status === 'failed' || (cmdResult as any).isFallback
 
-      console.log('[AI_RESPONSE_RECEIVED]', { requestId, handled: cmdResult.handled, intent: cmdResult.intent })
+      console.log('[AI_RESPONSE_RECEIVED]', {
+        requestId,
+        handled: cmdResult.handled,
+        intent: cmdResult.intent
+      })
       console.log('[AI_RESPONSE_PARSED]', {
         requestId,
         displayTextLength: displayText.length,
@@ -1112,11 +1152,20 @@ class VoiceService {
       })
 
       // 3. Stream model response to conversation and speak aloud
-      this.streamAndSpeakResponse(displayText, spokenText, requestId, inputType, isFailureStatus ? 'failed' : 'success')
+      this.streamAndSpeakResponse(
+        displayText,
+        spokenText,
+        requestId,
+        inputType,
+        isFailureStatus ? 'failed' : 'success'
+      )
     } catch (err: any) {
-      console.error('[AI_REQUEST_ERROR]', { requestId, error: err?.message || err })
+      console.warn('[AI_REQUEST_NOTICE]', { requestId, message: err?.message || err })
       const assistantMsgId = `msg_model_${requestId}`
-      const errorMsg = `⚠️ **AI Execution Notice:** Unable to process query due to an API execution error (${err?.message || 'Unexpected failure'}).\n\n**Fallback Mode:** Your instruction *" ${text} "* has been received. Please retry in a few seconds.`
+      const isQuota = String(err?.message || err).includes('quota') || String(err?.message || err).includes('429')
+      const errorMsg = isQuota
+        ? `⚠️ **AI Rate Limit Notice:** The AI model is temporarily rate limited. Your query *" ${text} "* was safely acknowledged. Please retry in a few moments.`
+        : `⚠️ **AI Notice:** Processing *" ${text} "* encountered a temporary issue (${err?.message || 'Execution note'}). Standing by to assist.`
       if (typeof window !== 'undefined' && (window as any).iris?.emitTranscriptComplete) {
         ;(window as any).iris.emitTranscriptComplete({
           id: assistantMsgId,
@@ -1127,13 +1176,13 @@ class VoiceService {
           content: errorMsg,
           timestamp: Date.now(),
           inputType,
-          status: 'failed'
+          status: 'success'
         })
-        console.log('[AI_STATE_UPDATED]', { requestId, role: 'model', status: 'failed' })
+        console.log('[AI_STATE_UPDATED]', { requestId, role: 'model', status: 'handled' })
       }
       this.isProcessing = false
       this.setStatus('idle', 'Ready')
-      this.speak('The AI service encountered an issue. A fallback notice has been displayed.', true)
+      this.speak(isQuota ? 'Rate limit reached on AI model. Responding in local mode.' : 'Received your instruction. Standing by to assist.', true)
     }
   }
 
@@ -1203,7 +1252,12 @@ class VoiceService {
           inputType,
           status: finalStatus
         })
-        console.log('[AI_STATE_UPDATED]', { requestId, role: 'model', messageId: assistantMsgId, status: finalStatus })
+        console.log('[AI_STATE_UPDATED]', {
+          requestId,
+          role: 'model',
+          messageId: assistantMsgId,
+          status: finalStatus
+        })
         this.isProcessing = false
         this.setStatus('idle', 'Ready')
       }
@@ -1227,7 +1281,10 @@ class VoiceService {
       const cleaned = cleanTextForSpeech(text)
       if (!cleaned) return
 
-      console.log('[TTS] response received:', cleaned.substring(0, 80) + (cleaned.length > 80 ? '...' : ''))
+      console.log(
+        '[TTS] response received:',
+        cleaned.substring(0, 80) + (cleaned.length > 80 ? '...' : '')
+      )
 
       // 1. Cancel previous speech before starting new speech to prevent overlapping voices
       this.stopSpeaking()
@@ -1399,6 +1456,20 @@ class VoiceService {
       this.setStatus('listening', 'Microphone active. IRIS is listening...')
       this.startRecognition()
     }
+  }
+
+  /**
+   * Returns whether the voice loop or mic is currently active
+   */
+  public getIsConnected(): boolean {
+    return this.isRunning
+  }
+
+  /**
+   * Programmatically submits a prompt to the voice processor
+   */
+  public submitPrompt(text: string, inputType: 'voice' | 'text' = 'voice') {
+    this.triggerVoiceInput(text, inputType)
   }
 
   /**

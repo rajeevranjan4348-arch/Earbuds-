@@ -15,6 +15,17 @@ class LaunchManager {
   }
 
   /**
+   * Finds and launches an app matching the given name or spoken query
+   */
+  public async launchAppByName(nameOrQuery: string, secondaryQuery?: string): Promise<LaunchResult> {
+    const matched = appRegistry.matchVoiceCommand(nameOrQuery) || appRegistry.search(nameOrQuery)[0]
+    if (matched) {
+      return this.launch(matched, secondaryQuery)
+    }
+    return this.launch(nameOrQuery, secondaryQuery)
+  }
+
+  /**
    * Executes launch of an application item by id or item object
    */
   public async launch(
@@ -360,15 +371,28 @@ class LaunchManager {
         }
       }
 
-      // 3. Desktop / Standard Web: Open web fallback URL
-      window.open(targetUrl, '_blank', 'noopener,noreferrer')
+      // 3. Desktop / Standard Web: Attempt server-side OS launch & client-side browser open
+      fetch('/api/system/open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrl, appName: app.name })
+      }).catch(() => {})
+
+      if (typeof window !== 'undefined') {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer')
+        window.dispatchEvent(
+          new CustomEvent('iris:app-launched', {
+            detail: { app, targetUrl, secondaryQuery, timestamp: Date.now() }
+          })
+        )
+      }
 
       return {
         success: true,
         app,
         status: 'SUCCESS',
         methodUsed: 'web_fallback',
-        message: `Opened ${app.name}`,
+        message: `Launched ${app.name} on device (${targetUrl})`,
         spokenResponse: `Opening ${app.name}.`,
         fallbackUrl: targetUrl
       }

@@ -172,16 +172,31 @@ Return ONLY valid JSON matching this schema:
   ]
 }`
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: [
-        { text: systemPrompt },
-        { text: `User Request: "${prompt}"\nRelevant Memories: ${JSON.stringify(context.relevantMemories)}` }
-      ],
-      config: {
-        responseMimeType: 'application/json'
+    const candidateModels = [
+      'gemini-2.5-flash',
+      'gemini-flash-latest',
+      'gemini-2.5-flash-lite',
+      'gemini-3.8-flash'
+    ]
+
+    let response: any = null
+    for (const modelCandidate of candidateModels) {
+      try {
+        response = await ai.models.generateContent({
+          model: modelCandidate,
+          contents: [
+            { text: systemPrompt },
+            { text: `User Request: "${prompt}"\nRelevant Memories: ${JSON.stringify(context.relevantMemories)}` }
+          ],
+          config: {
+            responseMimeType: 'application/json'
+          }
+        })
+        if (response?.text) break
+      } catch (_err) {
+        // Continue to next model candidate
       }
-    })
+    }
 
     const parsed = JSON.parse(response.text || '{}')
     if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {

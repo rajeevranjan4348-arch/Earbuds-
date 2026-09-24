@@ -49,6 +49,8 @@ export interface ShortcutItem extends KeyCombo {
   enabled: boolean
 }
 
+export type ShortcutConfig = ShortcutItem
+
 export interface ShortcutPreset {
   id: string
   name: string
@@ -639,6 +641,28 @@ class ShortcutService {
         )
       }
     })
+  }
+
+  /**
+   * Programmatically triggers a shortcut action
+   */
+  public triggerAction(actionId: ShortcutActionId): void {
+    const matched = this.shortcuts.find((s) => s.id === actionId)
+    if (matched) {
+      this.playFeedbackBeep()
+      this.triggerToast(matched)
+    }
+    const handler = this.actionHandlers.get(actionId)
+    if (handler) {
+      handler()
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('iris-shortcut-triggered', {
+          detail: { actionId, item: matched }
+        })
+      )
+    }
   }
 }
 

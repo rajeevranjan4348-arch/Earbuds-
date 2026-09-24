@@ -149,6 +149,17 @@ export class FluxImageEngine {
       executionTimeMs: Date.now() - startTime
     }
   }
+
+  public async generate(
+    promptOrOptions: string | FluxGenerationOptions,
+    extraOptions?: Partial<FluxGenerationOptions>
+  ): Promise<FluxGenerationResult> {
+    const opts: FluxGenerationOptions =
+      typeof promptOrOptions === 'string'
+        ? { prompt: promptOrOptions, ...extraOptions }
+        : { ...promptOrOptions, ...extraOptions }
+    return this.generateImage(opts)
+  }
 }
 
 export const fluxImageEngine = new FluxImageEngine()

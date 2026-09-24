@@ -6,6 +6,7 @@
 
 export interface ResolvedAndroidApp {
   name: string
+  displayName?: string
   packageName: string
   activityName?: string
   deepLink?: string

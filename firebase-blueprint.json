@@ -55,6 +55,30 @@
         }
       },
       "required": ["id", "userId", "title", "createdAt", "updatedAt", "messages"]
+    },
+    "WorkspaceConfig": {
+      "title": "WorkspaceConfig",
+      "description": "User OS workspace layout, active module state, and preferences",
+      "type": "object",
+      "properties": {
+        "activeTab": { "type": "string" },
+        "activeWorkspaceService": { "type": "string" },
+        "activeModules": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "themeMode": { "type": "string", "enum": ["system", "dark", "light"] },
+        "accentColor": { "type": "string" },
+        "telemetryTimeRange": { "type": "string" },
+        "isMinimalHud": { "type": "boolean" },
+        "isGpuBoosted": { "type": "boolean" },
+        "visionMode": { "type": "string" },
+        "lastActiveTimestamp": { "type": "number" },
+        "pinnedServices": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     }
   },
   "firestore": {
@@ -73,6 +97,10 @@
     "/users/{userId}/chatSessions/{sessionId}": {
       "schema": "ChatSession",
       "description": "Chat and conversation sessions for a user"
+    },
+    "/users/{userId}/workspaceConfig/{configId}": {
+      "schema": "WorkspaceConfig",
+      "description": "User OS workspace layout and active module state"
     }
   }
 }

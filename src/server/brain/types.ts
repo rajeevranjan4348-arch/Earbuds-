@@ -61,6 +61,7 @@ export interface TaskGraph {
   graphId: string
   userId: string
   originalRequest: string
+  goal?: string
   understanding: {
     intent: string
     category: string

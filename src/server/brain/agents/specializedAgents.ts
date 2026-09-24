@@ -199,13 +199,10 @@ export class BrowserAgent implements IAgentExecutor {
     }
 
     try {
-      const pageData = await browserUseAgent.navigateAndExtract(url, {
-        maxContentLength: 8000,
-        stripBoilerplate: true
-      })
+      const pageData = await browserUseAgent.navigateAndExtract(url)
 
       return {
-        success: Boolean(pageData?.markdown || pageData?.title),
+        success: Boolean(pageData?.content || pageData?.title),
         output: pageData,
         toolUsed: 'browser_navigate_and_extract',
         durationMs: Date.now() - start
@@ -349,7 +346,8 @@ export class VisionAgent implements IAgentExecutor {
 
       // 2. Creative image generation (FLUX)
       if (desc.includes('generate image') || desc.includes('flux') || task.parameters?.aspectRatio) {
-        const imgRes = await fluxImageEngine.generateImage(task.description, {
+        const imgRes = await fluxImageEngine.generateImage({
+          prompt: task.description,
           aspectRatio: task.parameters?.aspectRatio || '1:1'
         })
         return {
@@ -388,7 +386,7 @@ export class VisionAgent implements IAgentExecutor {
       contents.push({ text: prompt })
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents
       })
 
@@ -429,7 +427,7 @@ export class AndroidAgent implements IAgentExecutor {
           success: true,
           output: {
             resolved: true,
-            appName: resolution.displayName,
+            appName: resolution.displayName || resolution.name,
             packageName: resolution.packageName,
             deepLink: resolution.deepLink,
             action: 'DISPATCH_INTENT',

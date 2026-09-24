@@ -1,5 +1,10 @@
+import './lib/safeJson'
 import './shims/electron-shim'
 import './assets/main.css'
+import { themeService } from './services/themeService'
+
+// Initialize OS theme detection & dynamic CSS variables
+themeService.applyTheme()
 
 // Filter benign Three.js deprecation warnings coming from fiber/three internals
 if (typeof window !== 'undefined') {

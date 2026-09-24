@@ -16,6 +16,10 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
+      match /workspaceConfig/{configId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
       match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }

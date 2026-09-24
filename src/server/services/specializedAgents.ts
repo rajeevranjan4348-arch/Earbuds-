@@ -77,7 +77,7 @@ export class ResearchAgent extends BaseAgent {
           resultsCount: searchRes.results.length,
           results: searchRes.results,
           citations: searchRes.citations,
-          summary: searchRes.summary
+          summary: searchRes.results.map((r) => r.snippet).join('\n') || ''
         },
         toolUsed: 'search_web',
         metrics: {
@@ -174,14 +174,11 @@ export class BrowserAgent extends BaseAgent {
 
     try {
       if (targetUrl) {
-        const session = await browserUseAgent.createSession('Browser Agent Action', {
-          url: targetUrl,
-          mode: 'reader'
-        })
-        const extracted = await browserUseAgent.extractData(session.id, 'Extract key article text and structured facts')
+        const session = browserUseAgent.getOrCreateSession('browser_agent_session')
+        const navResult = await browserUseAgent.executeAction({ type: 'navigate', url: targetUrl }, session.id)
         return {
-          success: true,
-          output: { session, extracted },
+          success: navResult.success,
+          output: { session, extracted: navResult.content || navResult.title },
           toolUsed: 'browser_navigate',
           metrics: { durationMs: Date.now() - startTime }
         }

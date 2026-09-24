@@ -262,8 +262,8 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     webFallbackUrl: 'https://www.youtube.com',
     launchMethod: 'deep_link',
     availability: 'available',
-    keywords: ['youtube', 'video', 'watch', 'music', 'streaming', 'clips'],
-    aliases: ['yt', 'videos'],
+    keywords: ['youtube', 'video', 'watch', 'music', 'streaming', 'clips', 'youtube video', 'youtube app'],
+    aliases: ['yt', 'videos', 'youtube app', 'youtube on device', 'open youtube'],
     isFavorite: true,
     contextScope: ['ALL']
   },
@@ -663,6 +663,38 @@ export class AppRegistry {
 
   public registerCustomApp(app: AppItem): void {
     this.apps.set(app.id, app)
+  }
+
+  public search(query: string): AppItem[] {
+    const q = query.toLowerCase().trim()
+    if (!q) return this.getAll()
+    return this.getAll().filter((app) => {
+      if (app.name.toLowerCase().includes(q)) return true
+      if (app.description.toLowerCase().includes(q)) return true
+      if (app.keywords?.some((kw) => kw.toLowerCase().includes(q))) return true
+      if (app.aliases?.some((al) => al.toLowerCase().includes(q))) return true
+      return false
+    })
+  }
+
+  public matchVoiceCommand(text: string): AppItem | null {
+    const q = text.toLowerCase().trim()
+    const all = this.getAll()
+    const directMatch = all.find(
+      (a) =>
+        a.name.toLowerCase() === q ||
+        a.id.toLowerCase() === q ||
+        a.aliases?.some((al) => al.toLowerCase() === q)
+    )
+    if (directMatch) return directMatch
+
+    const partialMatch = all.find(
+      (a) =>
+        q.includes(a.name.toLowerCase()) ||
+        a.keywords?.some((kw) => q.includes(kw.toLowerCase())) ||
+        a.aliases?.some((al) => q.includes(al.toLowerCase()))
+    )
+    return partialMatch || null
   }
 }
 

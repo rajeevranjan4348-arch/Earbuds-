@@ -355,6 +355,10 @@ class MemoryService {
     return true
   }
 
+  public async clearMemory(userId?: string): Promise<boolean> {
+    return this.clearUserMemory(userId)
+  }
+
   public async clearAllMemories(userId?: string): Promise<boolean> {
     return this.clearUserMemory(userId)
   }

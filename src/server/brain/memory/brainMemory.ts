@@ -68,7 +68,7 @@ export class BrainMemoryManager {
 
     const record: TaskMemoryRecord = {
       graphId: graph.graphId,
-      goal: graph.goal,
+      goal: graph.goal || graph.originalRequest || 'General Task Goal',
       completedAt: Date.now(),
       summary: graph.finalSynthesis ? graph.finalSynthesis.slice(0, 300) : graph.originalRequest,
       keyFindings: keyFindings.slice(0, 5),

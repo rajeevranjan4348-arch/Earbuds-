@@ -93,8 +93,8 @@ export class TaskScheduler {
       const startTime = Date.now()
 
       // Backoff if prescribed
-      if (task.parameters?._retryBackoffMs) {
-        await new Promise((r) => setTimeout(r, Math.min(task.parameters._retryBackoffMs, 3000)))
+      if (task.parameters && task.parameters._retryBackoffMs) {
+        await new Promise((r) => setTimeout(r, Math.min(task.parameters?._retryBackoffMs || 0, 3000)))
       }
 
       const execResult = await agent.execute(task, graph.contextMemory)

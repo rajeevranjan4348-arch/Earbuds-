@@ -12,7 +12,6 @@ import {
   RiArrowRightUpLine,
   RiCheckLine,
   RiFileCopyLine,
-  RiSparklesFill,
   RiSendPlaneFill,
   RiRefreshLine,
   RiPlayCircleLine,

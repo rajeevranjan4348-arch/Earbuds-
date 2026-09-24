@@ -127,7 +127,9 @@ export class AgentRegistry {
   private static instance: AgentRegistry
   private agents: Map<SpecializedAgentRole, BaseAgent> = new Map()
 
-  private constructor() {}
+  private constructor() {
+    // Singleton private constructor
+  }
 
   public static getInstance(): AgentRegistry {
     if (!AgentRegistry.instance) {

@@ -10,6 +10,7 @@ export interface DiagramResult {
   type: DiagramType
   title: string
   mermaidCode: string
+  code?: string
   asciiDiagram?: string
   description: string
 }
@@ -20,9 +21,14 @@ export class DiagramDesignEngine {
    */
   public generateDiagram(
     title: string,
-    type: DiagramType = 'flowchart',
+    typeOrOptions?: DiagramType | { diagramType?: DiagramType },
     steps: { from: string; to: string; label?: string }[] = []
   ): DiagramResult {
+    const type: DiagramType =
+      typeof typeOrOptions === 'object' && typeOrOptions !== null
+        ? (typeOrOptions.diagramType as DiagramType) || 'flowchart'
+        : (typeOrOptions as DiagramType) || 'flowchart'
+
     let mermaidCode = ''
     let asciiDiagram = ''
 
@@ -86,9 +92,14 @@ export class DiagramDesignEngine {
       type,
       title,
       mermaidCode,
+      code: mermaidCode,
       asciiDiagram: asciiDiagram || undefined,
       description: `Structured technical diagram for "${title}" (${type}).`
     }
+  }
+
+  public generateMermaid(titleOrPrompt: string, type?: DiagramType): DiagramResult {
+    return this.generateDiagram(titleOrPrompt, type)
   }
 }
 

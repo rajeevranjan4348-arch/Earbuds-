@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Sparkles,
   Key,
-  MapPin
+  MapPin,
+  Palette
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -27,14 +28,16 @@ import {
 } from '../../services/coreSettingsService'
 import { memoryService, MemoryItem } from '../../services/memoryService'
 import { firebaseAuthService, FirebaseUserContext } from '../../services/firebaseAuth'
+import ThemeAppearanceSettings from './ThemeAppearanceSettings'
+import SynthesizedVoiceSettingsPanel from '../Voice/SynthesizedVoiceSettingsPanel'
 
 interface SettingsOverlayProps {
   isOpen: boolean
   onClose: () => void
-  initialTab?: 'hardware' | 'particles' | 'providers' | 'memory'
+  initialTab?: 'theme' | 'voice' | 'hardware' | 'particles' | 'providers' | 'memory'
 }
 
-type ActiveSection = 'hardware' | 'particles' | 'providers' | 'memory'
+type ActiveSection = 'theme' | 'voice' | 'hardware' | 'particles' | 'providers' | 'memory'
 
 export default function SettingsOverlay({
   isOpen,
@@ -170,6 +173,26 @@ export default function SettingsOverlay({
             {/* Navigation Tabs */}
             <div className="flex px-6 pt-3 border-b border-white/5 gap-2 bg-zinc-900/30 overflow-x-auto scrollbar-none">
               <button
+                onClick={() => setSection('theme')}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-lg transition-colors cursor-pointer border-b-2 ${
+                  section === 'theme'
+                    ? 'border-emerald-400 text-emerald-300 bg-white/5'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Palette size={14} /> Theme & OS Sync
+              </button>
+              <button
+                onClick={() => setSection('voice')}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-lg transition-colors cursor-pointer border-b-2 ${
+                  section === 'voice'
+                    ? 'border-emerald-400 text-emerald-300 bg-white/5'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Volume2 size={14} /> AI Voice & Offline Cache
+              </button>
+              <button
                 onClick={() => setSection('particles')}
                 className={`flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-t-lg transition-colors cursor-pointer border-b-2 ${
                   section === 'particles'
@@ -213,6 +236,20 @@ export default function SettingsOverlay({
 
             {/* Body Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-small">
+              {/* SECTION: THEME & OS SYNC */}
+              {section === 'theme' && (
+                <div className="space-y-6">
+                  <ThemeAppearanceSettings />
+                </div>
+              )}
+
+              {/* SECTION: AI VOICE SYNTHESIZER & OFFLINE CACHE */}
+              {section === 'voice' && (
+                <div className="space-y-6">
+                  <SynthesizedVoiceSettingsPanel embedded />
+                </div>
+              )}
+
               {/* SECTION: 3D PARTICLE CORE */}
               {section === 'particles' && (
                 <div className="space-y-6">
@@ -436,11 +473,13 @@ export default function SettingsOverlay({
                                 {m.memory}
                               </p>
                               <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(m.createdAt || (m as any).created_at || Date.now()).toLocaleDateString()}</span>
+                                <span>
+                                  {new Date(
+                                    m.createdAt || (m as any).created_at || Date.now()
+                                  ).toLocaleDateString()}
+                                </span>
                                 {m.category && (
-                                  <span className="text-emerald-400/80">
-                                    • {m.category}
-                                  </span>
+                                  <span className="text-emerald-400/80">• {m.category}</span>
                                 )}
                               </div>
                             </div>

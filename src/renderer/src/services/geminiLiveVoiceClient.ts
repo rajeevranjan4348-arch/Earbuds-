@@ -8,13 +8,7 @@
  */
 
 export type LiveVoiceState =
-  | 'idle'
-  | 'connecting'
-  | 'listening'
-  | 'processing'
-  | 'speaking'
-  | 'interrupted'
-  | 'error'
+  'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'interrupted' | 'error'
 
 export interface LiveVoiceMessage {
   id: string
@@ -121,7 +115,10 @@ class GeminiLiveVoiceClient {
    * Opens WebSocket connection to Gemini Live multimodal server
    */
   public async connectWebSocket(): Promise<void> {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return
     }
 
@@ -325,15 +322,60 @@ class GeminiLiveVoiceClient {
         return true
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 16000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        console.warn('[GeminiLive] Microphone capture not supported in this environment.')
+        this.notify('error', {
+          error: 'Microphone is not supported in this browser environment.',
+          isUnsupported: true
+        })
+        return false
+      }
+
+      let stream: MediaStream | null = null
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        })
+      } catch (err1: any) {
+        const isPermissionDenied =
+          err1?.name === 'NotAllowedError' ||
+          err1?.name === 'PermissionDeniedError' ||
+          String(err1?.message || err1).toLowerCase().includes('permission denied')
+
+        if (isPermissionDenied) {
+          console.warn('[GeminiLive] Microphone permission was not granted by the user/browser.')
+          this.notify('error', {
+            error: 'Microphone permission denied. Please allow microphone access in browser settings.',
+            isPermissionDenied: true
+          })
+          return false
         }
-      })
+
+        // Fallback to basic audio constraint if high-precision audio constraints are rejected by device
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        } catch (err2: any) {
+          console.warn('[GeminiLive] Microphone fallback capture failed:', err2?.message || err2)
+          this.notify('error', {
+            error: err2?.message || 'Microphone capture failed.',
+            isPermissionDenied:
+              err2?.name === 'NotAllowedError' ||
+              err2?.name === 'PermissionDeniedError' ||
+              String(err2?.message || err2).toLowerCase().includes('permission denied')
+          })
+          return false
+        }
+      }
+
+      if (!stream) {
+        return false
+      }
 
       this.micStream = stream
       const inputCtx = this.initInputAudioContext()
@@ -390,7 +432,7 @@ class GeminiLiveVoiceClient {
 
       return true
     } catch (err: any) {
-      console.error('[GeminiLive] Microphone capture start error:', err)
+      console.warn('[GeminiLive] Microphone capture start notice:', err?.message || err)
       this.notify('error', { error: err?.message || 'Failed to start microphone' })
       return false
     }
@@ -559,9 +601,36 @@ class GeminiLiveVoiceClient {
     }
   }
 
+  /**
+   * Directly sends raw PCM16 audio buffer from AICoreMicrophoneBridge to Gemini Live WebSocket
+   */
+  public sendAudio(pcm: ArrayBuffer): void {
+    if (this.isMuted) return
+
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const bytes = new Uint8Array(pcm)
+      let binary = ''
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64Audio = window.btoa(binary)
+      this.ws.send(
+        JSON.stringify({
+          type: 'audio',
+          audio: base64Audio,
+          mimeType: 'audio/pcm;rate=16000'
+        })
+      )
+    }
+  }
+
   public clearHistory(): void {
     this.conversationHistory = []
   }
 }
 
 export const geminiLiveVoiceClient = new GeminiLiveVoiceClient()
+
+if (typeof window !== 'undefined') {
+  ;(window as any).__IRIS_AI_CORE__ = geminiLiveVoiceClient
+}

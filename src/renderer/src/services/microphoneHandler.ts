@@ -245,9 +245,7 @@ class MicrophoneInputHandler {
   /**
    * Starts piping raw audio PCM data streams to Gemini Live WebSocket
    */
-  public async startContinuousStreaming(
-    opts: ContinuousStreamOptions = {}
-  ): Promise<boolean> {
+  public async startContinuousStreaming(opts: ContinuousStreamOptions = {}): Promise<boolean> {
     if (!this.isSupported) {
       this.setState('unsupported', 'Microphone not supported on this platform')
       return false
@@ -267,15 +265,23 @@ class MicrophoneInputHandler {
 
       const started = await geminiLiveVoiceClient.startLiveSession()
       if (!started) {
-        throw new Error('Could not establish microphone capture for Gemini Live')
+        this.continuousStreamingActive = false
+        this.setState(
+          'denied',
+          'Microphone permission is not active. Enable microphone access in browser or type prompts.'
+        )
+        if (voiceService.isRunning) {
+          voiceService.setMuted(false)
+        }
+        return false
       }
 
       this.continuousStreamingActive = true
       this.setState('streaming-live', 'Piping raw PCM audio to Gemini Live WebSocket...')
       return true
     } catch (err: any) {
-      console.error('[MicrophoneHandler] Error starting continuous streaming:', err)
-      this.setState('error', err?.message || 'Failed to start raw audio stream')
+      console.warn('[MicrophoneHandler] Continuous streaming notice:', err?.message || err)
+      this.setState('error', err?.message || 'Microphone standby')
       this.stopContinuousStreaming()
       return false
     }

@@ -18,7 +18,8 @@ import {
   MapPin,
   Keyboard,
   Hand,
-  Radio
+  Radio,
+  Palette
 } from 'lucide-react'
 import {
   coreSettingsService,
@@ -30,6 +31,9 @@ import { memoryService, MemoryItem } from '../services/memoryService'
 import { firebaseAuthService, FirebaseUserContext } from '../services/firebaseAuth'
 import KeyboardShortcutsSettings from '../components/UI/KeyboardShortcutsSettings'
 import GestureSettings from '../components/UI/GestureSettings'
+import ThemeAppearanceSettings from '../components/UI/ThemeAppearanceSettings'
+import WakeWordControlCard from '../components/UI/WakeWordControlCard'
+import SynthesizedVoiceSettingsPanel from '../components/Voice/SynthesizedVoiceSettingsPanel'
 import { soundEffects, SoundType } from '../services/soundEffectsService'
 import {
   voiceSessionManager,
@@ -43,7 +47,17 @@ interface SettingsProps {
   isSystemActive: boolean
 }
 
-type TabType = 'keys' | 'ai' | 'shortcuts' | 'gestures' | 'audio' | 'particles' | 'memory' | 'hardware'
+type TabType =
+  | 'keys'
+  | 'voice_synth'
+  | 'theme'
+  | 'ai'
+  | 'shortcuts'
+  | 'gestures'
+  | 'audio'
+  | 'particles'
+  | 'memory'
+  | 'hardware'
 
 function GlassPanel({
   children,
@@ -226,12 +240,14 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   const inputContainerClass =
     'flex items-center bg-black/40 border border-white/10 rounded-lg px-3.5 sm:px-4 py-2.5 sm:py-3 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all duration-200 w-full'
   const labelClass =
-    'text-xs sm:text-sm text-zinc-300 font-medium flex items-center gap-2 mb-1.5 sm:mb-2'
+    'text-xs sm:text-sm text-zinc-300 font-medium flex items-center gap-2 mb-1.5 sm:mb-2 flex-wrap'
   const titleClass =
-    'text-base sm:text-lg font-semibold text-white flex items-center gap-2 sm:gap-3'
+    'text-base sm:text-lg font-semibold text-white flex items-center gap-2 sm:gap-3 flex-wrap'
 
   const tabConfigs = [
     { id: 'keys', label: 'API Keys', icon: <RiPlugLine size={18} /> },
+    { id: 'voice_synth', label: 'AI Voice Synth & Cache', icon: <Volume2 size={18} /> },
+    { id: 'theme', label: 'Theme & OS Sync', icon: <Palette size={18} /> },
     { id: 'ai', label: 'AI Interaction', icon: <Brain size={18} /> },
     { id: 'audio', label: 'Audio & Feedback', icon: <Volume2 size={18} /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={18} /> },
@@ -242,14 +258,14 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   ]
 
   return (
-    <div className="flex-1 p-3 sm:p-6 md:p-10 flex flex-col items-center bg-transparent min-h-screen text-zinc-100 overflow-y-auto scrollbar-small pb-24">
+    <div className="flex-1 p-2 sm:p-6 md:p-10 flex flex-col items-center bg-transparent min-h-full w-full max-w-full text-zinc-100 overflow-y-auto overflow-x-hidden scrollbar-small pb-24">
       <motion.div
-        className="w-full max-w-4xl flex flex-col gap-6 sm:gap-8"
+        className="w-full max-w-4xl flex flex-col gap-6 sm:gap-8 mx-auto"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-white/10">
-          <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-white/10 w-full overflow-hidden">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="relative flex items-center justify-center h-12 w-12 sm:h-14 sm:w-14 rounded-xl bg-zinc-900 border border-white/10 shadow-lg shrink-0">
               <GiArtificialIntelligence size={24} className="text-zinc-100 sm:w-7 sm:h-7" />
             </div>
@@ -266,13 +282,13 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
             </div>
           </div>
 
-          <div className="flex bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-md shadow-xl overflow-x-auto scrollbar-none self-start sm:self-auto relative">
+          <div className="flex bg-zinc-900/80 p-1 rounded-xl border border-white/10 backdrop-blur-md shadow-xl overflow-x-auto scrollbar-none max-w-full w-full sm:w-auto relative shrink-0">
             {tabConfigs.map((tab) => (
               <motion.button
                 key={tab.id}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`relative cursor-pointer flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap ${
+                className={`relative cursor-pointer flex items-center gap-2 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 ${
                   activeTab === tab.id ? 'text-black' : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -415,9 +431,27 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                     <RiShieldKeyholeLine className="text-zinc-400 shrink-0 mt-0.5" size={18} />
                     <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
                       <strong>Privacy Notice:</strong> Your API keys are encrypted and saved locally
-                      or passed safely through server-side environment variables. DeepSeek API powers both general V3 chat and deep mathematical/logical chain-of-thought reasoning (R1).
+                      or passed safely through server-side environment variables. DeepSeek API
+                      powers both general V3 chat and deep mathematical/logical chain-of-thought
+                      reasoning (R1).
                     </p>
                   </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: SYNTHESIZED AI VOICES & OFFLINE CACHE */}
+            {activeTab === 'voice_synth' && (
+              <motion.div
+                key="voice_synth"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8">
+                  <SynthesizedVoiceSettingsPanel />
                 </GlassPanel>
               </motion.div>
             )}
@@ -435,11 +469,13 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
                   <div className="flex justify-between items-center pb-2">
                     <span className={titleClass}>
-                      <Brain className="text-emerald-400 shrink-0" size={22} /> AI Interaction Settings & Engine Routing
+                      <Brain className="text-emerald-400 shrink-0" size={22} /> AI Interaction
+                      Settings & Engine Routing
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
-                    Configure active AI providers for text chat and live real-time voice conversations.
+                    Configure active AI providers for text chat and live real-time voice
+                    conversations.
                   </p>
 
                   <div className="flex flex-col gap-5 pt-2">
@@ -508,21 +544,25 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-zinc-600'}`} />
-                                  <span className={`text-sm font-semibold ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}>
+                                  <div
+                                    className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-zinc-600'}`}
+                                  />
+                                  <span
+                                    className={`text-sm font-semibold ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}
+                                  >
                                     {provider.name}
                                   </span>
                                 </div>
-                                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-zinc-400'}`}>
+                                <span
+                                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/5 text-zinc-400'}`}
+                                >
                                   {provider.tag}
                                 </span>
                               </div>
                               <span className="text-[11px] text-zinc-400 font-mono">
                                 {provider.subtitle}
                               </span>
-                              <p className="text-xs text-zinc-400 line-clamp-2">
-                                {provider.desc}
-                              </p>
+                              <p className="text-xs text-zinc-400 line-clamp-2">{provider.desc}</p>
                             </button>
                           )
                         })}
@@ -538,7 +578,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                             Gemini Live Multimodal Voice Bridge
                           </span>
                           <span className="text-xs text-zinc-400 block">
-                            Continuous 24kHz bi-directional live audio stream powered by Google Gemini Live API
+                            Continuous 24kHz bi-directional live audio stream powered by Google
+                            Gemini Live API
                           </span>
                         </div>
                         <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -546,78 +587,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         </span>
                       </div>
                       <p className="text-xs text-zinc-400 pt-1 leading-relaxed">
-                        Access live hands-free conversation with real-time waveform visualization, continuous audio streaming, and realistic voice presets (Kore, Zephyr, Puck, Fenrir, Charon) by tapping the <strong>Live Voice</strong> button in the conversation header.
+                        Access live voice conversation directly in the AI Core dashboard or the chat page
+                        using high-fidelity speech recognition and neural synthesis.
                       </p>
-                    </div>
-
-                    {/* Real-Time Voice Chat System (ChatGPT / JARVIS Style) */}
-                    <div className="p-4 bg-black/40 border border-cyan-500/20 rounded-xl space-y-3 shadow-[0_0_20px_rgba(6,182,212,0.06)]">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
-                          <div>
-                            <span className="text-sm font-semibold text-zinc-200 block">
-                              Real-Time Voice Chat Engine (ChatGPT / JARVIS)
-                            </span>
-                            <span className="text-xs text-zinc-400 block">
-                              Streaming STT, progressive TTS, instant barge-in interruption, wake-word detection, and multi-language support.
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => window.dispatchEvent(new CustomEvent('iris:open-voice-modal'))}
-                          className="px-3 py-1.5 text-xs font-mono font-semibold rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/25 transition-all cursor-pointer"
-                        >
-                          Launch Voice Chat
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                        {/* Personality */}
-                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 space-y-1">
-                          <label className="text-zinc-400 font-medium block text-[11px]">Personality Profile</label>
-                          <select
-                            defaultValue={voiceSessionManager.getConfig().personality}
-                            onChange={(e) => voiceSessionManager.setPersonality(e.target.value as VoicePersonalityId)}
-                            className="w-full bg-zinc-950 border border-white/10 text-zinc-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-cyan-500/50"
-                          >
-                            <option value="jarvis">JARVIS (Calm, Professional)</option>
-                            <option value="assistant">Assistant (Friendly, Natural)</option>
-                            <option value="developer">Developer (Technical, Concise)</option>
-                            <option value="casual">Casual (Relaxed, Witty)</option>
-                          </select>
-                        </div>
-
-                        {/* Language */}
-                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 space-y-1">
-                          <label className="text-zinc-400 font-medium block text-[11px]">Spoken Language</label>
-                          <select
-                            defaultValue={voiceSessionManager.getConfig().language}
-                            onChange={(e) => voiceSessionManager.setLanguage(e.target.value as SupportedLanguage)}
-                            className="w-full bg-zinc-950 border border-white/10 text-zinc-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-cyan-500/50"
-                          >
-                            <option value="auto">Auto-Detect</option>
-                            <option value="en-US">English (US)</option>
-                            <option value="en-IN">Hinglish / EN (IN)</option>
-                            <option value="hi-IN">Hindi (हिंदी)</option>
-                          </select>
-                        </div>
-
-                        {/* Wake Word */}
-                        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-white/5 flex flex-col justify-between">
-                          <span className="text-zinc-400 font-medium text-[11px]">Wake Word ("Hey JARVIS")</span>
-                          <label className="flex items-center gap-2 cursor-pointer pt-1 text-[11px] text-zinc-300">
-                            <input
-                              type="checkbox"
-                              defaultChecked={voiceSessionManager.getConfig().wakeWordEnabled}
-                              onChange={(e) => voiceSessionManager.setWakeWordEnabled(e.target.checked)}
-                              className="accent-emerald-500"
-                            />
-                            <span>Client-Side Only (100% Private)</span>
-                          </label>
-                        </div>
-                      </div>
                     </div>
 
                     {/* AI-Q Citation-Backed Answers */}
@@ -628,7 +600,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                             AI-Q Citation-Backed Grounding
                           </span>
                           <span className="text-xs text-zinc-400 block">
-                            Automatically annotates model answers with verified research source links
+                            Automatically annotates model answers with verified research source
+                            links
                           </span>
                         </div>
                         <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -636,10 +609,27 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         </span>
                       </div>
                       <p className="text-xs text-zinc-400 leading-relaxed">
-                        All models (DeepSeek, Gemini, and NVIDIA) automatically run through the AI-Q citation engine when research and retrieval operations occur.
+                        All models (DeepSeek, Gemini, and NVIDIA) automatically run through the AI-Q
+                        citation engine when research and retrieval operations occur.
                       </p>
                     </div>
                   </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: THEME & OS COLOR SCHEME SYNC */}
+            {activeTab === 'theme' && (
+              <motion.div
+                key="theme"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
+                  <ThemeAppearanceSettings />
                 </GlassPanel>
               </motion.div>
             )}
@@ -657,11 +647,14 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
                   <div className="flex justify-between items-center pb-2">
                     <span className={titleClass}>
-                      <Volume2 className="text-emerald-400 shrink-0" size={22} /> Auditory Feedback & UI Sound FX
+                      <Volume2 className="text-emerald-400 shrink-0" size={22} /> Auditory Feedback
+                      & UI Sound FX
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
-                    IRIS generates subtle, low-latency procedural sound waves with the Web Audio API for tactile feedback during button hovers, clicks, tab navigation, and AI state transitions.
+                    IRIS generates subtle, low-latency procedural sound waves with the Web Audio API
+                    for tactile feedback during button hovers, clicks, tab navigation, and AI state
+                    transitions.
                   </p>
 
                   <div className="flex flex-col gap-5 pt-2">
@@ -697,9 +690,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                     {/* Master Volume Slider */}
                     <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-zinc-200">
-                          Feedback Volume
-                        </span>
+                        <span className="text-sm font-semibold text-zinc-200">Feedback Volume</span>
                         <span className="text-xs font-mono text-emerald-400">
                           {Math.round(sfxVolume * 100)}%
                         </span>
@@ -760,10 +751,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                            <Mic className="text-emerald-400" size={16} /> JARVIS Hands-Free & Voice Privacy
+                            <Mic className="text-emerald-400" size={16} /> JARVIS Hands-Free & Voice
+                            Privacy
                           </span>
                           <span className="text-xs text-zinc-400 block pt-0.5">
-                            Client-side local processing. Raw microphone audio is never uploaded to external servers.
+                            Client-side local processing. Raw microphone audio is never uploaded to
+                            external servers.
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -777,8 +770,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         {/* Wake Word Detection ("Hey JARVIS") */}
                         <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <span className="text-xs font-medium text-zinc-200 block">Wake Word ("Hey JARVIS")</span>
-                            <span className="text-[11px] text-zinc-400 block">Hands-free client-side wake trigger</span>
+                            <span className="text-xs font-medium text-zinc-200 block">
+                              Wake Word ("Hey JARVIS")
+                            </span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Hands-free client-side wake trigger
+                            </span>
                           </div>
                           <button
                             onClick={() => {
@@ -792,7 +789,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                           >
                             <div
                               className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                voicePrivSettings.wakeWordEnabled ? 'translate-x-5' : 'translate-x-0'
+                                voicePrivSettings.wakeWordEnabled
+                                  ? 'translate-x-5'
+                                  : 'translate-x-0'
                               }`}
                             />
                           </button>
@@ -801,8 +800,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         {/* Voice Activity Detection (VAD) */}
                         <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <span className="text-xs font-medium text-zinc-200 block">Voice Activity Detection (VAD)</span>
-                            <span className="text-[11px] text-zinc-400 block">Dynamic ambient noise & silence cut</span>
+                            <span className="text-xs font-medium text-zinc-200 block">
+                              Voice Activity Detection (VAD)
+                            </span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Dynamic ambient noise & silence cut
+                            </span>
                           </div>
                           <button
                             onClick={() => {
@@ -825,8 +828,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         {/* Continuous Conversation */}
                         <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <span className="text-xs font-medium text-zinc-200 block">Continuous Conversation</span>
-                            <span className="text-[11px] text-zinc-400 block">Resume listening after AI finishes speaking</span>
+                            <span className="text-xs font-medium text-zinc-200 block">
+                              Continuous Conversation
+                            </span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Resume listening after AI finishes speaking
+                            </span>
                           </div>
                           <button
                             onClick={() => {
@@ -834,12 +841,16 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                               voiceSettings.updateSettings({ continuousListening: next })
                             }}
                             className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                              voicePrivSettings.continuousListening ? 'bg-emerald-500' : 'bg-zinc-800'
+                              voicePrivSettings.continuousListening
+                                ? 'bg-emerald-500'
+                                : 'bg-zinc-800'
                             }`}
                           >
                             <div
                               className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                voicePrivSettings.continuousListening ? 'translate-x-5' : 'translate-x-0'
+                                voicePrivSettings.continuousListening
+                                  ? 'translate-x-5'
+                                  : 'translate-x-0'
                               }`}
                             />
                           </button>
@@ -848,8 +859,12 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         {/* Voice Response (TTS) */}
                         <div className="p-3.5 bg-black/40 border border-white/10 rounded-xl flex items-center justify-between">
                           <div className="space-y-0.5">
-                            <span className="text-xs font-medium text-zinc-200 block">Voice Audio Response</span>
-                            <span className="text-[11px] text-zinc-400 block">Speak answers aloud with streaming TTS</span>
+                            <span className="text-xs font-medium text-zinc-200 block">
+                              Voice Audio Response
+                            </span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Speak answers aloud with streaming TTS
+                            </span>
                           </div>
                           <button
                             onClick={() => {
@@ -857,17 +872,24 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                               voiceSettings.updateSettings({ voiceResponseEnabled: next })
                             }}
                             className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                              voicePrivSettings.voiceResponseEnabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                              voicePrivSettings.voiceResponseEnabled
+                                ? 'bg-emerald-500'
+                                : 'bg-zinc-800'
                             }`}
                           >
                             <div
                               className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                voicePrivSettings.voiceResponseEnabled ? 'translate-x-5' : 'translate-x-0'
+                                voicePrivSettings.voiceResponseEnabled
+                                  ? 'translate-x-5'
+                                  : 'translate-x-0'
                               }`}
                             />
                           </button>
                         </div>
                       </div>
+
+                      {/* Advanced Dedicated Wake Word Detection Control Card */}
+                      <WakeWordControlCard className="mt-4" />
 
                       {/* Immediate Control Actions */}
                       <div className="flex flex-wrap gap-2.5 pt-2">
@@ -924,11 +946,13 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
                   <div className="flex justify-between items-center pb-2">
                     <span className={titleClass}>
-                      <Hand className="text-emerald-400 shrink-0" size={22} /> Hands-Free Camera Gesture Navigation
+                      <Hand className="text-emerald-400 shrink-0" size={22} /> Hands-Free Camera
+                      Gesture Navigation
                     </span>
                   </div>
                   <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
-                    Control tabs, trigger voice listening, scroll views, and command IRIS touchlessly using your webcam.
+                    Control tabs, trigger voice listening, scroll views, and command IRIS
+                    touchlessly using your webcam.
                   </p>
                   <GestureSettings
                     onStatusChange={(msg) => {
@@ -1188,11 +1212,13 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                                 {m.memory}
                               </p>
                               <div className="flex items-center gap-2 mt-1.5 text-[10px] text-zinc-500 font-mono">
-                                <span>{new Date(m.createdAt || (m as any).created_at || Date.now()).toLocaleDateString()}</span>
+                                <span>
+                                  {new Date(
+                                    m.createdAt || (m as any).created_at || Date.now()
+                                  ).toLocaleDateString()}
+                                </span>
                                 {m.category && (
-                                  <span className="text-emerald-400/80">
-                                    • {m.category}
-                                  </span>
+                                  <span className="text-emerald-400/80">• {m.category}</span>
                                 )}
                               </div>
                             </div>

@@ -86,8 +86,26 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
     }
     // 2. Common Hinglish phonetic tokens
     const hinglishTokens = [
-      'kya', 'hai', 'kaise', 'ho', 'batao', 'namaste', 'shukriya', 'theek', 'karo',
-      'sunao', 'achha', 'nahi', 'haan', 'mera', 'meri', 'tum', 'aap', 'mujhe', 'kuch', 'yaar'
+      'kya',
+      'hai',
+      'kaise',
+      'ho',
+      'batao',
+      'namaste',
+      'shukriya',
+      'theek',
+      'karo',
+      'sunao',
+      'achha',
+      'nahi',
+      'haan',
+      'mera',
+      'meri',
+      'tum',
+      'aap',
+      'mujhe',
+      'kuch',
+      'yaar'
     ]
     const words = text.toLowerCase().split(/\s+/)
     if (words.some((w) => hinglishTokens.includes(w))) {
@@ -115,7 +133,9 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
       (window as any).msSpeechRecognition
 
     if (!SpeechRecognitionClass) {
-      console.warn('[SpeechRecognitionManager] Web Speech API not supported; activating fallback recorder.')
+      console.warn(
+        '[SpeechRecognitionManager] Web Speech API not supported; activating fallback recorder.'
+      )
       if (stream) {
         this.startFallbackRecorder(stream)
         return true
@@ -180,9 +200,7 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
           this.lastFinalTime = now
 
           const detectedLang =
-            this.language === 'auto'
-              ? this.detectLanguageHeuristic(trimmedFinal)
-              : this.language
+            this.language === 'auto' ? this.detectLanguageHeuristic(trimmedFinal) : this.language
 
           this.handlers.onInterimTranscript('')
           this.handlers.onFinalTranscript(trimmedFinal, detectedLang)
@@ -200,12 +218,17 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
         if (err === 'not-allowed' || err === 'service-not-allowed') {
           this.shouldRestart = false
           this.isListening = false
-          this.handlers.onError('Microphone permission was denied.')
+          console.warn('[SpeechRecognitionManager] Microphone permission denied by browser.')
+          this.handlers.onError(
+            'Microphone permission was denied. Please allow microphone access in your browser.'
+          )
           return
         }
 
         if (err === 'network') {
-          console.warn('[SpeechRecognitionManager] Network issue with speech recognition, trying fallback.')
+          console.warn(
+            '[SpeechRecognitionManager] Network issue with speech recognition, trying fallback.'
+          )
           if (this.activeStream) {
             this.startFallbackRecorder(this.activeStream)
           }
@@ -268,7 +291,9 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
     this.lastRestartTimestamp = now
 
     if (this.consecutiveRestarts > this.maxConsecutiveRestarts) {
-      console.warn('[SpeechRecognitionManager] Maximum consecutive restarts reached. Stopping recognition loop.')
+      console.warn(
+        '[SpeechRecognitionManager] Maximum consecutive restarts reached. Stopping recognition loop.'
+      )
       this.shouldRestart = false
       this.handlers.onEnd()
       return
@@ -390,7 +415,10 @@ export class SpeechRecognitionManager implements SpeechRecognitionProvider {
               const data = await resp.json()
               const transcript = data.transcript?.trim()
               if (transcript) {
-                this.handlers.onFinalTranscript(transcript, this.detectLanguageHeuristic(transcript))
+                this.handlers.onFinalTranscript(
+                  transcript,
+                  this.detectLanguageHeuristic(transcript)
+                )
               }
             }
           } catch (err) {
