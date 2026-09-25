@@ -132,7 +132,14 @@ export class ExecutionEngine {
       rawOutput = await toolRegistry.callTool(step.toolName, resolvedArgs)
     } catch (err: any) {
       executionError = err?.message || 'Tool execution encountered an exception'
-      this.logTrace(task, 'error', `Tool execution error: ${executionError}`, err, step.stepIndex, step.toolName)
+      this.logTrace(
+        task,
+        'error',
+        `Tool execution error: ${executionError}`,
+        err,
+        step.stepIndex,
+        step.toolName
+      )
     }
 
     // 3. Step Output Verification
@@ -226,7 +233,8 @@ export class ExecutionEngine {
   }> {
     const plan = task.plan
     const totalSteps = plan?.steps.length || 0
-    const completedSteps = plan?.steps.filter((s) => s.status === 'completed' || s.status === 'recovered').length || 0
+    const completedSteps =
+      plan?.steps.filter((s) => s.status === 'completed' || s.status === 'recovered').length || 0
 
     const artifacts: any[] = []
     const stepSummaries: string[] = []
@@ -235,10 +243,18 @@ export class ExecutionEngine {
       if (step.output) {
         // Collect artifacts (images, diagrams, scripts, locations)
         if (step.toolName === 'generate_flux_image' && step.output.imageUrl) {
-          artifacts.push({ type: 'image', url: step.output.imageUrl, prompt: step.parameters.prompt })
+          artifacts.push({
+            type: 'image',
+            url: step.output.imageUrl,
+            prompt: step.parameters.prompt
+          })
         }
         if (step.toolName === 'generate_diagram' && step.output.diagramCode) {
-          artifacts.push({ type: 'diagram', code: step.output.diagramCode, title: step.output.title })
+          artifacts.push({
+            type: 'diagram',
+            code: step.output.diagramCode,
+            title: step.output.title
+          })
         }
         if (step.toolName === 'youtube_create_video_job' && step.output.jobId) {
           artifacts.push({ type: 'youtube_job', job: step.output })
@@ -247,7 +263,9 @@ export class ExecutionEngine {
           artifacts.push({ type: 'location', data: step.output })
         }
 
-        stepSummaries.push(`- **${step.name}**: ${typeof step.output === 'string' ? step.output.slice(0, 120) : step.output.message || 'Completed successfully'}`)
+        stepSummaries.push(
+          `- **${step.name}**: ${typeof step.output === 'string' ? step.output.slice(0, 120) : step.output.message || 'Completed successfully'}`
+        )
       }
     }
 
@@ -295,7 +313,9 @@ Provide two outputs in JSON format:
         if (responseText) {
           const parsed = JSON.parse(responseText)
           return {
-            spokenText: parsed.spokenText || `I completed your request with ${completedSteps} verified actions.`,
+            spokenText:
+              parsed.spokenText ||
+              `I completed your request with ${completedSteps} verified actions.`,
             displayText: parsed.displayText || stepSummaries.join('\n'),
             artifacts
           }
@@ -306,9 +326,10 @@ Provide two outputs in JSON format:
     }
 
     // Default synthesis
-    const spoken = completedSteps === totalSteps
-      ? `Task completed. All ${completedSteps} steps have been executed and verified.`
-      : `Executed ${completedSteps} of ${totalSteps} steps.`
+    const spoken =
+      completedSteps === totalSteps
+        ? `Task completed. All ${completedSteps} steps have been executed and verified.`
+        : `Executed ${completedSteps} of ${totalSteps} steps.`
 
     const display = `### Plan Execution Summary\n\n${stepSummaries.join('\n\n')}\n\n**Status:** ${completedSteps}/${totalSteps} steps completed successfully.`
 

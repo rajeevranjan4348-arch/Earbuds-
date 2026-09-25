@@ -177,7 +177,11 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
     for (let i = MAX_CHART_POINTS; i >= 0; i--) {
       const ts = now - i * 2000
       const d = new Date(ts)
-      const timeLabel = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      const timeLabel = d.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
       seed.push({
         id: `point_${ts}`,
         time: timeLabel,
@@ -215,15 +219,23 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
         })
 
         const rawCpu = stats?.cpu ? parseFloat(String(stats.cpu).replace('%', '')) : 22
-        const rawRam = stats?.memory?.usedPercentage ? parseFloat(String(stats.memory.usedPercentage).replace('%', '')) : 45
+        const rawRam = stats?.memory?.usedPercentage
+          ? parseFloat(String(stats.memory.usedPercentage).replace('%', ''))
+          : 45
         const rawNetRx = stats?.network?.rx ? stats.network.rx / 1024 : 140
         const rawNetTx = stats?.network?.tx ? stats.network.tx / 1024 : 50
 
         setHistory((prev) => {
           const lastPoint = prev[prev.length - 1]
           const deltaJitter = (Math.random() - 0.5) * 15
-          const newAiLatency = Math.max(70, Math.min(380, (lastPoint?.aiLatencyMs || 120) + deltaJitter))
-          const newTtft = Math.max(30, Math.min(110, newAiLatency * 0.38 + (Math.random() - 0.5) * 8))
+          const newAiLatency = Math.max(
+            70,
+            Math.min(380, (lastPoint?.aiLatencyMs || 120) + deltaJitter)
+          )
+          const newTtft = Math.max(
+            30,
+            Math.min(110, newAiLatency * 0.38 + (Math.random() - 0.5) * 8)
+          )
           const newTokensSec = Math.max(40, Math.min(95, 70 + (Math.random() - 0.5) * 18))
 
           const newPoint: TelemetryMetricPoint = {
@@ -330,7 +342,8 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
 
   // Export Telemetry Log
   const handleExportData = useCallback(() => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(history, null, 2))
+    const dataStr =
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(history, null, 2))
     const downloadAnchor = document.createElement('a')
     downloadAnchor.setAttribute('href', dataStr)
     downloadAnchor.setAttribute('download', `iris_telemetry_${Date.now()}.json`)
@@ -362,7 +375,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
               <h2 className="text-sm sm:text-base font-bold text-white tracking-wide">
                 OS Workspace Telemetry & AI Latency
               </h2>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${themeStyles.badgeBg}`}>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${themeStyles.badgeBg}`}
+              >
                 LIVE FFT STREAM
               </span>
             </div>
@@ -379,7 +394,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             <button
               onClick={() => setActiveTheme('emerald')}
               className={`px-2 py-1 rounded-lg transition-all ${
-                activeTheme === 'emerald' ? 'bg-[#00ff41]/20 text-[#00ff41] font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                activeTheme === 'emerald'
+                  ? 'bg-[#00ff41]/20 text-[#00ff41] font-bold'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Emerald
@@ -387,7 +404,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             <button
               onClick={() => setActiveTheme('cyan')}
               className={`px-2 py-1 rounded-lg transition-all ${
-                activeTheme === 'cyan' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                activeTheme === 'cyan'
+                  ? 'bg-cyan-500/20 text-cyan-300 font-bold'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Cyan
@@ -395,7 +414,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             <button
               onClick={() => setActiveTheme('purple')}
               className={`px-2 py-1 rounded-lg transition-all ${
-                activeTheme === 'purple' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-zinc-500 hover:text-zinc-300'
+                activeTheme === 'purple'
+                  ? 'bg-purple-500/20 text-purple-300 font-bold'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Purple
@@ -423,7 +444,10 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-white/10 text-[11px] font-mono transition-all cursor-pointer disabled:opacity-50"
             title="Execute latency benchmark pulse"
           >
-            <Zap size={12} className={isBenchmarking ? 'animate-spin text-amber-400' : 'text-emerald-400'} />
+            <Zap
+              size={12}
+              className={isBenchmarking ? 'animate-spin text-amber-400' : 'text-emerald-400'}
+            />
             <span>{isBenchmarking ? 'PROBING...' : 'BENCHMARK'}</span>
           </button>
 
@@ -655,7 +679,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             <div className="flex items-center justify-between mb-2 font-mono text-xs">
               <div className="flex items-center gap-2">
                 <Cpu size={14} className="text-purple-400" />
-                <span className="font-bold text-zinc-200">System Hardware & Neural Engine Utilization</span>
+                <span className="font-bold text-zinc-200">
+                  System Hardware & Neural Engine Utilization
+                </span>
               </div>
               <div className="flex items-center gap-4 text-[11px] text-zinc-400">
                 <div className="flex items-center gap-1.5">
@@ -736,7 +762,9 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
             <div className="flex items-center justify-between mb-3 font-mono text-xs">
               <div className="flex items-center gap-2">
                 <Server size={14} className="text-blue-400" />
-                <span className="font-bold text-zinc-200">Cloud Services & Gateway Latency Matrix</span>
+                <span className="font-bold text-zinc-200">
+                  Cloud Services & Gateway Latency Matrix
+                </span>
               </div>
               <span className="text-zinc-500 text-[11px]">Updated live</span>
             </div>
@@ -761,7 +789,8 @@ export const WorkspaceTelemetryAnalytics: React.FC<WorkspaceTelemetryAnalyticsPr
                   <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[11px] font-mono">
                     <span className="text-zinc-400">RTT Latency:</span>
                     <span className="font-bold" style={{ color: ep.color }}>
-                      {ep.latencyMs}ms <span className="text-[9px] text-zinc-500">(p95: {ep.p95Ms}ms)</span>
+                      {ep.latencyMs}ms{' '}
+                      <span className="text-[9px] text-zinc-500">(p95: {ep.p95Ms}ms)</span>
                     </span>
                   </div>
                 </div>

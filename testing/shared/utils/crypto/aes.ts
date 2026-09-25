@@ -1,1 +1,1 @@
-export const encrypt = (data: string) => data;
+export const encrypt = (data: string) => data

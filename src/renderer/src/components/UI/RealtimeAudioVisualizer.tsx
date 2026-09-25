@@ -247,10 +247,10 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       const targetVol = !isConnected
         ? 0
         : isSpeaking
-        ? 0.4 + Math.sin(Date.now() * 0.007) * 0.2
-        : isMuted
-        ? 0
-        : Math.max(0.02, currentVol * 1.8)
+          ? 0.4 + Math.sin(Date.now() * 0.007) * 0.2
+          : isMuted
+            ? 0
+            : Math.max(0.02, currentVol * 1.8)
 
       smoothedLvlRef.current += (targetVol - smoothedLvlRef.current) * 0.2
       const lvl = smoothedLvlRef.current
@@ -265,7 +265,8 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       }
 
       const motionFactor = prefersReducedMotion ? 0.35 : 1.0
-      phaseRef.current += (isSpeaking ? 0.1 : isListening ? 0.05 + lvl * 0.12 : 0.018) * motionFactor
+      phaseRef.current +=
+        (isSpeaking ? 0.1 : isListening ? 0.05 + lvl * 0.12 : 0.018) * motionFactor
 
       ctx.clearRect(0, 0, width, currentHeight)
 
@@ -281,10 +282,10 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
             color: isSpeaking
               ? 'rgba(6, 182, 212, 0.9)'
               : isMuted
-              ? 'rgba(239, 68, 68, 0.4)'
-              : 'rgba(0, 255, 65, 0.95)',
+                ? 'rgba(239, 68, 68, 0.4)'
+                : 'rgba(0, 255, 65, 0.95)',
             freq: 0.014,
-            amp: (currentHeight * 0.36) * Math.max(0.12, lvl),
+            amp: currentHeight * 0.36 * Math.max(0.12, lvl),
             speed: 1.0,
             width: 2.2
           },
@@ -292,10 +293,10 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
             color: isSpeaking
               ? 'rgba(34, 211, 238, 0.55)'
               : isMuted
-              ? 'rgba(239, 68, 68, 0.25)'
-              : 'rgba(52, 211, 153, 0.55)',
+                ? 'rgba(239, 68, 68, 0.25)'
+                : 'rgba(52, 211, 153, 0.55)',
             freq: 0.022,
-            amp: (currentHeight * 0.26) * Math.max(0.08, lvl * 0.85),
+            amp: currentHeight * 0.26 * Math.max(0.08, lvl * 0.85),
             speed: -0.75,
             width: 1.6
           },
@@ -303,10 +304,10 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
             color: isSpeaking
               ? 'rgba(147, 51, 234, 0.4)'
               : isMuted
-              ? 'rgba(239, 68, 68, 0.15)'
-              : 'rgba(6, 182, 212, 0.45)',
+                ? 'rgba(239, 68, 68, 0.15)'
+                : 'rgba(6, 182, 212, 0.45)',
             freq: 0.008,
-            amp: (currentHeight * 0.18) * Math.max(0.05, lvl * 0.6),
+            amp: currentHeight * 0.18 * Math.max(0.05, lvl * 0.6),
             speed: 1.4,
             width: 1.2
           }
@@ -352,9 +353,8 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
 
         for (let i = 0; i < barCount; i++) {
           const freqVal = localFreqData[i * step] || 0
-          const barHeightFactor = isConnected && !isMuted
-            ? Math.max(0.06, (freqVal / 255) * 1.1 + lvl * 0.4)
-            : 0.04
+          const barHeightFactor =
+            isConnected && !isMuted ? Math.max(0.06, (freqVal / 255) * 1.1 + lvl * 0.4) : 0.04
           const barHeight = Math.min(currentHeight * 0.85, barHeightFactor * currentHeight * 0.85)
 
           const x = i * (barWidth + 3) + 6
@@ -497,7 +497,18 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       }
       resizeObserver.disconnect()
     }
-  }, [mode, visualTheme, activeAnalyser, propFrequencyData, audioLevel, isConnected, isListening, isSpeaking, isMuted, height])
+  }, [
+    mode,
+    visualTheme,
+    activeAnalyser,
+    propFrequencyData,
+    audioLevel,
+    isConnected,
+    isListening,
+    isSpeaking,
+    isMuted,
+    height
+  ])
 
   return (
     <div
@@ -527,9 +538,7 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-900/90 border border-white/10 text-zinc-300">
               <Volume2 size={11} className="text-zinc-400" />
               <span>{decibels} dB</span>
-              <span className="text-zinc-600 text-[9px]">
-                (Pk: {Math.round(peakLevel * 100)}%)
-              </span>
+              <span className="text-zinc-600 text-[9px]">(Pk: {Math.round(peakLevel * 100)}%)</span>
             </div>
           )}
 
@@ -546,13 +555,7 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
                   }`}
                   title={`Switch visualizer to ${m} mode`}
                 >
-                  {m === 'waves'
-                    ? 'Wave'
-                    : m === 'bars'
-                    ? 'EQ'
-                    : m === 'orb'
-                    ? 'Orb'
-                    : 'Dots'}
+                  {m === 'waves' ? 'Wave' : m === 'bars' ? 'EQ' : m === 'orb' ? 'Orb' : 'Dots'}
                 </button>
               ))}
             </div>
@@ -562,11 +565,7 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
 
       {/* Real-time WebGL / 2D Canvas Audio Reactor */}
       <div className="relative w-full flex-1 flex items-center justify-center my-1 min-h-[70px]">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full block"
-          style={{ height }}
-        />
+        <canvas ref={canvasRef} className="w-full h-full block" style={{ height }} />
       </div>
 
       {/* Bottom Sub-Telemetry Line */}

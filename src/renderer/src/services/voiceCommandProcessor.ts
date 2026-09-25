@@ -1461,7 +1461,9 @@ class VoiceCommandProcessor {
         resolvedIntent.app,
         resolvedIntent.secondaryParam
       )
-      const fallbackLink = launchRes.fallbackUrl || (resolvedIntent.app.type === 'external' ? resolvedIntent.app.target : '')
+      const fallbackLink =
+        launchRes.fallbackUrl ||
+        (resolvedIntent.app.type === 'external' ? resolvedIntent.app.target : '')
       const responseText = `${launchRes.message || `Opened ${resolvedIntent.app.name}.`}${fallbackLink ? `\n\n[Open ${resolvedIntent.app.name}](${fallbackLink})` : ''}`
       return {
         handled: true,

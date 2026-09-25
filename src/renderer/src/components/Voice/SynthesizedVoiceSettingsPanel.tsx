@@ -58,8 +58,10 @@ export const SYNTHESIZED_VOICE_PRESETS: SynthesizedVoicePreset[] = [
     tone: 'Smooth & Warm',
     accentColor: '#10b981', // emerald
     badge: 'Gemini Primary',
-    description: 'High dynamic range voice synthesized for deep conversational fluency and everyday tasks.',
-    sampleGreeting: "Greetings! I am IRIS, operating with the Kore voice synthesis model. All systems are fully synchronized.",
+    description:
+      'High dynamic range voice synthesized for deep conversational fluency and everyday tasks.',
+    sampleGreeting:
+      'Greetings! I am IRIS, operating with the Kore voice synthesis model. All systems are fully synchronized.',
     idealFor: 'Executive briefing, workflow orchestration, chat responses',
     pitch: 1.0,
     rate: 1.02
@@ -74,8 +76,10 @@ export const SYNTHESIZED_VOICE_PRESETS: SynthesizedVoicePreset[] = [
     tone: 'Bright & Crisp',
     accentColor: '#06b6d4', // cyan
     badge: 'Ultra Low Latency',
-    description: 'Optimized for rapid back-and-forth dialogue, brainstorming, and live hands-free collaboration.',
-    sampleGreeting: "Hello! Zephyr synthesis online. Ready to analyze codebases, execute operations, and stream real-time results.",
+    description:
+      'Optimized for rapid back-and-forth dialogue, brainstorming, and live hands-free collaboration.',
+    sampleGreeting:
+      'Hello! Zephyr synthesis online. Ready to analyze codebases, execute operations, and stream real-time results.',
     idealFor: 'Real-time live dialogue, creative drafting, brainstorming',
     pitch: 1.08,
     rate: 1.1
@@ -90,8 +94,10 @@ export const SYNTHESIZED_VOICE_PRESETS: SynthesizedVoicePreset[] = [
     tone: 'Deep & Authoritative',
     accentColor: '#8b5cf6', // purple
     badge: 'JARVIS Classic',
-    description: 'A rich baritone acoustic profile engineered for technical architecture and mission-critical telemetry.',
-    sampleGreeting: "JARVIS core online. Telemetry feeds verified, secure memory indexed. How may I assist your engineering session?",
+    description:
+      'A rich baritone acoustic profile engineered for technical architecture and mission-critical telemetry.',
+    sampleGreeting:
+      'JARVIS core online. Telemetry feeds verified, secure memory indexed. How may I assist your engineering session?',
     idealFor: 'JARVIS mode, security audits, technical diagnostics',
     pitch: 0.88,
     rate: 0.98
@@ -106,8 +112,10 @@ export const SYNTHESIZED_VOICE_PRESETS: SynthesizedVoicePreset[] = [
     tone: 'Energetic & Crisp',
     accentColor: '#f59e0b', // amber
     badge: 'High Energy',
-    description: 'Energetic pitch distribution ideal for quick lookups, notifications, and productivity sprints.',
-    sampleGreeting: "Hey there! Puck voice matrix engaged. Let's power through your tasks, analyze data, and build something great today!",
+    description:
+      'Energetic pitch distribution ideal for quick lookups, notifications, and productivity sprints.',
+    sampleGreeting:
+      "Hey there! Puck voice matrix engaged. Let's power through your tasks, analyze data, and build something great today!",
     idealFor: 'Fast notifications, task lists, rapid Q&A',
     pitch: 1.15,
     rate: 1.12
@@ -122,8 +130,10 @@ export const SYNTHESIZED_VOICE_PRESETS: SynthesizedVoicePreset[] = [
     tone: 'Focused & Direct',
     accentColor: '#ec4899', // pink
     badge: 'High Precision',
-    description: 'Razor-sharp consonants and deliberate pacing calibrated for scientific queries and coding instructions.',
-    sampleGreeting: "Fenrir synthesizer initialized. Ready to inspect algorithms, review data structures, and execute commands.",
+    description:
+      'Razor-sharp consonants and deliberate pacing calibrated for scientific queries and coding instructions.',
+    sampleGreeting:
+      'Fenrir synthesizer initialized. Ready to inspect algorithms, review data structures, and execute commands.',
     idealFor: 'Code reviews, calculations, debugging sessions',
     pitch: 0.96,
     rate: 1.05
@@ -147,7 +157,9 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
   const [isPlayingPreview, setIsPlayingPreview] = useState<string | null>(null)
   const [audioLevel, setAudioLevel] = useState<number>(0)
   const [cacheStats, setCacheStats] = useState<StorageStats | null>(null)
-  const [activeVoiceCategory, setActiveVoiceCategory] = useState<'gemini' | 'system' | 'offline'>('gemini')
+  const [activeVoiceCategory, setActiveVoiceCategory] = useState<'gemini' | 'system' | 'offline'>(
+    'gemini'
+  )
   const [statusNotification, setStatusNotification] = useState<string | null>(null)
 
   useEffect(() => {
@@ -306,7 +318,7 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-emerald-950/40 via-zinc-900/60 to-cyan-950/40 border border-emerald-500/20 rounded-2xl backdrop-blur-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-emerald-500/10 blur-3xl pointer-events-none rounded-full" />
-        
+
         <div className="flex items-start gap-3.5 z-10">
           <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
             <RiSoundModuleLine size={24} />
@@ -338,9 +350,7 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
               <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">
                 Active Synth
               </span>
-              <span className="text-xs font-bold font-mono text-white">
-                {selectedPreset.name}
-              </span>
+              <span className="text-xs font-bold font-mono text-white">{selectedPreset.name}</span>
             </div>
           </div>
         </div>
@@ -434,7 +444,10 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
                     <div className="flex items-center gap-2.5">
                       <div
                         className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold"
-                        style={{ backgroundColor: `${preset.accentColor}33`, border: `1px solid ${preset.accentColor}66` }}
+                        style={{
+                          backgroundColor: `${preset.accentColor}33`,
+                          border: `1px solid ${preset.accentColor}66`
+                        }}
                       >
                         <Volume2 size={16} style={{ color: preset.accentColor }} />
                       </div>
@@ -557,7 +570,9 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
               <div className="space-y-2 p-3 bg-zinc-950/60 rounded-xl border border-white/5">
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-400">Voice Pitch</span>
-                  <span className="font-mono text-emerald-400">{(settings.pitch || 1.0).toFixed(2)}x</span>
+                  <span className="font-mono text-emerald-400">
+                    {(settings.pitch || 1.0).toFixed(2)}x
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -579,7 +594,9 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
               <div className="space-y-2 p-3 bg-zinc-950/60 rounded-xl border border-white/5">
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-400">Speaking Pace (Speed)</span>
-                  <span className="font-mono text-emerald-400">{(settings.speed || 1.0).toFixed(2)}x</span>
+                  <span className="font-mono text-emerald-400">
+                    {(settings.speed || 1.0).toFixed(2)}x
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -601,7 +618,9 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
               <div className="space-y-2 p-3 bg-zinc-950/60 rounded-xl border border-white/5">
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-400">Synthesis Master Gain</span>
-                  <span className="font-mono text-emerald-400">{Math.round((settings.volume || 1.0) * 100)}%</span>
+                  <span className="font-mono text-emerald-400">
+                    {Math.round((settings.volume || 1.0) * 100)}%
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -636,40 +655,65 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
                   IndexedDB Local Context & Outage Resilience Layer
                 </h3>
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 ${
-                irisIndexedDBCache.isOnline()
-                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-amber-950/80 text-amber-300 border border-amber-500/30'
-              }`}>
-                <span className={`w-2 h-2 rounded-full ${irisIndexedDBCache.isOnline() ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`} />
-                <span>{irisIndexedDBCache.isOnline() ? 'Online (Cloud Sync Active)' : 'Offline (IndexedDB Autonomous)'}</span>
+              <span
+                className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 ${
+                  irisIndexedDBCache.isOnline()
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-amber-950/80 text-amber-300 border border-amber-500/30'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${irisIndexedDBCache.isOnline() ? 'bg-emerald-400' : 'bg-amber-400 animate-ping'}`}
+                />
+                <span>
+                  {irisIndexedDBCache.isOnline()
+                    ? 'Online (Cloud Sync Active)'
+                    : 'Offline (IndexedDB Autonomous)'}
+                </span>
               </span>
             </div>
 
             <p className="text-xs text-zinc-300 leading-relaxed">
-              IRIS automatically mirrors all conversation turns, workspace documents, offline voice commands,
-              and semantic context into client-side <strong>IndexedDB (IRIS_AI_STORE_V1)</strong>. During internet
-              outages, IRIS continues responding autonomously from local cached knowledge without crashing.
+              IRIS automatically mirrors all conversation turns, workspace documents, offline voice
+              commands, and semantic context into client-side{' '}
+              <strong>IndexedDB (IRIS_AI_STORE_V1)</strong>. During internet outages, IRIS continues
+              responding autonomously from local cached knowledge without crashing.
             </p>
 
             {/* Storage Metric Badges */}
             {cacheStats && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 <div className="p-3 bg-zinc-900/80 border border-white/5 rounded-xl">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">Local Sessions</span>
-                  <span className="text-lg font-bold font-mono text-white">{cacheStats.sessionCount}</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">
+                    Local Sessions
+                  </span>
+                  <span className="text-lg font-bold font-mono text-white">
+                    {cacheStats.sessionCount}
+                  </span>
                 </div>
                 <div className="p-3 bg-zinc-900/80 border border-white/5 rounded-xl">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">Total Messages</span>
-                  <span className="text-lg font-bold font-mono text-emerald-400">{cacheStats.messageCount}</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">
+                    Total Messages
+                  </span>
+                  <span className="text-lg font-bold font-mono text-emerald-400">
+                    {cacheStats.messageCount}
+                  </span>
                 </div>
                 <div className="p-3 bg-zinc-900/80 border border-white/5 rounded-xl">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">Cached AI Responses</span>
-                  <span className="text-lg font-bold font-mono text-cyan-400">{cacheStats.cachedResponsesCount}</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">
+                    Cached AI Responses
+                  </span>
+                  <span className="text-lg font-bold font-mono text-cyan-400">
+                    {cacheStats.cachedResponsesCount}
+                  </span>
                 </div>
                 <div className="p-3 bg-zinc-900/80 border border-white/5 rounded-xl">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">Pending Outbox Sync</span>
-                  <span className="text-lg font-bold font-mono text-amber-400">{cacheStats.outboxPending}</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase block">
+                    Pending Outbox Sync
+                  </span>
+                  <span className="text-lg font-bold font-mono text-amber-400">
+                    {cacheStats.outboxPending}
+                  </span>
                 </div>
               </div>
             )}
@@ -725,7 +769,8 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
             </div>
 
             <p className="text-xs text-zinc-400">
-              Browser Web Speech API synthesizers installed on this OS. Used for zero-bandwidth, offline fallback speech.
+              Browser Web Speech API synthesizers installed on this OS. Used for zero-bandwidth,
+              offline fallback speech.
             </p>
 
             <div className="max-h-64 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -737,7 +782,8 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
                   <div className="flex flex-col">
                     <span className="font-bold text-zinc-200">{v.name}</span>
                     <span className="text-[10px] font-mono text-zinc-500">
-                      Lang: {v.lang} {v.default ? '• (Default)' : ''} {v.localService ? '• Local' : ''}
+                      Lang: {v.lang} {v.default ? '• (Default)' : ''}{' '}
+                      {v.localService ? '• Local' : ''}
                     </span>
                   </div>
 
@@ -746,7 +792,9 @@ export const SynthesizedVoiceSettingsPanel: React.FC<SynthesizedVoiceSettingsPan
                     onClick={() => {
                       if (typeof window !== 'undefined' && window.speechSynthesis) {
                         window.speechSynthesis.cancel()
-                        const u = new SpeechSynthesisUtterance(`Testing native synthesizer ${v.name}`)
+                        const u = new SpeechSynthesisUtterance(
+                          `Testing native synthesizer ${v.name}`
+                        )
                         u.voice = v
                         u.rate = settings.speed || 1.0
                         u.pitch = settings.pitch || 1.0

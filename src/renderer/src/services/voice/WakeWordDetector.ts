@@ -1,6 +1,6 @@
 /**
  * WakeWordDetector - Hands-Free Client-Side "Hey JARVIS" Wake Engine
- * 
+ *
  * Rules:
  * - Continuously monitors microphone only when Wake Word Mode is enabled.
  * - Detects wake phrases 100% locally.
@@ -32,10 +32,7 @@ export class WakeWordDetector implements WakeWordProvider {
     /\bhello\s+iris\b/i
   ]
 
-  private singleWordPatterns: RegExp[] = [
-    /\bjarvis\b/i,
-    /\biris\b/i
-  ]
+  private singleWordPatterns: RegExp[] = [/\bjarvis\b/i, /\biris\b/i]
 
   // Phonetic fuzzy patterns for noisy environments / mobile microphones
   private relaxedPatterns: RegExp[] = [
@@ -43,7 +40,11 @@ export class WakeWordDetector implements WakeWordProvider {
     /\b(?:hey|hay|hi|ok)\s+(?:iris|iriss|eyris|ayris)\b/i
   ]
 
-  constructor(handlers: WakeWordDetectorHandlers, enabled: boolean = false, sensitivity: number = 0.7) {
+  constructor(
+    handlers: WakeWordDetectorHandlers,
+    enabled: boolean = false,
+    sensitivity: number = 0.7
+  ) {
     this.handlers = handlers
     this.isEnabled = enabled
     this.sensitivity = sensitivity
@@ -122,7 +123,9 @@ export class WakeWordDetector implements WakeWordProvider {
         // Strip common leading punctuations from tail
         const commandTail = rawTail.replace(/^[,.\-:\s]+/, '')
 
-        console.log(`[WakeWordDetector] Wake word detected: "${phrase}", command tail: "${commandTail}"`)
+        console.log(
+          `[WakeWordDetector] Wake word detected: "${phrase}", command tail: "${commandTail}"`
+        )
         this.handlers.onWakeWordDetected(phrase, commandTail)
         return true
       }

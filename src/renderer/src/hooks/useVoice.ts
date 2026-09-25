@@ -61,19 +61,44 @@ const parseCommand = (cleanText: string): { action: string; payload?: any } => {
   if (lower.includes('youtube') || lower.includes('video') || lower.includes('trends')) {
     return { action: 'NAVIGATE', payload: 'YOUTUBE' }
   }
-  if (lower.includes('workspace') || lower.includes('editor') || lower.includes('code') || lower.includes('work space')) {
+  if (
+    lower.includes('workspace') ||
+    lower.includes('editor') ||
+    lower.includes('code') ||
+    lower.includes('work space')
+  ) {
     return { action: 'NAVIGATE', payload: 'WORKSPACE' }
   }
-  if (lower.includes('map') || lower.includes('location') || lower.includes('gps') || lower.includes('navigation')) {
+  if (
+    lower.includes('map') ||
+    lower.includes('location') ||
+    lower.includes('gps') ||
+    lower.includes('navigation')
+  ) {
     return { action: 'NAVIGATE', payload: 'MAPS' }
   }
-  if (lower.includes('note') || lower.includes('memo') || lower.includes('journal') || lower.includes('scratchpad')) {
+  if (
+    lower.includes('note') ||
+    lower.includes('memo') ||
+    lower.includes('journal') ||
+    lower.includes('scratchpad')
+  ) {
     return { action: 'NAVIGATE', payload: 'NOTES' }
   }
-  if (lower.includes('gallery') || lower.includes('images') || lower.includes('photos') || lower.includes('art')) {
+  if (
+    lower.includes('gallery') ||
+    lower.includes('images') ||
+    lower.includes('photos') ||
+    lower.includes('art')
+  ) {
     return { action: 'NAVIGATE', payload: 'GALLERY' }
   }
-  if (lower.includes('phone') || lower.includes('call') || lower.includes('contacts') || lower.includes('dialer')) {
+  if (
+    lower.includes('phone') ||
+    lower.includes('call') ||
+    lower.includes('contacts') ||
+    lower.includes('dialer')
+  ) {
     return { action: 'NAVIGATE', payload: 'PHONE' }
   }
   if (lower.includes('settings') || lower.includes('config') || lower.includes('preferences')) {
@@ -81,21 +106,45 @@ const parseCommand = (cleanText: string): { action: string; payload?: any } => {
   }
 
   // 2. Vision & Camera Modes
-  if (lower.includes('camera on') || lower.includes('optics on') || lower.includes('start camera') || lower.includes('lens mode')) {
+  if (
+    lower.includes('camera on') ||
+    lower.includes('optics on') ||
+    lower.includes('start camera') ||
+    lower.includes('lens mode')
+  ) {
     return { action: 'SET_VISION_MODE', payload: 'camera' }
   }
-  if (lower.includes('screen share') || lower.includes('screen on') || lower.includes('display mode') || lower.includes('watch screen')) {
+  if (
+    lower.includes('screen share') ||
+    lower.includes('screen on') ||
+    lower.includes('display mode') ||
+    lower.includes('watch screen')
+  ) {
     return { action: 'SET_VISION_MODE', payload: 'screen' }
   }
-  if (lower.includes('vision off') || lower.includes('stop camera') || lower.includes('disable vision') || lower.includes('optics off')) {
+  if (
+    lower.includes('vision off') ||
+    lower.includes('stop camera') ||
+    lower.includes('disable vision') ||
+    lower.includes('optics off')
+  ) {
     return { action: 'SET_VISION_MODE', payload: 'off' }
   }
 
   // 3. Knowledge & Documents
-  if (lower.includes('pdf') || lower.includes('knowledge') || lower.includes('document') || lower.includes('doc base')) {
+  if (
+    lower.includes('pdf') ||
+    lower.includes('knowledge') ||
+    lower.includes('document') ||
+    lower.includes('doc base')
+  ) {
     return { action: 'TOGGLE_KNOWLEDGE', payload: true }
   }
-  if (lower.includes('close doc') || lower.includes('close knowledge') || lower.includes('hide pdf')) {
+  if (
+    lower.includes('close doc') ||
+    lower.includes('close knowledge') ||
+    lower.includes('hide pdf')
+  ) {
     return { action: 'TOGGLE_KNOWLEDGE', payload: false }
   }
 
@@ -103,7 +152,13 @@ const parseCommand = (cleanText: string): { action: string; payload?: any } => {
   if (lower.includes('minimal hud') || lower.includes('focus mode') || lower.includes('hide ui')) {
     return { action: 'TOGGLE_MINIMAL_HUD' }
   }
-  if (lower.includes('stop speaking') || lower.includes('silence') || lower.includes('be quiet') || lower.includes('shut up') || lower.includes('halt')) {
+  if (
+    lower.includes('stop speaking') ||
+    lower.includes('silence') ||
+    lower.includes('be quiet') ||
+    lower.includes('shut up') ||
+    lower.includes('halt')
+  ) {
     return { action: 'STOP_SPEAKING' }
   }
   if (lower.includes('mute') || lower.includes('microphone off')) {
@@ -112,7 +167,12 @@ const parseCommand = (cleanText: string): { action: string; payload?: any } => {
   if (lower.includes('unmute') || lower.includes('microphone on')) {
     return { action: 'UNMUTE_MIC' }
   }
-  if (lower.includes('system status') || lower.includes('telemetry') || lower.includes('performance') || lower.includes('system stats')) {
+  if (
+    lower.includes('system status') ||
+    lower.includes('telemetry') ||
+    lower.includes('performance') ||
+    lower.includes('system stats')
+  ) {
     return { action: 'SHOW_TELEMETRY' }
   }
 
@@ -146,7 +206,9 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   const [lastCommand, setLastCommand] = useState<VoiceCommandEvent | null>(null)
   const [commandHistory, setCommandHistory] = useState<VoiceCommandEvent[]>([])
   const [audioLevel, setAudioLevel] = useState(0)
-  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>('unknown')
+  const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>(
+    'unknown'
+  )
   const [error, setError] = useState<string | null>(null)
 
   const recognitionRef = useRef<any>(null)
@@ -162,7 +224,9 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
   })
 
   // Detect Web Speech API support
-  const isSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+  const isSupported =
+    typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
   // Listen to the unified single conversation bus (window.iris) for streaming AI responses
   useEffect(() => {
@@ -298,7 +362,10 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
         // Extract command after wake word if present
         const wakeIdx = lower.indexOf(wakeWord.toLowerCase())
-        let commandAfterWake = rawText.substring(wakeIdx + wakeWord.length).replace(/^[,:;\s]+/, '').trim()
+        let commandAfterWake = rawText
+          .substring(wakeIdx + wakeWord.length)
+          .replace(/^[,:;\s]+/, '')
+          .trim()
         if (!commandAfterWake) {
           commandAfterWake = rawText.trim()
         }
@@ -346,17 +413,19 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
         return mediaStreamRef.current
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      }).catch(async () => {
-        // Fallback to basic unconstrained audio
-        return await navigator.mediaDevices.getUserMedia({ audio: true })
-      })
+      const stream = await navigator.mediaDevices
+        .getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        })
+        .catch(async () => {
+          // Fallback to basic unconstrained audio
+          return await navigator.mediaDevices.getUserMedia({ audio: true })
+        })
 
       // Validate stream tracks
       const tracks = stream.getAudioTracks()
@@ -447,7 +516,8 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
 
   // Start listening method - Requests microphone permission first, then initializes SpeechRecognition
   const startListening = useCallback(async (): Promise<boolean> => {
-    const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognitionClass =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionClass) {
       setError('Web Speech Recognition is not supported in this browser.')
       return false

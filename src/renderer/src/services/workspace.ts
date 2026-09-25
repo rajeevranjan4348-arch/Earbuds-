@@ -1,6 +1,6 @@
 /**
  * Google Workspace Centralized Client Service
- * 
+ *
  * Routes requests through the centralized backend session & API proxy layer,
  * with transparent token refresh, retry on 401, error classification,
  * and fallback handling.
@@ -102,7 +102,7 @@ export class GoogleWorkspaceService {
     options: RequestInit = {},
     serviceName = 'Workspace'
   ): Promise<T> {
-    const headers = { ...this.getHeaders(), ...(options.headers as Record<string, string> || {}) }
+    const headers = { ...this.getHeaders(), ...((options.headers as Record<string, string>) || {}) }
 
     try {
       const res = await fetch(backendUrl, {
@@ -111,7 +111,9 @@ export class GoogleWorkspaceService {
       })
 
       if (res.status === 401) {
-        console.warn(`[WorkspaceService] Received 401 from ${backendUrl}. Attempting automatic refresh and retry...`)
+        console.warn(
+          `[WorkspaceService] Received 401 from ${backendUrl}. Attempting automatic refresh and retry...`
+        )
         const newToken = await this.attemptSilentRefresh()
         if (newToken) {
           const retryHeaders = {
@@ -168,7 +170,10 @@ export class GoogleWorkspaceService {
     try {
       const errJson = await res.json()
       if (errJson?.error) {
-        errorDetail = typeof errJson.error === 'string' ? errJson.error : errJson.error.message || JSON.stringify(errJson.error)
+        errorDetail =
+          typeof errJson.error === 'string'
+            ? errJson.error
+            : errJson.error.message || JSON.stringify(errJson.error)
       }
     } catch (_e) {
       // not json
@@ -180,7 +185,8 @@ export class GoogleWorkspaceService {
       errorDetail.toLowerCase().includes('expected oauth 2 access token') ||
       errorDetail.toLowerCase().includes('unauthenticated')
     ) {
-      errorDetail = 'Session expired or unauthenticated. Please reconnect your Google Workspace account.'
+      errorDetail =
+        'Session expired or unauthenticated. Please reconnect your Google Workspace account.'
     } else if (res.status === 403) {
       const isScope =
         errorDetail.toLowerCase().includes('insufficient') ||
@@ -190,7 +196,9 @@ export class GoogleWorkspaceService {
         ? `Insufficient permissions or missing scopes for ${serviceName}. Please re-authorize with required permissions.`
         : `Access denied for ${serviceName}: ${errorDetail || res.statusText}`
     } else if (!errorDetail) {
-      errorDetail = res.statusText ? `${res.statusText} (${res.status})` : `Request failed with HTTP status ${res.status}`
+      errorDetail = res.statusText
+        ? `${res.statusText} (${res.status})`
+        : `Request failed with HTTP status ${res.status}`
     }
 
     return new Error(`${serviceName}: ${errorDetail}`)
@@ -198,7 +206,11 @@ export class GoogleWorkspaceService {
 
   // 1. Google Drive
   async listDriveFiles(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/drive/files?pageSize=15', { method: 'GET' }, 'Drive')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/drive/files?pageSize=15',
+      { method: 'GET' },
+      'Drive'
+    )
     const files = data.files || []
     return files.map((f: any) => ({
       id: f.id,
@@ -226,13 +238,21 @@ export class GoogleWorkspaceService {
 
   // 3. Gmail
   async listGmailMessages(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/gmail/messages?maxResults=8', { method: 'GET' }, 'Gmail')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/gmail/messages?maxResults=8',
+      { method: 'GET' },
+      'Gmail'
+    )
     return data.messages || []
   }
 
   // 4. Google Calendar
   async listCalendarEvents(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/calendar/events', { method: 'GET' }, 'Calendar')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/calendar/events',
+      { method: 'GET' },
+      'Calendar'
+    )
     const events = data.events || []
     return events.map((e: any) => ({
       id: e.id,
@@ -285,7 +305,11 @@ export class GoogleWorkspaceService {
 
   // 7. Google Tasks
   async listTasks(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/tasks/list', { method: 'GET' }, 'Tasks')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/tasks/list',
+      { method: 'GET' },
+      'Tasks'
+    )
     const tasks = data.tasks || []
     return tasks.map((t: any) => ({
       id: t.id,
@@ -312,7 +336,11 @@ export class GoogleWorkspaceService {
   // 8. Google Chat Spaces
   async listChatSpaces(): Promise<WorkspaceItem[]> {
     try {
-      const data: any = await this.executeWithAutoRefresh('/api/workspace/chat/spaces', { method: 'GET' }, 'Chat')
+      const data: any = await this.executeWithAutoRefresh(
+        '/api/workspace/chat/spaces',
+        { method: 'GET' },
+        'Chat'
+      )
       const spaces = data.spaces || []
       return spaces.map((s: any) => ({
         id: s.name,
@@ -354,7 +382,11 @@ export class GoogleWorkspaceService {
 
   // 11. Google Contacts / People
   async listContacts(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/contacts/list', { method: 'GET' }, 'Contacts')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/contacts/list',
+      { method: 'GET' },
+      'Contacts'
+    )
     const connections = data.connections || []
     return connections.map((c: any) => {
       const name = c.names?.[0]?.displayName || 'Unnamed Contact'
@@ -371,7 +403,11 @@ export class GoogleWorkspaceService {
 
   // 12. Google Classroom
   async listClassroomCourses(): Promise<WorkspaceItem[]> {
-    const data: any = await this.executeWithAutoRefresh('/api/workspace/classroom/courses', { method: 'GET' }, 'Classroom')
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/classroom/courses',
+      { method: 'GET' },
+      'Classroom'
+    )
     const courses = data.courses || []
     return courses.map((c: any) => ({
       id: c.id,

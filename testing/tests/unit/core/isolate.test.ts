@@ -1,2 +1,2 @@
-import { test } from "vitest";
-test("isolate boots", () => {});
+import { test } from 'vitest'
+test('isolate boots', () => {})

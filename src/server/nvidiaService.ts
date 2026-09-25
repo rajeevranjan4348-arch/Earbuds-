@@ -7,7 +7,9 @@
 
 export interface NvidiaChatMessage {
   role: 'system' | 'user' | 'assistant'
-  content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>
+  content:
+    | string
+    | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>
 }
 
 export interface NvidiaCompletionOptions {
@@ -37,10 +39,7 @@ export class NvidiaChatService {
   }
 
   getDeepseekApiKey(): string {
-    return (
-      process.env.DEEPSEEK_API_KEY ||
-      'sk-1734e30535fd4ca9b3fbe54cfb8e8ca8'
-    )
+    return process.env.DEEPSEEK_API_KEY || 'sk-1734e30535fd4ca9b3fbe54cfb8e8ca8'
   }
 
   /**
@@ -65,8 +64,8 @@ export class NvidiaChatService {
           typeof lastMsg.content === 'string'
             ? lastMsg.content
             : Array.isArray(lastMsg.content)
-            ? lastMsg.content.find((c) => c.type === 'text')?.text || ''
-            : ''
+              ? lastMsg.content.find((c) => c.type === 'text')?.text || ''
+              : ''
         messages[lastIndex] = {
           role: 'user',
           content: [
@@ -132,8 +131,8 @@ export class NvidiaChatService {
           typeof lastMsg.content === 'string'
             ? lastMsg.content
             : Array.isArray(lastMsg.content)
-            ? lastMsg.content.find((c) => c.type === 'text')?.text || ''
-            : ''
+              ? lastMsg.content.find((c) => c.type === 'text')?.text || ''
+              : ''
         messages[lastIndex] = {
           role: 'user',
           content: [

@@ -86,21 +86,21 @@ class WorkspacePersistenceService {
 
     try {
       const docRef = doc(firestore, 'users', uid, 'workspaceConfig', 'current')
-      
+
       // Real-time synchronization across devices & tabs
       this.unsubscribeFirestore = onSnapshot(
         docRef,
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as Partial<OSWorkspaceConfig>
-            
+
             // Check if any value actually changed before updating cachedConfig and notifying listeners
             let changed = false
             const merged: OSWorkspaceConfig = { ...this.cachedConfig }
             for (const key of Object.keys(data) as (keyof OSWorkspaceConfig)[]) {
               if (key === 'lastActiveTimestamp') continue
               if (JSON.stringify(merged[key]) !== JSON.stringify(data[key])) {
-                (merged as any)[key] = data[key]
+                ;(merged as any)[key] = data[key]
                 changed = true
               }
             }
@@ -134,7 +134,10 @@ class WorkspacePersistenceService {
   /**
    * Save and persist updated OS Workspace configuration
    */
-  public async saveConfig(updates: Partial<OSWorkspaceConfig>, userId?: string): Promise<OSWorkspaceConfig> {
+  public async saveConfig(
+    updates: Partial<OSWorkspaceConfig>,
+    userId?: string
+  ): Promise<OSWorkspaceConfig> {
     // Check if anything actually changed before notifying and saving
     let hasChanges = false
     const updated: OSWorkspaceConfig = { ...this.cachedConfig }
@@ -142,7 +145,7 @@ class WorkspacePersistenceService {
     for (const key of Object.keys(updates) as (keyof OSWorkspaceConfig)[]) {
       if (key === 'lastActiveTimestamp') continue
       if (JSON.stringify(updated[key]) !== JSON.stringify(updates[key])) {
-        (updated as any)[key] = updates[key]
+        ;(updated as any)[key] = updates[key]
         hasChanges = true
       }
     }

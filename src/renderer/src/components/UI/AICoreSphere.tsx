@@ -83,7 +83,9 @@ function ParticleShell({
       const pulse = Math.abs(Math.sin(t * 9) * 0.6 + Math.sin(t * 4.3) * 0.4)
       targetVol = (pulse * 0.6 + Math.random() * 0.1) * intensityMult
     } else if (isListening) {
-      const micBoost = micLevel ? Math.min(micLevel * 2.8, 1) : Math.abs(Math.sin(t * 5.2)) * 0.35 + 0.15
+      const micBoost = micLevel
+        ? Math.min(micLevel * 2.8, 1)
+        : Math.abs(Math.sin(t * 5.2)) * 0.35 + 0.15
       targetVol = (0.2 + micBoost * 0.8) * intensityMult
     } else if (isConnected) {
       targetVol = Math.abs(Math.sin(t * 1.6)) * 0.035 * intensityMult
@@ -191,7 +193,9 @@ function OrbitalRing({
     if (isSpeaking) {
       targetVol = (Math.abs(Math.sin(t * 8)) * 0.55 + 0.15) * intensityMult
     } else if (isListening) {
-      const micBoost = micLevel ? Math.min(micLevel * 2.2, 1) : Math.abs(Math.sin(t * 4.5)) * 0.4 + 0.15
+      const micBoost = micLevel
+        ? Math.min(micLevel * 2.2, 1)
+        : Math.abs(Math.sin(t * 4.5)) * 0.4 + 0.15
       targetVol = (0.2 + micBoost * 0.6) * intensityMult
     } else if (isConnected) {
       targetVol = Math.abs(Math.sin(t * 1.4)) * 0.1 * intensityMult
@@ -242,7 +246,13 @@ function AIOrb({
 
     const intensityScale = config.intensity || 1.0
     const micExpansion = isListening ? (micLevel || 0) * 0.35 : 0
-    const baseScale = !isConnected ? 0.44 : isSpeaking ? 0.72 : isListening ? 0.67 + micExpansion : 0.62
+    const baseScale = !isConnected
+      ? 0.44
+      : isSpeaking
+        ? 0.72
+        : isListening
+          ? 0.67 + micExpansion
+          : 0.62
     const targetScale = baseScale * (0.85 + intensityScale * 0.15)
     _scaleVec.set(targetScale, targetScale, targetScale)
     groupRef.current.scale.lerp(_scaleVec, delta * 3.5)
@@ -380,7 +390,9 @@ export default function AICore({
           micLevel={micLevel}
           config={{
             ...coreConfig,
-            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.4 : isListening ? 1.25 : isHovered ? 1.2 : 1),
+            speed:
+              (coreConfig.speed || 1) *
+              (isSpeaking ? 1.4 : isListening ? 1.25 : isHovered ? 1.2 : 1),
             intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.5 : isListening ? 1.3 : 1)
           }}
         />

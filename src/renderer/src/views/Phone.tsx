@@ -61,23 +61,26 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
 
   useEffect(() => {
     if (window.electron?.ipcRenderer) {
-      window.electron.ipcRenderer.invoke('adb-get-history').then((data) => {
-        if (Array.isArray(data)) {
-          setDeviceHistory(data)
+      window.electron.ipcRenderer
+        .invoke('adb-get-history')
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setDeviceHistory(data)
 
-          if (data.length > 0 && !hasAutoConnected.current) {
-            hasAutoConnected.current = true
+            if (data.length > 0 && !hasAutoConnected.current) {
+              hasAutoConnected.current = true
 
-            const lastDevice = data[data.length - 1]
+              const lastDevice = data[data.length - 1]
 
-            if (lastDevice && lastDevice.ip) {
-              setIp(lastDevice.ip)
-              setPort(lastDevice.port)
-              connectToDevice(lastDevice.ip, lastDevice.port)
+              if (lastDevice && lastDevice.ip) {
+                setIp(lastDevice.ip)
+                setPort(lastDevice.port)
+                connectToDevice(lastDevice.ip, lastDevice.port)
+              }
             }
           }
-        }
-      }).catch(() => {})
+        })
+        .catch(() => {})
     }
   }, [])
 
@@ -206,7 +209,9 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
         setIsProcessingOcr(false)
         setOcrAiStatus('Text extracted successfully.')
         if (!ocrText) {
-          setOcrText(`IRIS HARDWARE & AI SPECIFICATION\nModel: Iris Neural Core v3\nML Kit OCR Status: Active\nTarget Pipeline: Image -> OCR -> Iris AI Agent\nPermissions: Camera, Internet, Storage\nStatus: READY FOR INFERENCE`)
+          setOcrText(
+            `IRIS HARDWARE & AI SPECIFICATION\nModel: Iris Neural Core v3\nML Kit OCR Status: Active\nTarget Pipeline: Image -> OCR -> Iris AI Agent\nPermissions: Camera, Internet, Storage\nStatus: READY FOR INFERENCE`
+          )
         }
       }, 750)
     }
@@ -219,7 +224,7 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
     setOcrAiStatus('Loaded sample document')
     if (type === 'receipt') {
       setOcrText(
-`NEURAL COFFEE LABS
+        `NEURAL COFFEE LABS
 Receipt #: 88392-B
 Date: 2026-09-24 10:24 AM
 1x Nitro Cold Brew - $5.50
@@ -233,7 +238,7 @@ Transaction Status: APPROVED`
       )
     } else if (type === 'tech') {
       setOcrText(
-`IRIS ANDROID ARCHITECTURE
+        `IRIS ANDROID ARCHITECTURE
 Package: com.example.iris / com.iris.ai
 Activity: MainActivity.kt (ML Kit Text Recognition v16.0.1)
 Backend Endpoint: /api/ai/chat
@@ -243,7 +248,7 @@ Automation Engine: IrisActionEngine & IrisAccessibilityService`
       )
     } else {
       setOcrText(
-`LETTRE OFFICIELLE DE CONFIRMATION
+        `LETTRE OFFICIELLE DE CONFIRMATION
 Objet: Activation du système IRIS
 Date: 24 Septembre 2026
 Nous confirmons par la présente l'activation réussie du module de vision et de reconnaissance optique de caractères (OCR). Les données sont synchronisées en temps réel avec le processeur central d'intelligence artificielle.
@@ -409,7 +414,11 @@ Signature: Équipe Iris Core`
                 disabled={!ocrText}
                 className="text-[10px] font-mono text-zinc-400 hover:text-emerald-300 flex items-center gap-1 transition-colors cursor-pointer"
               >
-                {ocrCopied ? <RiCheckLine size={14} className="text-emerald-400" /> : <RiFileCopyLine size={14} />}
+                {ocrCopied ? (
+                  <RiCheckLine size={14} className="text-emerald-400" />
+                ) : (
+                  <RiFileCopyLine size={14} />
+                )}
                 {ocrCopied ? 'COPIED' : 'COPY'}
               </button>
             </div>
@@ -902,7 +911,9 @@ Signature: Équipe Iris Core`
                 size={24}
                 className="text-emerald-400 group-hover:scale-110 transition-transform sm:w-7 sm:h-7"
               />
-              <span className="text-[10px] font-bold text-emerald-300 tracking-widest">OCR SCAN</span>
+              <span className="text-[10px] font-bold text-emerald-300 tracking-widest">
+                OCR SCAN
+              </span>
             </button>
             <button
               onClick={() => executeQuickCommand('camera')}

@@ -2,24 +2,24 @@
 
 IRIS ships in two shapes from the same source tree:
 
-1. **Web** — a static bundle plus a single Node process that serves the UI *and*
+1. **Web** — a static bundle plus a single Node process that serves the UI _and_
    the backend API (agents, memory, search, RAG, YouTube, workspace…).
 2. **Desktop** — an Electron shell that boots that same Node server internally
    and loads the renderer from it, so every `/api/*` call behaves identically.
 
 ## Quick reference
 
-| Command                 | Output                  | Purpose                                  |
-| ----------------------- | ----------------------- | ---------------------------------------- |
-| `npm run build`         | `dist/`                 | Client bundle (React + Tailwind + R3F)   |
-| `npm run build:server`  | `dist-server/server.mjs`| Node HTTP server (ESM, deps external)    |
-| `npm start`             | –                       | Serves `dist/` + `/api` on `PORT` (3000) |
-| `npm run serve`         | –                       | `build` + `build:server` + `start`       |
-| `npm run build:electron`| `out/`                  | Electron main / preload / renderer       |
-| `npm run dist:win`      | `dist/` installers      | Windows NSIS installer                   |
-| `npm run dist:mac`      | `dist/` installers      | macOS DMG                                |
-| `npm run dist:linux`    | `dist/` installers      | AppImage / deb / snap                    |
-| `npm run build:all`     | all of the above        | CI convenience target                    |
+| Command                  | Output                   | Purpose                                  |
+| ------------------------ | ------------------------ | ---------------------------------------- |
+| `npm run build`          | `dist/`                  | Client bundle (React + Tailwind + R3F)   |
+| `npm run build:server`   | `dist-server/server.mjs` | Node HTTP server (ESM, deps external)    |
+| `npm start`              | –                        | Serves `dist/` + `/api` on `PORT` (3000) |
+| `npm run serve`          | –                        | `build` + `build:server` + `start`       |
+| `npm run build:electron` | `out/`                   | Electron main / preload / renderer       |
+| `npm run dist:win`       | `dist/` installers       | Windows NSIS installer                   |
+| `npm run dist:mac`       | `dist/` installers       | macOS DMG                                |
+| `npm run dist:linux`     | `dist/` installers       | AppImage / deb / snap                    |
+| `npm run build:all`      | all of the above         | CI convenience target                    |
 
 ## Web deployment
 

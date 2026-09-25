@@ -191,13 +191,19 @@ export const AISmoothnessView: React.FC<AISmoothnessProps> = ({ glassPanel: _gla
 
       // Update progress & active section
       if (maxScrollRef.current > 0) {
-        const progress = Math.min(100, Math.max(0, (currentRef.current / maxScrollRef.current) * 100))
+        const progress = Math.min(
+          100,
+          Math.max(0, (currentRef.current / maxScrollRef.current) * 100)
+        )
         setScrollProgress(progress)
       }
 
       // Update active card index based on height
       const viewH = viewport.clientHeight || 800
-      const currSection = Math.min(5, Math.max(1, Math.floor(currentRef.current / (viewH * 0.85)) + 1))
+      const currSection = Math.min(
+        5,
+        Math.max(1, Math.floor(currentRef.current / (viewH * 0.85)) + 1)
+      )
       setActiveSection(currSection)
 
       animId = requestAnimationFrame(tick)
@@ -285,7 +291,11 @@ function tick(now) {
 
           {/* Real-time Display FPS readout */}
           <div className="px-3 py-1.5 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 shadow-2xl flex items-center gap-2 text-xs font-mono text-zinc-300">
-            <Activity size={13} className="text-cyan-400 animate-spin" style={{ animationDuration: '4s' }} />
+            <Activity
+              size={13}
+              className="text-cyan-400 animate-spin"
+              style={{ animationDuration: '4s' }}
+            />
             <span className="font-bold tabular-nums text-cyan-300">{currentFps} FPS</span>
           </div>
         </div>
@@ -470,7 +480,7 @@ function tick(now) {
               </div>
 
               <pre className="p-4 rounded-xl bg-black/60 border border-white/10 font-mono text-xs text-purple-200 overflow-x-auto max-h-80 leading-relaxed">
-{`/* 1. CSS GPU Isolation Setup */
+                {`/* 1. CSS GPU Isolation Setup */
 html, body {
   overflow: hidden;
   overscroll-behavior: none;
@@ -532,8 +542,8 @@ function tick(now) {
             Buttery Smooth Scrolling
           </h1>
           <p className="max-w-xl text-zinc-300 text-base md:text-lg leading-relaxed mb-8 opacity-80">
-            This engine bypasses native browser scroll entirely. Instead it tracks your wheel,
-            touch gestures, and keyboard inputs, lerping the visible viewport content every animation
+            This engine bypasses native browser scroll entirely. Instead it tracks your wheel, touch
+            gestures, and keyboard inputs, lerping the visible viewport content every animation
             frame using a GPU-composited hardware transform — staying fluid at whatever refresh rate
             your display runs (60 / 90 / 120 / 144 / 240Hz).
           </p>
@@ -581,8 +591,8 @@ function tick(now) {
             <code className="bg-white/10 px-2 py-0.5 rounded text-purple-300 font-mono text-sm">
               dt / (1000 / 60)
             </code>
-            ), not a static constant. Motion velocity and deceleration feel identical on 60fps standard
-            screens, 120fps ProMotion displays, and 240Hz esports monitors.
+            ), not a static constant. Motion velocity and deceleration feel identical on 60fps
+            standard screens, 120fps ProMotion displays, and 240Hz esports monitors.
           </p>
         </section>
 

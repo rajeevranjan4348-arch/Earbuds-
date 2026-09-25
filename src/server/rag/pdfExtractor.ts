@@ -50,7 +50,7 @@ export class PDFExtractor {
       try {
         const pdfModule: any = await import('pdf-parse')
         const ParserClass = pdfModule.PDFParse || pdfModule.default?.PDFParse
-        
+
         if (ParserClass && typeof ParserClass === 'function') {
           const parser = new ParserClass({ data: buffer })
           try {
@@ -243,7 +243,10 @@ Preserve tables, lists, and headings. Remove arbitrary scanner artifacts.`
 
         return pages
       } catch (ocrErr: any) {
-        console.warn(`[PDFExtractor] Gemini OCR attempt with ${modelCandidate} failed:`, ocrErr?.message)
+        console.warn(
+          `[PDFExtractor] Gemini OCR attempt with ${modelCandidate} failed:`,
+          ocrErr?.message
+        )
       }
     }
     return null

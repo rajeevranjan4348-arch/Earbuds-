@@ -137,16 +137,26 @@ export class CentralAgentOrchestrator {
         if (typeof task.result === 'string') {
           resultsSummary.push(`- [${task.assignedAgent}] ${task.description}: ${task.result}`)
         } else if (task.result.summary) {
-          resultsSummary.push(`- [${task.assignedAgent}] ${task.description}: ${task.result.summary}`)
+          resultsSummary.push(
+            `- [${task.assignedAgent}] ${task.description}: ${task.result.summary}`
+          )
         } else if (task.result.content) {
-          resultsSummary.push(`- [${task.assignedAgent}] ${task.description}: ${String(task.result.content).slice(0, 500)}`)
+          resultsSummary.push(
+            `- [${task.assignedAgent}] ${task.description}: ${String(task.result.content).slice(0, 500)}`
+          )
         } else if (task.result.analysis) {
-          resultsSummary.push(`- [${task.assignedAgent}] ${task.description}: ${task.result.analysis}`)
+          resultsSummary.push(
+            `- [${task.assignedAgent}] ${task.description}: ${task.result.analysis}`
+          )
         } else {
-          resultsSummary.push(`- [${task.assignedAgent}] ${task.description}: ${JSON.stringify(task.result).slice(0, 300)}`)
+          resultsSummary.push(
+            `- [${task.assignedAgent}] ${task.description}: ${JSON.stringify(task.result).slice(0, 300)}`
+          )
         }
       } else if (task.status === 'FAILED') {
-        resultsSummary.push(`- [${task.assignedAgent} FAILED] ${task.description}: Error - ${task.error || 'Unknown error'}`)
+        resultsSummary.push(
+          `- [${task.assignedAgent} FAILED] ${task.description}: Error - ${task.error || 'Unknown error'}`
+        )
       }
     }
 
@@ -192,22 +202,30 @@ Synthesize an articulate, complete, helpful final response answering the user's 
         return { resumedCount: 0 }
       }
 
-      console.info(`[CentralAgentOrchestrator] Resuming ${unfinished.length} unfinished task graph(s)...`)
+      console.info(
+        `[CentralAgentOrchestrator] Resuming ${unfinished.length} unfinished task graph(s)...`
+      )
 
       for (const graph of unfinished) {
         brainTaskPersistence.prepareForRecovery(graph)
         // Run graph
-        taskScheduler.runGraph(graph, () => {
-          brainTaskPersistence.saveGraph(graph)
-        }).then((completedGraph) => {
-          this.synthesizeResponse(completedGraph).then((synthesis) => {
-            completedGraph.finalSynthesis = synthesis
-            brainTaskPersistence.saveGraph(completedGraph)
-            brainMemoryManager.recordTaskCompletion(completedGraph)
+        taskScheduler
+          .runGraph(graph, () => {
+            brainTaskPersistence.saveGraph(graph)
           })
-        }).catch((err) => {
-          console.warn(`[CentralAgentOrchestrator] Graph recovery failed for ${graph.graphId}:`, err)
-        })
+          .then((completedGraph) => {
+            this.synthesizeResponse(completedGraph).then((synthesis) => {
+              completedGraph.finalSynthesis = synthesis
+              brainTaskPersistence.saveGraph(completedGraph)
+              brainMemoryManager.recordTaskCompletion(completedGraph)
+            })
+          })
+          .catch((err) => {
+            console.warn(
+              `[CentralAgentOrchestrator] Graph recovery failed for ${graph.graphId}:`,
+              err
+            )
+          })
       }
 
       return { resumedCount: unfinished.length }

@@ -5,7 +5,17 @@ import { geminiLiveVoiceClient } from '../services/geminiLiveVoiceClient'
 
 interface UseIrisVoiceOptions {
   onNavigate?: (
-    tab: 'DASHBOARD' | 'YOUTUBE' | 'WORKSPACE' | 'MAPS' | 'NOTES' | 'GALLERY' | 'PHONE' | 'SETTINGS' | 'SMOOTHNESS' | string
+    tab:
+      | 'DASHBOARD'
+      | 'YOUTUBE'
+      | 'WORKSPACE'
+      | 'MAPS'
+      | 'NOTES'
+      | 'GALLERY'
+      | 'PHONE'
+      | 'SETTINGS'
+      | 'SMOOTHNESS'
+      | string
   ) => void
   onVisionMode?: (mode: 'off' | 'camera' | 'screen') => void
   onKnowledgeOpen?: (open: boolean) => void

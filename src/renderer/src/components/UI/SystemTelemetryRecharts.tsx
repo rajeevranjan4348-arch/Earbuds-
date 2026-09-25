@@ -77,17 +77,22 @@ const InteractiveTelemetryTooltip = ({ active, payload, label }: any) => {
 
   const getStatusBadge = (name: string, value: number) => {
     if (name === 'cpu' || name === 'neuralLoad') {
-      if (value > 80) return { label: 'CRITICAL', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
-      if (value > 60) return { label: 'ELEVATED', color: 'text-amber-400 bg-amber-950/60 border-amber-500/40' }
+      if (value > 80)
+        return { label: 'CRITICAL', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
+      if (value > 60)
+        return { label: 'ELEVATED', color: 'text-amber-400 bg-amber-950/60 border-amber-500/40' }
       return { label: 'OPTIMAL', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-500/40' }
     }
     if (name === 'ram') {
-      if (value > 85) return { label: 'HIGH', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
-      if (value > 70) return { label: 'MODERATE', color: 'text-amber-400 bg-amber-950/60 border-amber-500/40' }
+      if (value > 85)
+        return { label: 'HIGH', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
+      if (value > 70)
+        return { label: 'MODERATE', color: 'text-amber-400 bg-amber-950/60 border-amber-500/40' }
       return { label: 'HEALTHY', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-500/40' }
     }
     if (name === 'temp') {
-      if (value > 75) return { label: 'HOT', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
+      if (value > 75)
+        return { label: 'HOT', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40' }
       return { label: 'NORMAL', color: 'text-cyan-400 bg-cyan-950/60 border-cyan-500/40' }
     }
     return { label: 'ACTIVE', color: 'text-zinc-300 bg-zinc-800 border-zinc-700' }
@@ -114,9 +119,15 @@ const InteractiveTelemetryTooltip = ({ active, payload, label }: any) => {
           else if (entry.name.includes('latency')) unit = ' ms'
 
           return (
-            <div key={`entry-${index}`} className="flex items-center justify-between gap-3 text-[11px]">
+            <div
+              key={`entry-${index}`}
+              className="flex items-center justify-between gap-3 text-[11px]"
+            >
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                <span
+                  className="w-2 h-2 rounded-full shadow-sm"
+                  style={{ backgroundColor: entry.color }}
+                />
                 <span className="text-zinc-300 font-medium capitalize">{entry.name}:</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -124,7 +135,9 @@ const InteractiveTelemetryTooltip = ({ active, payload, label }: any) => {
                   {entry.value}
                   <span className="text-zinc-400 font-normal text-[10px] ml-0.5">{unit}</span>
                 </span>
-                <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border ${status.color}`}>
+                <span
+                  className={`text-[8px] font-bold px-1.5 py-0.2 rounded border ${status.color}`}
+                >
                   {status.label}
                 </span>
               </div>
@@ -325,7 +338,11 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
             }`}
             title={isLivePaused ? 'Resume Live Polling' : 'Pause Live Polling'}
           >
-            <RefreshCw size={11} className={isLivePaused ? '' : 'animate-spin'} style={{ animationDuration: '6s' }} />
+            <RefreshCw
+              size={11}
+              className={isLivePaused ? '' : 'animate-spin'}
+              style={{ animationDuration: '6s' }}
+            />
             <span>{isLivePaused ? 'Resume' : 'Live'}</span>
           </button>
 
@@ -383,10 +400,14 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className={isSelected ? 'text-emerald-400' : 'text-zinc-500'}>{tab.icon}</span>
+                <span className={isSelected ? 'text-emerald-400' : 'text-zinc-500'}>
+                  {tab.icon}
+                </span>
                 <span className="text-[11px] font-bold truncate">{tab.label}</span>
               </div>
-              <span className={`text-[10px] font-bold ${isSelected ? 'text-emerald-300' : 'text-zinc-500'}`}>
+              <span
+                className={`text-[10px] font-bold ${isSelected ? 'text-emerald-300' : 'text-zinc-500'}`}
+              >
                 {tab.metric}
               </span>
             </motion.button>
@@ -413,8 +434,22 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               <XAxis dataKey="time" stroke="#71717a" fontSize={9} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={9} domain={[0, 100]} tickLine={false} unit="%" />
               <Tooltip content={<InteractiveTelemetryTooltip />} />
-              <Area type="monotone" dataKey="cpu" name="CPU" stroke="#10b981" strokeWidth={2} fill="url(#cpuGrad)" />
-              <Area type="monotone" dataKey="ram" name="RAM" stroke="#06b6d4" strokeWidth={2} fill="url(#ramGrad)" />
+              <Area
+                type="monotone"
+                dataKey="cpu"
+                name="CPU"
+                stroke="#10b981"
+                strokeWidth={2}
+                fill="url(#cpuGrad)"
+              />
+              <Area
+                type="monotone"
+                dataKey="ram"
+                name="RAM"
+                stroke="#06b6d4"
+                strokeWidth={2}
+                fill="url(#ramGrad)"
+              />
             </AreaChart>
           ) : activeTab === 'cpu' ? (
             <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -428,8 +463,22 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               <XAxis dataKey="time" stroke="#71717a" fontSize={9} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={9} domain={[0, 100]} tickLine={false} unit="%" />
               <Tooltip content={<InteractiveTelemetryTooltip />} />
-              <Area type="monotone" dataKey="cpu" name="CPU Load" stroke="#10b981" strokeWidth={2.5} fill="url(#cpuSingleGrad)" />
-              <Line type="monotone" dataKey="temp" name="Temperature" stroke="#f59e0b" strokeWidth={1.5} dot={false} />
+              <Area
+                type="monotone"
+                dataKey="cpu"
+                name="CPU Load"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                fill="url(#cpuSingleGrad)"
+              />
+              <Line
+                type="monotone"
+                dataKey="temp"
+                name="Temperature"
+                stroke="#f59e0b"
+                strokeWidth={1.5}
+                dot={false}
+              />
             </AreaChart>
           ) : activeTab === 'memory' ? (
             <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -443,7 +492,14 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               <XAxis dataKey="time" stroke="#71717a" fontSize={9} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={9} domain={[0, 100]} tickLine={false} unit="%" />
               <Tooltip content={<InteractiveTelemetryTooltip />} />
-              <Area type="monotone" dataKey="ram" name="RAM Usage" stroke="#06b6d4" strokeWidth={2.5} fill="url(#ramSingleGrad)" />
+              <Area
+                type="monotone"
+                dataKey="ram"
+                name="RAM Usage"
+                stroke="#06b6d4"
+                strokeWidth={2.5}
+                fill="url(#ramSingleGrad)"
+              />
             </AreaChart>
           ) : activeTab === 'network' ? (
             <LineChart data={history} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
@@ -451,8 +507,22 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               <XAxis dataKey="time" stroke="#71717a" fontSize={9} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={9} tickLine={false} unit="k" />
               <Tooltip content={<InteractiveTelemetryTooltip />} />
-              <Line type="monotone" dataKey="rx" name="Download (rx)" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="tx" name="Upload (tx)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="rx"
+                name="Download (rx)"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="tx"
+                name="Upload (tx)"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           ) : (
             <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -466,7 +536,14 @@ export const SystemTelemetryRecharts: React.FC<SystemTelemetryProps> = ({
               <XAxis dataKey="time" stroke="#71717a" fontSize={9} tickLine={false} />
               <YAxis stroke="#71717a" fontSize={9} domain={[0, 100]} tickLine={false} unit="%" />
               <Tooltip content={<InteractiveTelemetryTooltip />} />
-              <Area type="monotone" dataKey="neuralLoad" name="Neural Inference" stroke="#a855f7" strokeWidth={2.5} fill="url(#neuralGrad)" />
+              <Area
+                type="monotone"
+                dataKey="neuralLoad"
+                name="Neural Inference"
+                stroke="#a855f7"
+                strokeWidth={2.5}
+                fill="url(#neuralGrad)"
+              />
             </AreaChart>
           )}
         </ResponsiveContainer>

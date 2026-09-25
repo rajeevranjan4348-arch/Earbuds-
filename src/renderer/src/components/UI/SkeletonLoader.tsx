@@ -36,7 +36,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
 export const CardSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => {
   return (
-    <div className={`bg-zinc-950/60 border border-white/10 rounded-2xl p-5 flex flex-col gap-4 shadow-lg ${className}`}>
+    <div
+      className={`bg-zinc-950/60 border border-white/10 rounded-2xl p-5 flex flex-col gap-4 shadow-lg ${className}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
@@ -68,7 +70,10 @@ export const DashboardSkeleton: React.FC = () => {
       {/* Top Banner / Stats Header Skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-zinc-950/50 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+          <div
+            key={i}
+            className="bg-zinc-950/50 border border-white/10 rounded-xl p-4 flex items-center justify-between"
+          >
             <div className="flex flex-col gap-2">
               <Skeleton className="w-16 h-3 rounded" />
               <Skeleton className="w-24 h-6 rounded-md" />
@@ -139,7 +144,9 @@ export const WorkspaceSkeleton: React.FC = () => {
   )
 }
 
-export const ModuleViewSkeleton: React.FC<{ title?: string }> = ({ title = 'Loading Module Data' }) => {
+export const ModuleViewSkeleton: React.FC<{ title?: string }> = ({
+  title = 'Loading Module Data'
+}) => {
   return (
     <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-zinc-950/40 backdrop-blur-xl border border-white/5 rounded-2xl gap-6">
       <div className="relative flex items-center justify-center">

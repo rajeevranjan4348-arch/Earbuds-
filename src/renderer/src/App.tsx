@@ -1,4 +1,3 @@
-import React from 'react'
 import IndexRoot from './IRISRoot'
 import { Mem0Provider } from './context/Mem0Context'
 

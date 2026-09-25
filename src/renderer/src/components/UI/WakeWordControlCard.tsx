@@ -61,7 +61,8 @@ export const WakeWordControlCard: React.FC<WakeWordControlCardProps> = ({
               </span>
             </span>
             <span className="text-[11px] text-zinc-400 font-sans">
-              Say <strong className="text-emerald-400 font-mono">"Hey IRIS"</strong> or <strong className="text-emerald-400 font-mono">"OK IRIS"</strong> to trigger anytime
+              Say <strong className="text-emerald-400 font-mono">"Hey IRIS"</strong> or{' '}
+              <strong className="text-emerald-400 font-mono">"OK IRIS"</strong> to trigger anytime
             </span>
           </div>
         </div>
@@ -168,7 +169,9 @@ export const WakeWordControlCard: React.FC<WakeWordControlCardProps> = ({
           >
             <div className="flex items-center gap-1.5 truncate">
               <Sparkles size={12} className="animate-spin" />
-              <span>Last Wake: <strong>"{lastEvent.phrase}"</strong></span>
+              <span>
+                Last Wake: <strong>"{lastEvent.phrase}"</strong>
+              </span>
               {lastEvent.commandTail && (
                 <span className="text-zinc-300 truncate">({lastEvent.commandTail})</span>
               )}

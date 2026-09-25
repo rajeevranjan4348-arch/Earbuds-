@@ -460,7 +460,10 @@ export class ToolRegistry {
       permissionLevel: 'standard',
       timeoutMs: 30000,
       execute: async (args) => {
-        const trends = await trendDiscoveryEngine.discoverTrends({ searchQuery: args.topicTitle, count: 1 })
+        const trends = await trendDiscoveryEngine.discoverTrends({
+          searchQuery: args.topicTitle,
+          count: 1
+        })
         const topic = trends[0] || {
           id: `topic_${Date.now()}`,
           title: args.topicTitle,
@@ -483,7 +486,10 @@ export class ToolRegistry {
           isDuplicate: false
         }
 
-        const job = await youtubePipelineManager.createJob(topic, (args.format as any) || 'STANDARD')
+        const job = await youtubePipelineManager.createJob(
+          topic,
+          (args.format as any) || 'STANDARD'
+        )
         const result = await youtubePipelineManager.runFullPipeline(job.jobId)
         return result
       }
@@ -492,7 +498,8 @@ export class ToolRegistry {
     // 20. YouTube Content Queue
     this.tools.set('youtube_get_pipeline_queue', {
       name: 'youtube_get_pipeline_queue',
-      description: 'Returns all active content jobs in the YouTube production pipeline with their current stages.',
+      description:
+        'Returns all active content jobs in the YouTube production pipeline with their current stages.',
       parameters: {
         type: 'OBJECT',
         properties: {}
@@ -507,12 +514,16 @@ export class ToolRegistry {
     // 21. YouTube Approve Video Job
     this.tools.set('youtube_approve_publish_job', {
       name: 'youtube_approve_publish_job',
-      description: 'Approves a video job currently in review for immediate YouTube public release or scheduled publishing.',
+      description:
+        'Approves a video job currently in review for immediate YouTube public release or scheduled publishing.',
       parameters: {
         type: 'OBJECT',
         properties: {
           jobId: { type: 'STRING', description: 'ID of the content job to approve.' },
-          scheduleFor: { type: 'STRING', description: 'Optional ISO timestamp or date/time for scheduled release.' }
+          scheduleFor: {
+            type: 'STRING',
+            description: 'Optional ISO timestamp or date/time for scheduled release.'
+          }
         },
         required: ['jobId']
       },
@@ -526,11 +537,15 @@ export class ToolRegistry {
     // 22. YouTube Channel Analytics
     this.tools.set('youtube_get_channel_analytics', {
       name: 'youtube_get_channel_analytics',
-      description: 'Retrieves comprehensive channel analytics: views, retention curves, CTR, subscriber growth, and AI insights.',
+      description:
+        'Retrieves comprehensive channel analytics: views, retention curves, CTR, subscriber growth, and AI insights.',
       parameters: {
         type: 'OBJECT',
         properties: {
-          period: { type: 'STRING', description: 'Analytics timeframe (e.g. "Last 28 Days", "Last 90 Days").' }
+          period: {
+            type: 'STRING',
+            description: 'Analytics timeframe (e.g. "Last 28 Days", "Last 90 Days").'
+          }
         }
       },
       permissionLevel: 'standard',
@@ -543,11 +558,16 @@ export class ToolRegistry {
     // 23. YouTube Command Executor
     this.tools.set('youtube_execute_command', {
       name: 'youtube_execute_command',
-      description: 'Processes high-level natural language commands for channel management, publishing modes, or pipeline coordination.',
+      description:
+        'Processes high-level natural language commands for channel management, publishing modes, or pipeline coordination.',
       parameters: {
         type: 'OBJECT',
         properties: {
-          command: { type: 'STRING', description: 'Natural language instruction (e.g. "Find today\'s trends", "Enable semi-auto mode").' }
+          command: {
+            type: 'STRING',
+            description:
+              'Natural language instruction (e.g. "Find today\'s trends", "Enable semi-auto mode").'
+          }
         },
         required: ['command']
       },
@@ -593,7 +613,8 @@ export class ToolRegistry {
           target: issue,
           findings: {
             errorsFound: 0,
-            diagnostics: 'Static analysis and test suite evaluated. All dependencies, imports, and syntax trees verified clean.',
+            diagnostics:
+              'Static analysis and test suite evaluated. All dependencies, imports, and syntax trees verified clean.',
             appliedPatches: [
               'Gemini Multimodal Live API WebSocket bridge initialized',
               'Raw 16kHz PCM audio streaming pipeline connected',
@@ -616,14 +637,26 @@ export class ToolRegistry {
         properties: {
           category: {
             type: 'STRING',
-            enum: ['app', 'notification', 'media', 'bluetooth', 'settings', 'contacts', 'communication'],
+            enum: [
+              'app',
+              'notification',
+              'media',
+              'bluetooth',
+              'settings',
+              'contacts',
+              'communication'
+            ],
             description: 'Category of Android device operation.'
           },
           action: {
             type: 'STRING',
-            description: 'Specific action: launch, pause_media, play_media, next_track, get_battery, toggle_dnd, search_contact, send_message.'
+            description:
+              'Specific action: launch, pause_media, play_media, next_track, get_battery, toggle_dnd, search_contact, send_message.'
           },
-          target: { type: 'STRING', description: 'Target app package, contact name, or setting key.' },
+          target: {
+            type: 'STRING',
+            description: 'Target app package, contact name, or setting key.'
+          },
           payload: { type: 'STRING', description: 'Optional content or message body.' }
         },
         required: ['category', 'action']
@@ -652,7 +685,13 @@ export class ToolRegistry {
         properties: {
           action: {
             type: 'STRING',
-            enum: ['create_reminder', 'schedule_task', 'get_queue', 'daily_summary', 'resume_tasks'],
+            enum: [
+              'create_reminder',
+              'schedule_task',
+              'get_queue',
+              'daily_summary',
+              'resume_tasks'
+            ],
             description: 'Proactive scheduling action.'
           },
           title: { type: 'STRING', description: 'Title or reminder text.' },

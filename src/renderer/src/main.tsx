@@ -11,7 +11,10 @@ if (typeof window !== 'undefined') {
   const originalWarn = console.warn
   console.warn = (...args: any[]) => {
     const firstArg = args[0]
-    if (typeof firstArg === 'string' && firstArg.includes('THREE.Clock: This module has been deprecated')) {
+    if (
+      typeof firstArg === 'string' &&
+      firstArg.includes('THREE.Clock: This module has been deprecated')
+    ) {
       return
     }
     originalWarn.apply(console, args)
@@ -27,4 +30,3 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>
 )
-

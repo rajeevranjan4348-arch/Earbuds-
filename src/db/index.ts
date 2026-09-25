@@ -3,6 +3,7 @@ import { Pool } from 'pg'
 import * as schema from './schema'
 
 declare global {
+  // eslint-disable-next-line no-var
   var _postgresPool: Pool | undefined
 }
 
@@ -40,7 +41,6 @@ export const getDb = () => {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var _postgresDb: ReturnType<typeof drizzle<typeof schema>> | undefined
 }
 

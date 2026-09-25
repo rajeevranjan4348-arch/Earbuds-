@@ -3,7 +3,12 @@
  * Verifies the integrity, completeness, and correctness of tool execution outputs.
  */
 
-import type { PlanStep, StepVerificationResult, VerificationCriteria, FallbackStrategy } from './types'
+import type {
+  PlanStep,
+  StepVerificationResult,
+  VerificationCriteria,
+  FallbackStrategy
+} from './types'
 
 export class StepVerifier {
   /**
@@ -41,7 +46,11 @@ export class StepVerifier {
 
     // 3. Status OK criteria
     if (criteria.type === 'status_ok') {
-      if (typeof rawOutput === 'object' && rawOutput.status && (rawOutput.status === 'error' || rawOutput.status === 'failed')) {
+      if (
+        typeof rawOutput === 'object' &&
+        rawOutput.status &&
+        (rawOutput.status === 'error' || rawOutput.status === 'failed')
+      ) {
         return {
           valid: false,
           reason: `Status failed: ${rawOutput.message || rawOutput.status}`,
@@ -77,7 +86,11 @@ export class StepVerifier {
     }
 
     // 5. Schema / Expected fields check
-    if (criteria.type === 'schema' && criteria.expectedFields && criteria.expectedFields.length > 0) {
+    if (
+      criteria.type === 'schema' &&
+      criteria.expectedFields &&
+      criteria.expectedFields.length > 0
+    ) {
       if (typeof rawOutput !== 'object') {
         return {
           valid: false,
@@ -85,7 +98,9 @@ export class StepVerifier {
           suggestedFallback: step.fallbackStrategy
         }
       }
-      const missing = criteria.expectedFields.filter((f) => !(f in rawOutput) || rawOutput[f] === undefined)
+      const missing = criteria.expectedFields.filter(
+        (f) => !(f in rawOutput) || rawOutput[f] === undefined
+      )
       if (missing.length > 0) {
         return {
           valid: false,

@@ -64,9 +64,7 @@ export class GeminiLiveService {
   public getClient(): GoogleGenAI | null {
     loadEnv()
     const key =
-      process.env.GEMINI_API_KEY ||
-      process.env.VITE_GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY
+      process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY
     if (!key) return null
 
     if (!this.client) {
@@ -148,7 +146,9 @@ export class GeminiLiveService {
       await this.handleClientConnection(clientWs, req)
     })
 
-    console.log('[Gemini Live Service] WebSocket server endpoint attached at /api/ai/live-ws and /live')
+    console.log(
+      '[Gemini Live Service] WebSocket server endpoint attached at /api/ai/live-ws and /live'
+    )
   }
 
   /**
@@ -157,7 +157,8 @@ export class GeminiLiveService {
   private async handleClientConnection(clientWs: WebSocket, req: IncomingMessage): Promise<void> {
     const host = req.headers.host || 'localhost'
     const parsedUrl = new URL(req.url || '/', `http://${host}`)
-    const queryVoice = parsedUrl.searchParams.get('voice') as 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr'
+    const queryVoice = parsedUrl.searchParams.get('voice') as
+      'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr'
     let voiceName: 'Puck' | 'Charon' | 'Kore' | 'Fenrir' | 'Zephyr' = queryVoice || 'Zephyr'
 
     let liveSession: any = null
@@ -267,7 +268,11 @@ export class GeminiLiveService {
               // 5. Tool call handling
               if (message.toolCall?.functionCalls && liveSession) {
                 const calls = message.toolCall.functionCalls
-                const responses: Array<{ id?: string; name?: string; response: Record<string, any> }> = []
+                const responses: Array<{
+                  id?: string
+                  name?: string
+                  response: Record<string, any>
+                }> = []
 
                 for (const call of calls) {
                   const callName = call.name || ''
@@ -279,7 +284,10 @@ export class GeminiLiveService {
                   })
 
                   try {
-                    const result = await toolRegistry.executeTool(callName, (call.args as any) || {})
+                    const result = await toolRegistry.executeTool(
+                      callName,
+                      (call.args as any) || {}
+                    )
                     responses.push({
                       id: call.id,
                       name: callName,
@@ -321,7 +329,10 @@ export class GeminiLiveService {
           }
         })
       } catch (err: any) {
-        console.warn('[Gemini Live] Falling back to continuous HTTP audio bridge:', err?.message || err)
+        console.warn(
+          '[Gemini Live] Falling back to continuous HTTP audio bridge:',
+          err?.message || err
+        )
       }
     }
 
@@ -525,8 +536,7 @@ export class GeminiLiveService {
         }
       })
 
-      const rawAudio =
-        ttsRes.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
+      const rawAudio = ttsRes.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
       if (rawAudio) {
         audioBase64 = rawAudio
       }
@@ -582,7 +592,8 @@ export class GeminiLiveService {
 
     // Use the latest audio chunk or combined audio for multimodal inference
     const chunkToProcess =
-      request.audioChunk || (session.chunks.length > 0 ? session.chunks[session.chunks.length - 1] : null)
+      request.audioChunk ||
+      (session.chunks.length > 0 ? session.chunks[session.chunks.length - 1] : null)
 
     if (ai && chunkToProcess) {
       try {

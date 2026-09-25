@@ -1162,7 +1162,8 @@ class VoiceService {
     } catch (err: any) {
       console.warn('[AI_REQUEST_NOTICE]', { requestId, message: err?.message || err })
       const assistantMsgId = `msg_model_${requestId}`
-      const isQuota = String(err?.message || err).includes('quota') || String(err?.message || err).includes('429')
+      const isQuota =
+        String(err?.message || err).includes('quota') || String(err?.message || err).includes('429')
       const errorMsg = isQuota
         ? `⚠️ **AI Rate Limit Notice:** The AI model is temporarily rate limited. Your query *" ${text} "* was safely acknowledged. Please retry in a few moments.`
         : `⚠️ **AI Notice:** Processing *" ${text} "* encountered a temporary issue (${err?.message || 'Execution note'}). Standing by to assist.`
@@ -1182,7 +1183,12 @@ class VoiceService {
       }
       this.isProcessing = false
       this.setStatus('idle', 'Ready')
-      this.speak(isQuota ? 'Rate limit reached on AI model. Responding in local mode.' : 'Received your instruction. Standing by to assist.', true)
+      this.speak(
+        isQuota
+          ? 'Rate limit reached on AI model. Responding in local mode.'
+          : 'Received your instruction. Standing by to assist.',
+        true
+      )
     }
   }
 

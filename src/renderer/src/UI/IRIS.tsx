@@ -10,9 +10,8 @@ import {
   RiCompass3Line,
   RiChat3Line
 } from 'react-icons/ri'
-import { FileText, Database, Maximize2, MessageSquare, Mic, Cloud, Terminal } from 'lucide-react'
+import { Maximize2 } from 'lucide-react'
 import { shortcutService, formatKeyCombo } from '../services/shortcutService'
-import { workspacePersistenceService } from '../services/workspacePersistenceService'
 
 import DashboardView from '../views/Dashboard'
 import PhoneView from '../views/Phone'

@@ -13,7 +13,8 @@ import { coreSettingsService } from './coreSettingsService'
 export interface OfflineResponseResult {
   text: string
   confidence: number
-  source: 'cache_exact' | 'cache_semantic' | 'local_knowledge' | 'local_computation' | 'offline_context'
+  source:
+    'cache_exact' | 'cache_semantic' | 'local_knowledge' | 'local_computation' | 'offline_context'
   executionTimeMs: number
   contextTokensUsed: number
 }
@@ -167,9 +168,7 @@ class OfflineAiResponseEngine {
   /**
    * Safe offline math expression evaluator
    */
-  private evaluateMathExpression(
-    text: string
-  ): { expression: string; result: string } | null {
+  private evaluateMathExpression(text: string): { expression: string; result: string } | null {
     // Matches "calculate 25 * 4", "what is 500 / 12", "128 * 1024", etc.
     const match = text.match(
       /(?:calculate|what is|compute|eval|math|solve)?\s*([0-9.\s+\-*/^()%,]{3,})/i
@@ -193,7 +192,9 @@ class OfflineAiResponseEngine {
       if (typeof res === 'number' && !isNaN(res) && isFinite(res)) {
         return {
           expression: rawExpr,
-          result: Number.isInteger(res) ? res.toLocaleString() : res.toFixed(4).replace(/\.?0+$/, '')
+          result: Number.isInteger(res)
+            ? res.toLocaleString()
+            : res.toFixed(4).replace(/\.?0+$/, '')
         }
       }
     } catch (_e) {

@@ -1,6 +1,6 @@
 /**
  * IRIS Keyboard Shortcuts & Global Hotkeys Service
- * 
+ *
  * Manages customizable key bindings for IRIS AI:
  * - Trigger / Toggle AI voice input
  * - Toggle Core UI (Minimalist HUD mode vs Full Interface)
@@ -10,7 +10,7 @@
  * - Cycle Vision modes (Camera / Screen / Off)
  * - Toggle PDF / Document Knowledge Base
  * - Open Settings
- * 
+ *
  * Features:
  * - Real-time keyboard recording
  * - Conflict detection between shortcuts

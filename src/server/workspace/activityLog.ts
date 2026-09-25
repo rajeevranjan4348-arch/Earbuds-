@@ -86,7 +86,9 @@ export class WorkspaceActivityLogger {
     }
   }
 
-  public log(entry: Omit<WorkspaceActivityItem, 'id' | 'timestamp'> & { timestamp?: number }): WorkspaceActivityItem {
+  public log(
+    entry: Omit<WorkspaceActivityItem, 'id' | 'timestamp'> & { timestamp?: number }
+  ): WorkspaceActivityItem {
     this.loadLogs()
     const item: WorkspaceActivityItem = {
       id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,

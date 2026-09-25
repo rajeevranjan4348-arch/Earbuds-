@@ -45,9 +45,7 @@ export class AICoreMicrophoneBridge {
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error(
-          'getUserMedia is not supported in this environment.'
-        )
+        throw new Error('getUserMedia is not supported in this environment.')
       }
 
       // IMPORTANT:
@@ -71,9 +69,7 @@ export class AICoreMicrophoneBridge {
       const track = tracks[0]
 
       if (track.readyState !== 'live') {
-        throw new Error(
-          `Microphone track is not live: ${track.readyState}`
-        )
+        throw new Error(`Microphone track is not live: ${track.readyState}`)
       }
 
       // --------------------------------------------------------
@@ -87,12 +83,10 @@ export class AICoreMicrophoneBridge {
         await this.audioContext.resume()
       }
 
-      this.source =
-        this.audioContext.createMediaStreamSource(this.stream)
+      this.source = this.audioContext.createMediaStreamSource(this.stream)
 
       // Used only to verify that audio is actually arriving.
-      this.analyser =
-        this.audioContext.createAnalyser()
+      this.analyser = this.audioContext.createAnalyser()
 
       this.analyser.fftSize = 2048
 
@@ -100,18 +94,12 @@ export class AICoreMicrophoneBridge {
       // PROCESSOR
       // --------------------------------------------------------
 
-      this.processor =
-        this.audioContext.createScriptProcessor(
-          4096,
-          1,
-          1
-        )
+      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1)
 
       this.processor.onaudioprocess = async (event) => {
         if (!this.running) return
 
-        const input =
-          event.inputBuffer.getChannelData(0)
+        const input = event.inputBuffer.getChannelData(0)
 
         // Ignore completely empty buffers.
         let peak = 0
@@ -153,37 +141,21 @@ export class AICoreMicrophoneBridge {
 
       // Processor must connect to destination for
       // onaudioprocess to execute reliably in browsers.
-      this.processor.connect(
-        this.audioContext.destination
-      )
+      this.processor.connect(this.audioContext.destination)
 
       this.running = true
 
-      console.log(
-        '[AI CORE] Microphone started:',
-        track.label
-      )
+      console.log('[AI CORE] Microphone started:', track.label)
 
-      console.log(
-        '[AI CORE] AudioContext:',
-        this.audioContext.state
-      )
+      console.log('[AI CORE] AudioContext:', this.audioContext.state)
 
       return true
-
     } catch (error) {
-      console.error(
-        '[AI CORE] Microphone initialization failed:',
-        error
-      )
+      console.error('[AI CORE] Microphone initialization failed:', error)
 
       this.cleanup()
 
-      this.onError?.(
-        error instanceof Error
-          ? error
-          : new Error(String(error))
-      )
+      this.onError?.(error instanceof Error ? error : new Error(String(error)))
 
       return false
     }
@@ -193,22 +165,13 @@ export class AICoreMicrophoneBridge {
   // FLOAT32 → PCM16
   // ----------------------------------------------------------
 
-  private float32ToInt16(
-    input: Float32Array
-  ): ArrayBuffer {
-
-    const output =
-      new Int16Array(input.length)
+  private float32ToInt16(input: Float32Array): ArrayBuffer {
+    const output = new Int16Array(input.length)
 
     for (let i = 0; i < input.length; i++) {
+      const sample = Math.max(-1, Math.min(1, input[i]))
 
-      const sample =
-        Math.max(-1, Math.min(1, input[i]))
-
-      output[i] =
-        sample < 0
-          ? sample * 0x8000
-          : sample * 0x7fff
+      output[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff
     }
 
     return output.buffer
@@ -219,21 +182,15 @@ export class AICoreMicrophoneBridge {
   // ----------------------------------------------------------
 
   getStatus() {
-    const track =
-      this.stream?.getAudioTracks()[0]
+    const track = this.stream?.getAudioTracks()[0]
 
     return {
       running: this.running,
-      audioContext:
-        this.audioContext?.state ?? 'none',
-      trackState:
-        track?.readyState ?? 'none',
-      enabled:
-        track?.enabled ?? false,
-      muted:
-        track?.muted ?? false,
-      label:
-        track?.label ?? ''
+      audioContext: this.audioContext?.state ?? 'none',
+      trackState: track?.readyState ?? 'none',
+      enabled: track?.enabled ?? false,
+      muted: track?.muted ?? false,
+      label: track?.label ?? ''
     }
   }
 
@@ -250,9 +207,7 @@ export class AICoreMicrophoneBridge {
 
     this.cleanup()
 
-    console.log(
-      '[AI CORE] Microphone stopped.'
-    )
+    console.log('[AI CORE] Microphone stopped.')
   }
 
   // ----------------------------------------------------------
@@ -260,7 +215,6 @@ export class AICoreMicrophoneBridge {
   // ----------------------------------------------------------
 
   private cleanup() {
-
     try {
       this.processor?.disconnect()
     } catch {}
@@ -278,10 +232,7 @@ export class AICoreMicrophoneBridge {
     this.analyser = null
 
     if (this.stream) {
-
-      for (const track of
-        this.stream.getTracks()) {
-
+      for (const track of this.stream.getTracks()) {
         track.stop()
       }
 
@@ -289,30 +240,23 @@ export class AICoreMicrophoneBridge {
     }
 
     if (this.audioContext) {
-
-      this.audioContext.close()
-        .catch(() => {})
+      this.audioContext.close().catch(() => {})
 
       this.audioContext = null
     }
   }
 }
 
-
 // ============================================================
 // AI CORE CONNECTION
 // ============================================================
 
 export class AIRealtimeVoiceController {
-
   private mic: AICoreMicrophoneBridge | null = null
 
   // Replace this function with your existing
   // Gemini Live/WebRTC/WebSocket send-audio method.
-  private async sendAudioToAICore(
-    pcm: ArrayBuffer
-  ) {
-
+  private async sendAudioToAICore(pcm: ArrayBuffer) {
     /*
       IMPORTANT:
 
@@ -336,8 +280,7 @@ export class AIRealtimeVoiceController {
       existingWebSocket.send(pcm)
     */
 
-    let client =
-      (window as any).__IRIS_AI_CORE__
+    let client = (window as any).__IRIS_AI_CORE__
 
     if (!client) {
       // Connect to Gemini Live client by default
@@ -346,25 +289,18 @@ export class AIRealtimeVoiceController {
     }
 
     if (typeof client.sendAudio === 'function') {
-
       await client.sendAudio(pcm)
 
       return
     }
 
-    if (
-      client.socket &&
-      client.socket.readyState === WebSocket.OPEN
-    ) {
-
+    if (client.socket && client.socket.readyState === WebSocket.OPEN) {
       client.socket.send(pcm)
 
       return
     }
 
-    console.error(
-      '[AI CORE] No active audio transport.'
-    )
+    console.error('[AI CORE] No active audio transport.')
   }
 
   // ----------------------------------------------------------
@@ -372,7 +308,6 @@ export class AIRealtimeVoiceController {
   // ----------------------------------------------------------
 
   async startAIListening(): Promise<boolean> {
-
     if (this.mic) {
       this.stopAIListening()
     }
@@ -389,24 +324,15 @@ export class AIRealtimeVoiceController {
       } catch (_e) {}
     }
 
-    this.mic =
-      new AICoreMicrophoneBridge({
+    this.mic = new AICoreMicrophoneBridge({
+      onAudioInput: async (pcm) => {
+        await this.sendAudioToAICore(pcm)
+      },
 
-        onAudioInput:
-          async (pcm) => {
-
-            await this.sendAudioToAICore(pcm)
-          },
-
-        onError:
-          (error) => {
-
-            console.error(
-              '[AI CORE] Mic error:',
-              error
-            )
-          }
-      })
+      onError: (error) => {
+        console.error('[AI CORE] Mic error:', error)
+      }
+    })
 
     return await this.mic.start()
   }
@@ -416,7 +342,6 @@ export class AIRealtimeVoiceController {
   // ----------------------------------------------------------
 
   stopAIListening() {
-
     this.mic?.stop()
 
     this.mic = null
@@ -433,26 +358,24 @@ export class AIRealtimeVoiceController {
   // ----------------------------------------------------------
 
   getMicrophoneStatus() {
-
-    return this.mic?.getStatus() ?? {
-      running: false,
-      audioContext: 'none',
-      trackState: 'none',
-      enabled: false,
-      muted: false,
-      label: ''
-    }
+    return (
+      this.mic?.getStatus() ?? {
+        running: false,
+        audioContext: 'none',
+        trackState: 'none',
+        enabled: false,
+        muted: false,
+        label: ''
+      }
+    )
   }
 }
-
 
 // ============================================================
 // SINGLE GLOBAL INSTANCE
 // ============================================================
 
-export const aiRealtimeVoice =
-  new AIRealtimeVoiceController()
-
+export const aiRealtimeVoice = new AIRealtimeVoiceController()
 
 // ============================================================
 // EXISTING MIC BUTTON INTEGRATION
@@ -470,7 +393,6 @@ export const aiRealtimeVoice =
 //
 // ============================================================
 
-
 // ============================================================
 // OPTIONAL DEBUG COMMAND
 // ============================================================
@@ -483,6 +405,5 @@ export const aiRealtimeVoice =
 // ============================================================
 
 if (typeof window !== 'undefined') {
-  ;(window as any).__IRIS_MIC_DEBUG__ =
-    () => aiRealtimeVoice.getMicrophoneStatus()
+  ;(window as any).__IRIS_MIC_DEBUG__ = () => aiRealtimeVoice.getMicrophoneStatus()
 }

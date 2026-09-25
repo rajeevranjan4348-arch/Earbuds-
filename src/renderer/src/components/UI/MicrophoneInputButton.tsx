@@ -97,9 +97,7 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
   }
 
   const isListening =
-    micState === 'listening' ||
-    micState === 'recording-ai' ||
-    micState === 'streaming-live'
+    micState === 'listening' || micState === 'recording-ai' || micState === 'streaming-live'
   const isProcessing = micState === 'transcribing' || micState === 'processing'
   const isDenied = micState === 'denied'
 

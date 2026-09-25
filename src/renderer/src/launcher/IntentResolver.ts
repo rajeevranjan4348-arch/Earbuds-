@@ -96,7 +96,10 @@ export class IntentResolver {
 
     // Clean trailing filler words like "app", "application", "on device", "for me", "please"
     targetPhrase = targetPhrase
-      .replace(/\s+(on\s+device|on\s+my\s+device|on\s+phone|on\s+computer|on\s+pc|on\s+my\s+phone|in\s+device|in\s+browser|now)$/i, '')
+      .replace(
+        /\s+(on\s+device|on\s+my\s+device|on\s+phone|on\s+computer|on\s+pc|on\s+my\s+phone|in\s+device|in\s+browser|now)$/i,
+        ''
+      )
       .replace(/\s+(app|application|website|site)$/i, '')
       .replace(/\s+for\s+me$/i, '')
       .replace(/\s+please$/i, '')

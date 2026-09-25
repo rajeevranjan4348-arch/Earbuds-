@@ -29,7 +29,12 @@ import {
   RiFileCopyLine,
   RiTerminalBoxLine
 } from 'react-icons/ri'
-import { signInWithGoogle, logOutGoogle, getCachedAccessToken, setCachedAccessToken } from '../../lib/firebase'
+import {
+  signInWithGoogle,
+  logOutGoogle,
+  getCachedAccessToken,
+  setCachedAccessToken
+} from '../../lib/firebase'
 import AuthFailureView from './AuthFailureView'
 import WorkspaceTelemetryAnalytics from './WorkspaceTelemetryAnalytics'
 import { RiPulseLine } from 'react-icons/ri'
@@ -207,7 +212,9 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   onSelectServiceTab,
   glassPanel = 'bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl'
 }) => {
-  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT' | 'TELEMETRY'>('SERVICES')
+  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT' | 'TELEMETRY'>(
+    'SERVICES'
+  )
   const [session, setSession] = useState<WorkspaceSessionData | null>(null)
   const [authLogs, setAuthLogs] = useState<AuthFailureLog[]>([])
   const [serviceHealth, setServiceHealth] = useState<Record<string, ServiceHealth>>({})
@@ -439,7 +446,9 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   const isExpired = session?.isExpired ?? false
 
   return (
-    <div className={`flex flex-col h-full w-full max-w-full overflow-hidden text-zinc-100 font-mono ${glassPanel}`}>
+    <div
+      className={`flex flex-col h-full w-full max-w-full overflow-hidden text-zinc-100 font-mono ${glassPanel}`}
+    >
       {/* Top Hub Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-zinc-950/80 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-3">
@@ -451,13 +460,15 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
               <h2 className="font-bold text-sm tracking-wider uppercase text-zinc-100">
                 Workspace Hub & Diagnostics
               </h2>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
-                isConnected && !isExpired
-                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                  : isConnected && isExpired
-                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                    : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-              }`}>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
+                  isConnected && !isExpired
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    : isConnected && isExpired
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                }`}
+              >
                 {isConnected ? (isExpired ? 'Token Expired' : 'Authenticated') : 'Disconnected'}
               </span>
             </div>
@@ -485,7 +496,10 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50"
             title="Test real-time connection across all 13 Google Workspace endpoints"
           >
-            <RiRefreshLine size={13} className={isTestingServices ? 'animate-spin text-indigo-400' : ''} />
+            <RiRefreshLine
+              size={13}
+              className={isTestingServices ? 'animate-spin text-indigo-400' : ''}
+            />
             <span className="hidden sm:inline">Test Services</span>
           </button>
 
@@ -509,9 +523,15 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
             {session?.email ? session.email[0].toUpperCase() : 'G'}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] text-zinc-400 uppercase tracking-wider">Primary Account</div>
-            <div className="font-bold text-xs text-zinc-100 truncate">{session?.email || 'kumarimamta87565@gmail.com'}</div>
-            <div className="text-[10px] text-zinc-500 truncate">{session?.displayName || 'Mamta Kumari'}</div>
+            <div className="text-[10px] text-zinc-400 uppercase tracking-wider">
+              Primary Account
+            </div>
+            <div className="font-bold text-xs text-zinc-100 truncate">
+              {session?.email || 'kumarimamta87565@gmail.com'}
+            </div>
+            <div className="text-[10px] text-zinc-500 truncate">
+              {session?.displayName || 'Mamta Kumari'}
+            </div>
           </div>
           {isConnected ? (
             <button
@@ -683,7 +703,10 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
                 disabled={isTestingServices || !isConnected}
                 className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-xs font-bold text-zinc-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <RiRefreshLine size={13} className={isTestingServices ? 'animate-spin text-blue-400' : ''} />
+                <RiRefreshLine
+                  size={13}
+                  className={isTestingServices ? 'animate-spin text-blue-400' : ''}
+                />
                 <span>Run Health Check</span>
               </button>
             </div>
@@ -700,9 +723,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg border ${svc.color}`}>
-                            {svc.icon}
-                          </div>
+                          <div className={`p-2 rounded-lg border ${svc.color}`}>{svc.icon}</div>
                           <div>
                             <div className="font-bold text-xs text-zinc-100">{svc.name}</div>
                             <div className="text-[9px] text-zinc-500 uppercase">{svc.category}</div>
@@ -737,7 +758,10 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
                     </div>
 
                     <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                      <span className="text-[9px] text-zinc-500 truncate max-w-[140px]" title={svc.scope}>
+                      <span
+                        className="text-[9px] text-zinc-500 truncate max-w-[140px]"
+                        title={svc.scope}
+                      >
                         {svc.scope.split('/').pop()}
                       </span>
                       <button
@@ -766,7 +790,8 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
                     Authorized Google Workspace OAuth 2.0 Scopes
                   </h3>
                   <p className="text-[11px] text-zinc-400">
-                    The session manager authorizes granular API scopes to allow IRIS to access tools securely on the user's behalf.
+                    The session manager authorizes granular API scopes to allow IRIS to access tools
+                    securely on the user's behalf.
                   </p>
                 </div>
 
@@ -829,11 +854,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
         {/* TAB 3: AUTH FAILURES & TROUBLESHOOTING MANAGEMENT VIEW */}
         {activeTab === 'TROUBLESHOOT' && (
           <div className="h-full min-h-[480px]">
-            <AuthFailureView
-              isEmbedded
-              onReauthenticate={handleReAuthenticate}
-              onNavigateService={(svc) => onSelectServiceTab?.(svc)}
-            />
+            <AuthFailureView isEmbedded onReauthenticate={handleReAuthenticate} />
           </div>
         )}
 

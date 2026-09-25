@@ -147,9 +147,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       setSelectedIndex((prev) => (prev + 1) % Math.max(searchResults.length, 1))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setSelectedIndex((prev) =>
-        prev <= 0 ? Math.max(searchResults.length - 1, 0) : prev - 1
-      )
+      setSelectedIndex((prev) => (prev <= 0 ? Math.max(searchResults.length - 1, 0) : prev - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (searchResults[selectedIndex]) {
@@ -391,7 +389,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-500 space-y-2">
                 <RiAppsLine size={32} className="opacity-40" />
                 <p className="text-sm font-medium">No applications or tools matched "{query}"</p>
-                <p className="text-xs text-zinc-600">Try searching "YouTube", "GitHub", "Voice", or "Settings"</p>
+                <p className="text-xs text-zinc-600">
+                  Try searching "YouTube", "GitHub", "Voice", or "Settings"
+                </p>
               </div>
             ) : (
               searchResults.map((app, idx) => {
@@ -434,19 +434,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                             app.destructive
                               ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                               : app.type === 'internal'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : app.type === 'tool'
-                              ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                              : 'bg-zinc-800 text-zinc-400 border border-white/5'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : app.type === 'tool'
+                                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                                  : 'bg-zinc-800 text-zinc-400 border border-white/5'
                           }`}
                         >
                           {app.destructive ? 'CRITICAL' : app.category}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">
-                        {app.description}
-                      </p>
+                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">{app.description}</p>
                     </div>
 
                     {/* Favorite Star Button */}

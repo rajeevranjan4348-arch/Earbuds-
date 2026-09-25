@@ -57,16 +57,24 @@ export interface IAgentExecutor {
 // --------------------------------------------------------------------------
 export class ResearchAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'Research Agent'
-  public description = 'Deep web search, academic literature synthesis, and factual citation grounding.'
+  public description =
+    'Deep web search, academic literature synthesis, and factual citation grounding.'
   public defaultTools = ['search_web', 'scientific_research_query', 'rag_retrieve_context']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const query = task.parameters?.query || task.description
     const preferredTool = task.requiredTools[0] || 'search_web'
 
     try {
-      if (preferredTool === 'scientific_research_query' || query.toLowerCase().includes('paper') || query.toLowerCase().includes('study')) {
+      if (
+        preferredTool === 'scientific_research_query' ||
+        query.toLowerCase().includes('paper') ||
+        query.toLowerCase().includes('study')
+      ) {
         const sciResult = await scientificResearch.synthesizeResearch(query, { category: 'all' })
         return {
           success: Boolean(sciResult.synthesis),
@@ -101,7 +109,9 @@ export class ResearchAgent implements IAgentExecutor {
           resultsCount: searchRes.results.length,
           results: searchRes.results,
           citations: searchRes.citations,
-          summary: searchRes.results.map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet}`).join('\n\n')
+          summary: searchRes.results
+            .map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet}`)
+            .join('\n\n')
         },
         toolUsed: 'search_web',
         durationMs: Date.now() - start
@@ -123,10 +133,14 @@ export class ResearchAgent implements IAgentExecutor {
 // --------------------------------------------------------------------------
 export class CodingAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'Coding Agent'
-  public description = 'Codebase AST analysis, semantic code search, refactoring, and syntax validation.'
+  public description =
+    'Codebase AST analysis, semantic code search, refactoring, and syntax validation.'
   public defaultTools = ['codebase_search', 'codebase_symbol', 'codebase_structure']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const query = task.parameters?.query || task.description
     const preferredTool = task.requiredTools[0] || 'codebase_search'
@@ -143,7 +157,11 @@ export class CodingAgent implements IAgentExecutor {
       }
 
       if (preferredTool === 'codebase_symbol' && task.parameters?.symbolName) {
-        const symbols = codebaseService.findSymbols(task.parameters.symbolName, 'current_workspace', 'default_user')
+        const symbols = codebaseService.findSymbols(
+          task.parameters.symbolName,
+          'current_workspace',
+          'default_user'
+        )
         return {
           success: symbols.length > 0,
           output: symbols,
@@ -153,7 +171,12 @@ export class CodingAgent implements IAgentExecutor {
       }
 
       // Codebase search
-      const searchResults = codebaseService.searchCodebase(query, 'current_workspace', 'default_user', { limit: 5 })
+      const searchResults = codebaseService.searchCodebase(
+        query,
+        'current_workspace',
+        'default_user',
+        { limit: 5 }
+      )
       return {
         success: true,
         output: {
@@ -181,10 +204,14 @@ export class CodingAgent implements IAgentExecutor {
 // --------------------------------------------------------------------------
 export class BrowserAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'Browser Agent'
-  public description = 'Autonomous web page navigation, live DOM extraction, and web reader parsing.'
+  public description =
+    'Autonomous web page navigation, live DOM extraction, and web reader parsing.'
   public defaultTools = ['browser_navigate_and_extract', 'browse_url']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const url = task.parameters?.url || (task.description.match(/https?:\/\/[^\s]+/)?.[0] ?? '')
 
@@ -224,7 +251,8 @@ export class BrowserAgent implements IAgentExecutor {
 // --------------------------------------------------------------------------
 export class FileAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'File Agent'
-  public description = 'Safe project filesystem operations: reading, writing, listing, and inspection.'
+  public description =
+    'Safe project filesystem operations: reading, writing, listing, and inspection.'
   public defaultTools = ['file_read', 'file_write', 'file_list']
 
   private safePath(targetPath: string): string {
@@ -236,19 +264,27 @@ export class FileAgent implements IAgentExecutor {
     return resolved
   }
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const action = task.parameters?.action || 'read'
     const filePath = task.parameters?.filePath || task.parameters?.path
 
     try {
-      if (action === 'list' || (!filePath && task.description.toLowerCase().includes('list file'))) {
+      if (
+        action === 'list' ||
+        (!filePath && task.description.toLowerCase().includes('list file'))
+      ) {
         const dir = this.safePath(task.parameters?.dir || '.')
-        const entries = readdirSync(dir).slice(0, 50).map((name) => {
-          const full = join(dir, name)
-          const isDir = statSync(full).isDirectory()
-          return { name, isDirectory: isDir }
-        })
+        const entries = readdirSync(dir)
+          .slice(0, 50)
+          .map((name) => {
+            const full = join(dir, name)
+            const isDir = statSync(full).isDirectory()
+            return { name, isDirectory: isDir }
+          })
         return {
           success: true,
           output: { directory: dir, entries },
@@ -326,13 +362,21 @@ export class VisionAgent implements IAgentExecutor {
   public description = 'Visual inspection, OCR, Mermaid.js diagramming, and FLUX creative imagery.'
   public defaultTools = ['vision_analyze_image', 'generate_mermaid_diagram', 'flux_generate_image']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const desc = task.description.toLowerCase()
 
     try {
       // 1. Mermaid diagram generation
-      if (desc.includes('diagram') || desc.includes('flowchart') || desc.includes('sequence diagram') || task.parameters?.diagramType) {
+      if (
+        desc.includes('diagram') ||
+        desc.includes('flowchart') ||
+        desc.includes('sequence diagram') ||
+        task.parameters?.diagramType
+      ) {
         const diagramRes = await diagramDesign.generateDiagram(task.description, {
           diagramType: task.parameters?.diagramType || 'flowchart'
         })
@@ -345,7 +389,11 @@ export class VisionAgent implements IAgentExecutor {
       }
 
       // 2. Creative image generation (FLUX)
-      if (desc.includes('generate image') || desc.includes('flux') || task.parameters?.aspectRatio) {
+      if (
+        desc.includes('generate image') ||
+        desc.includes('flux') ||
+        task.parameters?.aspectRatio
+      ) {
         const imgRes = await fluxImageEngine.generateImage({
           prompt: task.description,
           aspectRatio: task.parameters?.aspectRatio || '1:1'
@@ -413,12 +461,17 @@ export class VisionAgent implements IAgentExecutor {
 // --------------------------------------------------------------------------
 export class AndroidAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'Android Agent'
-  public description = 'Android app discovery, package resolution, and accessibility intent dispatch.'
+  public description =
+    'Android app discovery, package resolution, and accessibility intent dispatch.'
   public defaultTools = ['android_open_app', 'android_resolve_package']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
-    const appQuery = task.parameters?.appName || task.description.replace(/^(open|launch|start)\s+/i, '').trim()
+    const appQuery =
+      task.parameters?.appName || task.description.replace(/^(open|launch|start)\s+/i, '').trim()
 
     try {
       const resolution = await androidPackageResolver.resolveApp(appQuery)
@@ -462,10 +515,14 @@ export class AndroidAgent implements IAgentExecutor {
 // --------------------------------------------------------------------------
 export class VoiceAgent implements IAgentExecutor {
   public role: SpecializedAgentRole = 'Voice Agent'
-  public description = 'Voice dialogue formatting, speech phrasing, conversational tone, and TTS preparation.'
+  public description =
+    'Voice dialogue formatting, speech phrasing, conversational tone, and TTS preparation.'
   public defaultTools = ['voice_format_dialogue']
 
-  public async execute(task: BrainTask, _context?: Record<string, any>): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    _context?: Record<string, any>
+  ): Promise<AgentExecutionResult> {
     const start = Date.now()
     const rawText = task.parameters?.text || task.description
 
@@ -522,7 +579,10 @@ export class AgentRegistry {
   /**
    * Intelligently selects the specialized agent best suited for a prompt or goal
    */
-  public selectAgentForGoal(goal: string, preferredRole?: SpecializedAgentRole): SpecializedAgentRole {
+  public selectAgentForGoal(
+    goal: string,
+    preferredRole?: SpecializedAgentRole
+  ): SpecializedAgentRole {
     if (preferredRole && this.agents.has(preferredRole)) {
       return preferredRole
     }

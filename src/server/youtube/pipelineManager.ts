@@ -6,13 +6,7 @@
  * METADATA → QUALITY CHECK → UPLOAD → PUBLISH/SCHEDULE → ANALYTICS
  */
 
-import {
-  ContentJob,
-  ContentStage,
-  TrendTopic,
-  VideoFormat,
-  PipelineOperationResult
-} from './types'
+import { ContentJob, ContentStage, TrendTopic, VideoFormat, PipelineOperationResult } from './types'
 import { trendDiscoveryEngine } from './trendEngine'
 import { topicValidator } from './validator'
 import { geminiContentEngine } from './geminiEngine'
@@ -59,7 +53,8 @@ export class YouTubePipelineManager {
         contentAvailability: 90,
         safetyPolicyRisk: 'LOW',
         opportunityScore: 94,
-        selectionReason: 'High demand breakout topic (88/100) with low creator saturation (34/100). Highly aligned with channel audience (98/100). Composite score: 94/100.',
+        selectionReason:
+          'High demand breakout topic (88/100) with low creator saturation (34/100). Highly aligned with channel audience (98/100). Composite score: 94/100.',
         factualClaims: [
           {
             claim: 'Gemini 2.5 supports native multimodal function calling and structured outputs.',
@@ -78,8 +73,10 @@ export class YouTubePipelineManager {
           id: 'thumb_seed_1',
           conceptName: 'Curiosity Contrast',
           headlineText: '100% AUTONOMOUS',
-          compositionDescription: 'Shocked developer face beside glowing holographic multi-agent network on pitch black.',
-          visualPrompt: 'YouTube thumbnail background, minimalist high-tech cybersecurity lab, glowing holographic data matrix, high contrast, 16:9, ultra sharp, 8k, vibrant emerald lighting',
+          compositionDescription:
+            'Shocked developer face beside glowing holographic multi-agent network on pitch black.',
+          visualPrompt:
+            'YouTube thumbnail background, minimalist high-tech cybersecurity lab, glowing holographic data matrix, high contrast, 16:9, ultra sharp, 8k, vibrant emerald lighting',
           colorPalette: ['#10B981', '#000000', '#FFFFFF', '#064E3B'],
           mobileReadabilityScore: 96,
           isSelected: true
@@ -88,8 +85,10 @@ export class YouTubePipelineManager {
           id: 'thumb_seed_2',
           conceptName: 'Before vs After Speed',
           headlineText: '10X FASTER',
-          compositionDescription: 'Split screen comparing manual 45-minute workflow vs 4-second agent pipeline.',
-          visualPrompt: 'Split-screen comparison YouTube thumbnail background, clean futuristic user interface, speed benchmark gauge, cinematic lighting, 16:9',
+          compositionDescription:
+            'Split screen comparing manual 45-minute workflow vs 4-second agent pipeline.',
+          visualPrompt:
+            'Split-screen comparison YouTube thumbnail background, clean futuristic user interface, speed benchmark gauge, cinematic lighting, 16:9',
           colorPalette: ['#EF4444', '#10B981', '#09090B'],
           mobileReadabilityScore: 92,
           isSelected: false
@@ -101,26 +100,34 @@ export class YouTubePipelineManager {
           timecode: '00:00 - 00:15',
           durationSec: 15,
           visualDescription: 'Dynamic terminal sequence with instant autonomous execution status.',
-          spokenText: 'What if you could automate 100% of your AI agent pipelines without writing repetitive glue code?',
-          assetPrompt: 'High-contrast glowing neural network topology snapping into focus, 16:9, emerald glow',
+          spokenText:
+            'What if you could automate 100% of your AI agent pipelines without writing repetitive glue code?',
+          assetPrompt:
+            'High-contrast glowing neural network topology snapping into focus, 16:9, emerald glow',
           transitionType: 'Glitch Cut'
         },
         {
           sceneNumber: 2,
           timecode: '00:15 - 01:15',
           durationSec: 60,
-          visualDescription: 'Architectural overview comparing traditional orchestration with Gemini tool calling.',
-          spokenText: 'Today we break down the exact production architecture needed to deploy multi-agent systems reliably.',
-          assetPrompt: 'Modern developer workspace with multiple monitors displaying real-time data flows, sleek dark UI',
+          visualDescription:
+            'Architectural overview comparing traditional orchestration with Gemini tool calling.',
+          spokenText:
+            'Today we break down the exact production architecture needed to deploy multi-agent systems reliably.',
+          assetPrompt:
+            'Modern developer workspace with multiple monitors displaying real-time data flows, sleek dark UI',
           transitionType: 'Smooth Pan'
         },
         {
           sceneNumber: 3,
           timecode: '01:15 - 04:30',
           durationSec: 195,
-          visualDescription: 'Step-by-step code walkthrough of structured function execution and sandboxing.',
-          spokenText: 'Notice how each tool call is strictly validated against schemas before running in the container.',
-          assetPrompt: '3D architectural blueprint of distributed AI agent network, glowing emerald and cyan connection lines',
+          visualDescription:
+            'Step-by-step code walkthrough of structured function execution and sandboxing.',
+          spokenText:
+            'Notice how each tool call is strictly validated against schemas before running in the container.',
+          assetPrompt:
+            '3D architectural blueprint of distributed AI agent network, glowing emerald and cyan connection lines',
           transitionType: 'Cross Dissolve'
         }
       ],
@@ -159,7 +166,8 @@ export class YouTubePipelineManager {
           passed: true,
           score: 100,
           critical: true,
-          details: 'Complete legal manifest verified. All visual and audio assets original AI synthesis.',
+          details:
+            'Complete legal manifest verified. All visual and audio assets original AI synthesis.',
           timestamp: new Date().toISOString()
         },
         {
@@ -175,7 +183,8 @@ export class YouTubePipelineManager {
           passed: true,
           score: 96,
           critical: true,
-          details: '7-part narrative structure fully verified (Hook, Context, Main Info, Story, Transitions, Conclusion, CTA).',
+          details:
+            '7-part narrative structure fully verified (Hook, Context, Main Info, Story, Transitions, Conclusion, CTA).',
           timestamp: new Date().toISOString()
         },
         {
@@ -215,7 +224,8 @@ export class YouTubePipelineManager {
           passed: true,
           score: 96,
           critical: true,
-          details: 'SEO metadata validated: Title, description, 5 timestamp chapters, 10 search tags.',
+          details:
+            'SEO metadata validated: Title, description, 5 timestamp chapters, 10 search tags.',
           timestamp: new Date().toISOString()
         }
       ],
@@ -242,7 +252,8 @@ export class YouTubePipelineManager {
         {
           timestamp: new Date(Date.now() - 3600000 * 1).toISOString(),
           step: 'QUALITY_CHECK',
-          message: 'All 9 Quality Gate checks passed (Overall Score: 97/100). Waiting for Approval.',
+          message:
+            'All 9 Quality Gate checks passed (Overall Score: 97/100). Waiting for Approval.',
           status: 'success'
         }
       ]
@@ -292,7 +303,7 @@ export class YouTubePipelineManager {
         ]
       },
       storytelling: {
-        text: 'When scaling autonomous pipelines, resilience isn\'t just a luxury—it is the entire foundation.',
+        text: "When scaling autonomous pipelines, resilience isn't just a luxury—it is the entire foundation.",
         visualCue: '3D spatial visualization of resilient distributed nodes.'
       },
       transitions: [
@@ -711,21 +722,24 @@ export class YouTubePipelineManager {
         channelMemoryStore.updateProfile({ approvalMode: 'MANUAL', autoPublishEnabled: false })
         return {
           intent: 'UPDATE_MODE',
-          response: 'Automatic publishing disabled. Switched to **MANUAL** mode. All video uploads will require explicit human approval before going live.',
+          response:
+            'Automatic publishing disabled. Switched to **MANUAL** mode. All video uploads will require explicit human approval before going live.',
           actionTaken: 'set_manual_mode'
         }
       } else if (lower.includes('semi-auto') || lower.includes('semi auto')) {
         channelMemoryStore.updateProfile({ approvalMode: 'SEMI_AUTO', autoPublishEnabled: false })
         return {
           intent: 'UPDATE_MODE',
-          response: 'Switched to **SEMI_AUTO** mode. AI will autonomously research, script, generate assets, and perform quality checks, then pause for your final publishing approval.',
+          response:
+            'Switched to **SEMI_AUTO** mode. AI will autonomously research, script, generate assets, and perform quality checks, then pause for your final publishing approval.',
           actionTaken: 'set_semi_auto_mode'
         }
       } else if (lower.includes('enable auto') || lower.includes('fully auto')) {
         channelMemoryStore.updateProfile({ approvalMode: 'AUTO', autoPublishEnabled: true })
         return {
           intent: 'UPDATE_MODE',
-          response: 'Switched to **AUTO** mode with strict Quality Gate enforcement. Videos that pass all 9 safety, copyright, and factual checks will publish automatically according to your schedule.',
+          response:
+            'Switched to **AUTO** mode with strict Quality Gate enforcement. Videos that pass all 9 safety, copyright, and factual checks will publish automatically according to your schedule.',
           actionTaken: 'set_auto_mode'
         }
       }
@@ -745,14 +759,19 @@ export class YouTubePipelineManager {
       } else {
         return {
           intent: 'PUBLISH_APPROVED',
-          response: 'No jobs are currently waiting in the REVIEW stage. All pending videos are either already published or still generating.',
+          response:
+            'No jobs are currently waiting in the REVIEW stage. All pending videos are either already published or still generating.',
           actionTaken: 'none'
         }
       }
     }
 
     // 7. "Explain why this topic was selected."
-    if (lower.includes('explain why') || lower.includes('selection reason') || lower.includes('why this topic')) {
+    if (
+      lower.includes('explain why') ||
+      lower.includes('selection reason') ||
+      lower.includes('why this topic')
+    ) {
       const topJob = Array.from(this.jobs.values())[0]
       if (topJob) {
         return {
@@ -777,7 +796,10 @@ export class YouTubePipelineManager {
     if (step === 'DISCOVERY') {
       const trends = await trendDiscoveryEngine.discoverTrends({ count: 3 })
       if (trends.length > 0) {
-        const job = await this.createJob(trends[0], channelMemoryStore.getProfile().preferredVideoLength)
+        const job = await this.createJob(
+          trends[0],
+          channelMemoryStore.getProfile().preferredVideoLength
+        )
         await this.runFullPipeline(job.jobId)
       }
     }

@@ -151,7 +151,9 @@ export class VoiceCommandService {
       return { type: 'handled', message: 'Opening Google Workspace' }
     }
 
-    if (/^(open|go to|show|switch to)?\s*(youtube studio|channel|youtube analytics)$/i.test(clean)) {
+    if (
+      /^(open|go to|show|switch to)?\s*(youtube studio|channel|youtube analytics)$/i.test(clean)
+    ) {
       window.dispatchEvent(new CustomEvent('iris:navigate', { detail: { tab: 'YOUTUBE' } }))
       return { type: 'handled', message: 'Opening YouTube Studio' }
     }
@@ -188,7 +190,11 @@ export class VoiceCommandService {
       const appQuery = launchMatch[1].trim()
       if (appQuery && !['settings', 'chat', 'dashboard', 'notes'].includes(appQuery)) {
         launchManager.launchAppByName(appQuery).catch(() => {})
-        return { type: 'handled', message: `Launching ${appQuery}`, actionTaken: `LAUNCH_${appQuery.toUpperCase()}` }
+        return {
+          type: 'handled',
+          message: `Launching ${appQuery}`,
+          actionTaken: `LAUNCH_${appQuery.toUpperCase()}`
+        }
       }
     }
 

@@ -1,9 +1,9 @@
 /**
  * IRIS Wake Word Detection Service
- * 
+ *
  * Provides continuous, 100% on-device hands-free wake word recognition
  * ("Hey IRIS", "OK IRIS", "Hey JARVIS", "Hello IRIS", "Wake up IRIS").
- * 
+ *
  * Features:
  * - Real-time acoustic wake chime synthesis (Web Audio API)
  * - Zero cloud upload (pure client-side phonetic phrase spotting)
@@ -57,10 +57,7 @@ class WakeWordDetectionService {
     /\bwake\s+up\s+iris\b/i
   ]
 
-  private singleWordPatterns: RegExp[] = [
-    /\biris\b/i,
-    /\bjarvis\b/i
-  ]
+  private singleWordPatterns: RegExp[] = [/\biris\b/i, /\bjarvis\b/i]
 
   private phoneticFuzzyPatterns: RegExp[] = [
     /\b(?:hey|hay|hi|ok)\s+(?:airis|ayris|eyris|iriss|earis)\b/i,
@@ -109,7 +106,9 @@ class WakeWordDetectionService {
     return () => this.listeners.delete(callback)
   }
 
-  public subscribeState(callback: (isListening: boolean, config: WakeWordConfig) => void): () => void {
+  public subscribeState(
+    callback: (isListening: boolean, config: WakeWordConfig) => void
+  ): () => void {
     this.stateListeners.add(callback)
     callback(this.isListening, this.config)
     return () => this.stateListeners.delete(callback)
@@ -288,7 +287,9 @@ class WakeWordDetectionService {
           confidence: 0.95
         }
 
-        console.log(`[WakeWordService] ⚡ Wake word triggered: "${phrase}" | Command: "${commandTail}"`)
+        console.log(
+          `[WakeWordService] ⚡ Wake word triggered: "${phrase}" | Command: "${commandTail}"`
+        )
 
         // Play feedback
         this.playWakeChime()

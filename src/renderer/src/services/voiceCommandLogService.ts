@@ -36,8 +36,10 @@ const SEED_ENTRIES: VoiceCommandLogEntry[] = [
     command: 'Show YouTube channel analytics for IRIS Intelligence Labs',
     intent: 'YOUTUBE_ANALYTICS',
     status: 'completed',
-    spokenResponse: 'Opening YouTube Studio analytics. Displaying views, retention, and subscriber growth curves.',
-    displayText: 'Navigated to YouTube Studio > Channel Analytics. Loading Recharts performance metrics.',
+    spokenResponse:
+      'Opening YouTube Studio analytics. Displaying views, retention, and subscriber growth curves.',
+    displayText:
+      'Navigated to YouTube Studio > Channel Analytics. Loading Recharts performance metrics.',
     actionExecuted: 'Switched to YouTube Studio Analytics view with multi-channel metrics.',
     targetTab: 'YOUTUBE',
     executionTimeMs: 340,
@@ -50,7 +52,8 @@ const SEED_ENTRIES: VoiceCommandLogEntry[] = [
     command: 'Generate a new short-form video script on Gemini 2.5 agent orchestration',
     intent: 'YOUTUBE_GENERATE_VIDEO',
     status: 'completed',
-    spokenResponse: 'Drafted 60-second Short script with high-curiosity hook and architecture diagram visual cues.',
+    spokenResponse:
+      'Drafted 60-second Short script with high-curiosity hook and architecture diagram visual cues.',
     displayText: 'Script generated in Production Queue for review. Estimated duration: 58 seconds.',
     actionExecuted: 'Dispatched automated video creation job in YouTube Pipeline.',
     targetTab: 'YOUTUBE',
@@ -78,7 +81,8 @@ const SEED_ENTRIES: VoiceCommandLogEntry[] = [
     command: 'Search web for latest Google Maps Platform real-time navigation release',
     intent: 'WEB_SEARCH',
     status: 'completed',
-    spokenResponse: 'Retrieved 4 release updates detailing route optimization and eco-friendly routing APIs.',
+    spokenResponse:
+      'Retrieved 4 release updates detailing route optimization and eco-friendly routing APIs.',
     displayText: 'Indexed official Google Maps Platform release changelog from March 2026.',
     actionExecuted: 'Executed search query and synthesized key API capabilities.',
     targetTab: 'CHAT',
@@ -92,7 +96,8 @@ const SEED_ENTRIES: VoiceCommandLogEntry[] = [
     command: 'Sync connected Android phone contacts and check notifications',
     intent: 'PHONE_SYNC',
     status: 'completed',
-    spokenResponse: 'Phone connected via local ADB bridge. 2 unread SMS messages and battery at 88%.',
+    spokenResponse:
+      'Phone connected via local ADB bridge. 2 unread SMS messages and battery at 88%.',
     displayText: 'Mobile daemon synchronized. Verified 148 contacts and telemetry status.',
     actionExecuted: 'Queried mobile companion daemon and refreshed phone view.',
     targetTab: 'PHONE',
@@ -151,7 +156,10 @@ class VoiceCommandLogService {
       }
 
       // Listen to voice toast and processed events to capture dynamic commands
-      window.addEventListener('iris:voice-command-processed', this.handleCommandProcessedEvent as EventListener)
+      window.addEventListener(
+        'iris:voice-command-processed',
+        this.handleCommandProcessedEvent as EventListener
+      )
     } else {
       this.entries = [...SEED_ENTRIES]
     }
@@ -207,22 +215,55 @@ class VoiceCommandLogService {
 
   private categorizeIntent(intent: string, command: string): VoiceCommandLogEntry['category'] {
     const lower = `${intent} ${command}`.toLowerCase()
-    if (lower.includes('youtube') || lower.includes('video') || lower.includes('script') || lower.includes('channel')) {
+    if (
+      lower.includes('youtube') ||
+      lower.includes('video') ||
+      lower.includes('script') ||
+      lower.includes('channel')
+    ) {
       return 'YOUTUBE'
     }
-    if (lower.includes('nav') || lower.includes('tab') || lower.includes('switch to') || lower.includes('go to')) {
+    if (
+      lower.includes('nav') ||
+      lower.includes('tab') ||
+      lower.includes('switch to') ||
+      lower.includes('go to')
+    ) {
       return 'NAVIGATION'
     }
-    if (lower.includes('system') || lower.includes('telemetry') || lower.includes('volume') || lower.includes('mute') || lower.includes('core')) {
+    if (
+      lower.includes('system') ||
+      lower.includes('telemetry') ||
+      lower.includes('volume') ||
+      lower.includes('mute') ||
+      lower.includes('core')
+    ) {
       return 'SYSTEM'
     }
-    if (lower.includes('search') || lower.includes('web') || lower.includes('google') || lower.includes('find on internet')) {
+    if (
+      lower.includes('search') ||
+      lower.includes('web') ||
+      lower.includes('google') ||
+      lower.includes('find on internet')
+    ) {
       return 'SEARCH'
     }
-    if (lower.includes('vision') || lower.includes('camera') || lower.includes('screen') || lower.includes('optics') || lower.includes('inspect')) {
+    if (
+      lower.includes('vision') ||
+      lower.includes('camera') ||
+      lower.includes('screen') ||
+      lower.includes('optics') ||
+      lower.includes('inspect')
+    ) {
       return 'OPTICS'
     }
-    if (lower.includes('workspace') || lower.includes('doc') || lower.includes('file') || lower.includes('phone') || lower.includes('adb')) {
+    if (
+      lower.includes('workspace') ||
+      lower.includes('doc') ||
+      lower.includes('file') ||
+      lower.includes('phone') ||
+      lower.includes('adb')
+    ) {
       return 'WORKSPACE'
     }
     return 'AI_CHAT'

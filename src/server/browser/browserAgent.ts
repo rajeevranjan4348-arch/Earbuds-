@@ -140,7 +140,10 @@ export class BrowserUseAgent {
     return this.getOrCreateSession(sessionId)
   }
 
-  public async navigateAndExtract(url: string, sessionId = 'default'): Promise<BrowserActionResult> {
+  public async navigateAndExtract(
+    url: string,
+    sessionId = 'default'
+  ): Promise<BrowserActionResult> {
     return this.executeAction({ type: 'navigate', url }, sessionId)
   }
 

@@ -4,11 +4,7 @@
  */
 
 export type GoalCategory =
-  | 'single_step'
-  | 'multi_step'
-  | 'information_query'
-  | 'clarification_needed'
-  | 'conversational'
+  'single_step' | 'multi_step' | 'information_query' | 'clarification_needed' | 'conversational'
 
 export type TaskStatus =
   | 'created'

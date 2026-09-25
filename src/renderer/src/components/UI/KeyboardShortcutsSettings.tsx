@@ -239,7 +239,9 @@ export default function KeyboardShortcutsSettings() {
             <input
               type="checkbox"
               checked={settings.soundFeedback}
-              onChange={(e) => shortcutService.setGlobalSettings({ soundFeedback: e.target.checked })}
+              onChange={(e) =>
+                shortcutService.setGlobalSettings({ soundFeedback: e.target.checked })
+              }
               className="w-4 h-4 rounded text-emerald-500 bg-zinc-800 border-white/20 focus:ring-emerald-500"
             />
           </label>
@@ -255,7 +257,9 @@ export default function KeyboardShortcutsSettings() {
             <input
               type="checkbox"
               checked={settings.showHudToast}
-              onChange={(e) => shortcutService.setGlobalSettings({ showHudToast: e.target.checked })}
+              onChange={(e) =>
+                shortcutService.setGlobalSettings({ showHudToast: e.target.checked })
+              }
               className="w-4 h-4 rounded text-emerald-500 bg-zinc-800 border-white/20 focus:ring-emerald-500"
             />
           </label>
@@ -533,30 +537,30 @@ export default function KeyboardShortcutsSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
           <div className="space-y-1">
             <p className="font-semibold text-zinc-300">
-              🎙️ AI Voice Input (<kbd className="px-1 bg-black border border-white/15 rounded">Alt+V</kbd>):
+              🎙️ AI Voice Input (
+              <kbd className="px-1 bg-black border border-white/15 rounded">Alt+V</kbd>):
             </p>
             <p className="text-zinc-400">
-              Toggles the active microphone listening loop anywhere within IRIS. If IRIS is currently
-              synthesizing speech, pressing the voice hotkey instantly interrupts speech and primes
-              the system for your new command.
+              Toggles the active microphone listening loop anywhere within IRIS. If IRIS is
+              currently synthesizing speech, pressing the voice hotkey instantly interrupts speech
+              and primes the system for your new command.
             </p>
           </div>
 
           <div className="space-y-1">
             <p className="font-semibold text-zinc-300">
-              🖥️ Core UI Toggle (<kbd className="px-1 bg-black border border-white/15 rounded">Ctrl+\</kbd>):
+              🖥️ Core UI Toggle (
+              <kbd className="px-1 bg-black border border-white/15 rounded">Ctrl+\</kbd>):
             </p>
             <p className="text-zinc-400">
-              Switches IRIS into Minimalist Zen/HUD mode, seamlessly collapsing the header navigation
-              bar and maximizing the 3D particle sphere and voice listening waveforms for
+              Switches IRIS into Minimalist Zen/HUD mode, seamlessly collapsing the header
+              navigation bar and maximizing the 3D particle sphere and voice listening waveforms for
               distraction-free voice interactions.
             </p>
           </div>
 
           <div className="space-y-1">
-            <p className="font-semibold text-zinc-300">
-              ⚡ Safe Text Input Isolation:
-            </p>
+            <p className="font-semibold text-zinc-300">⚡ Safe Text Input Isolation:</p>
             <p className="text-zinc-400">
               When typing inside a search bar, note editor, or chat prompt, single-key shortcuts
               without modifiers are automatically suspended so your typing is never interrupted.
@@ -564,12 +568,14 @@ export default function KeyboardShortcutsSettings() {
           </div>
 
           <div className="space-y-1">
-            <p className="font-semibold text-zinc-300">
-              ⌨️ Custom Key Recording:
-            </p>
+            <p className="font-semibold text-zinc-300">⌨️ Custom Key Recording:</p>
             <p className="text-zinc-400">
-              Click &quot;Edit&quot; on any shortcut, press your desired combination (e.g. <kbd className="px-1 bg-black border border-white/15 rounded">Shift+Space</kbd> or <kbd className="px-1 bg-black border border-white/15 rounded">F2</kbd>),
-              and it saves automatically. Press <kbd className="px-1 bg-black border border-white/15 rounded">Esc</kbd> to cancel recording.
+              Click &quot;Edit&quot; on any shortcut, press your desired combination (e.g.{' '}
+              <kbd className="px-1 bg-black border border-white/15 rounded">Shift+Space</kbd> or{' '}
+              <kbd className="px-1 bg-black border border-white/15 rounded">F2</kbd>), and it saves
+              automatically. Press{' '}
+              <kbd className="px-1 bg-black border border-white/15 rounded">Esc</kbd> to cancel
+              recording.
             </p>
           </div>
         </div>

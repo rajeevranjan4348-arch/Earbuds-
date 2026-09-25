@@ -1,6 +1,6 @@
 /**
  * IRIS Hands-Free Camera Gesture Recognition Service
- * 
+ *
  * Provides real-time computer vision gesture analysis using the device webcam:
  * - Hand detection & skin segmentation via chrominance & temporal motion differencing
  * - Centroid & trajectory velocity tracking (Swipe Left, Swipe Right, Swipe Up, Swipe Down)
@@ -526,7 +526,8 @@ class GestureRecognitionService {
 
       this.previousFrameData = frameData
 
-      const minMass = this.config.sensitivity === 'high' ? 350 : this.config.sensitivity === 'low' ? 900 : 550
+      const minMass =
+        this.config.sensitivity === 'high' ? 350 : this.config.sensitivity === 'low' ? 900 : 550
       const isHandPresent = activePixelCount >= minMass
 
       if (!isHandPresent) {
@@ -641,8 +642,10 @@ class GestureRecognitionService {
     const fillRatio = mass / (boxW * 160 * boxH * 120 || 1)
 
     // Sensitivity multipliers
-    const swipeThresh = this.config.sensitivity === 'high' ? 0.9 : this.config.sensitivity === 'low' ? 1.8 : 1.3
-    const vertSwipeThresh = this.config.sensitivity === 'high' ? 1.0 : this.config.sensitivity === 'low' ? 2.0 : 1.5
+    const swipeThresh =
+      this.config.sensitivity === 'high' ? 0.9 : this.config.sensitivity === 'low' ? 1.8 : 1.3
+    const vertSwipeThresh =
+      this.config.sensitivity === 'high' ? 1.0 : this.config.sensitivity === 'low' ? 2.0 : 1.5
 
     // 1. DYNAMIC GESTURES: Horizontal Swipes (Mirror view: hand moving to screen left is Swipe Left)
     // Note: Video is mirrored in standard selfie view

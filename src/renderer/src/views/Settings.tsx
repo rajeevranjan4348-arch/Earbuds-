@@ -587,8 +587,8 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                         </span>
                       </div>
                       <p className="text-xs text-zinc-400 pt-1 leading-relaxed">
-                        Access live voice conversation directly in the AI Core dashboard or the chat page
-                        using high-fidelity speech recognition and neural synthesis.
+                        Access live voice conversation directly in the AI Core dashboard or the chat
+                        page using high-fidelity speech recognition and neural synthesis.
                       </p>
                     </div>
 

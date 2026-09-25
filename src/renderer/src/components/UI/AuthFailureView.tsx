@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  AlertTriangle,
   RefreshCw,
   Trash2,
   Search,
@@ -10,7 +9,6 @@ import {
   CheckCircle,
   Copy,
   Check,
-  ExternalLink,
   ShieldAlert,
   Terminal,
   Download,
@@ -31,15 +29,13 @@ import {
   RiContactsBookLine,
   RiFilePptLine,
   RiSurveyLine,
-  RiBookOpenLine,
-  RiAppsLine
+  RiBookOpenLine
 } from 'react-icons/ri'
 import { GoogleWorkspaceService, AuthFailureLog } from '../../services/workspace'
 import { triggerWorkspaceOAuthPopup } from '../../lib/firebase'
 
 interface AuthFailureViewProps {
   onReauthenticate?: () => void
-  onNavigateService?: (tabId: string) => void
   isEmbedded?: boolean
 }
 
@@ -48,7 +44,6 @@ type SortOrder = 'asc' | 'desc'
 
 export default function AuthFailureView({
   onReauthenticate,
-  onNavigateService,
   isEmbedded = false
 }: AuthFailureViewProps) {
   const [logs, setLogs] = useState<AuthFailureLog[]>([])
@@ -110,10 +105,14 @@ export default function AuthFailureView({
   }
 
   const handleExportJSON = () => {
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(logs, null, 2))
+    const dataStr =
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(logs, null, 2))
     const downloadAnchor = document.createElement('a')
     downloadAnchor.setAttribute('href', dataStr)
-    downloadAnchor.setAttribute('download', `iris-workspace-auth-failures-${new Date().toISOString().slice(0, 10)}.json`)
+    downloadAnchor.setAttribute(
+      'download',
+      `iris-workspace-auth-failures-${new Date().toISOString().slice(0, 10)}.json`
+    )
     document.body.appendChild(downloadAnchor)
     downloadAnchor.click()
     downloadAnchor.remove()
@@ -146,7 +145,8 @@ export default function AuthFailureView({
   const getServiceIcon = (service: string) => {
     const s = service.toLowerCase()
     if (s.includes('drive')) return <RiDriveLine className="text-blue-400" size={16} />
-    if (s.includes('gmail') || s.includes('mail')) return <RiMailLine className="text-red-400" size={16} />
+    if (s.includes('gmail') || s.includes('mail'))
+      return <RiMailLine className="text-red-400" size={16} />
     if (s.includes('calendar')) return <RiCalendarLine className="text-amber-400" size={16} />
     if (s.includes('sheet')) return <RiFileExcelLine className="text-emerald-400" size={16} />
     if (s.includes('doc')) return <RiFileTextLine className="text-blue-300" size={16} />
@@ -165,16 +165,27 @@ export default function AuthFailureView({
     const err = (log.error || '').toLowerCase()
     const code = log.statusCode
 
-    if (code === 401 || err.includes('unauthorized') || err.includes('invalid_grant') || err.includes('expired')) {
+    if (
+      code === 401 ||
+      err.includes('unauthorized') ||
+      err.includes('invalid_grant') ||
+      err.includes('expired')
+    ) {
       return {
         severity: 'HIGH',
         category: 'Token Expiration / Invalid Grant',
-        recommendation: 'The Google OAuth 2.0 access token has expired or was revoked. Re-authenticating your Google account will mint a fresh Bearer token.',
+        recommendation:
+          'The Google OAuth 2.0 access token has expired or was revoked. Re-authenticating your Google account will mint a fresh Bearer token.',
         actionLabel: 'Re-authenticate Workspace',
         actionType: 'auth'
       }
     }
-    if (code === 403 || err.includes('forbidden') || err.includes('insufficientpermissions') || err.includes('scope')) {
+    if (
+      code === 403 ||
+      err.includes('forbidden') ||
+      err.includes('insufficientpermissions') ||
+      err.includes('scope')
+    ) {
       return {
         severity: 'HIGH',
         category: 'Missing OAuth Permission / Scope',
@@ -187,7 +198,8 @@ export default function AuthFailureView({
       return {
         severity: 'MEDIUM',
         category: 'Resource Not Found',
-        recommendation: 'The requested file, message, calendar event, or document was not found or was deleted in your Google account.',
+        recommendation:
+          'The requested file, message, calendar event, or document was not found or was deleted in your Google account.',
         actionLabel: 'Verify Resource ID',
         actionType: 'info'
       }
@@ -196,7 +208,8 @@ export default function AuthFailureView({
       return {
         severity: 'MEDIUM',
         category: 'Rate Limited / Quota Exceeded',
-        recommendation: 'Google API rate limit reached. The system will automatically back off and retry in 60 seconds.',
+        recommendation:
+          'Google API rate limit reached. The system will automatically back off and retry in 60 seconds.',
         actionLabel: 'Wait for Backoff',
         actionType: 'wait'
       }
@@ -204,7 +217,8 @@ export default function AuthFailureView({
     return {
       severity: 'LOW',
       category: 'Network / Gateway Anomaly',
-      recommendation: 'A transient network disruption occurred while communicating with Google API servers. Retrying the request should resolve it.',
+      recommendation:
+        'A transient network disruption occurred while communicating with Google API servers. Retrying the request should resolve it.',
       actionLabel: 'Retry Operation',
       actionType: 'retry'
     }
@@ -233,7 +247,8 @@ export default function AuthFailureView({
           if (selectedStatusCode === '403' && log.statusCode !== 403) return false
           if (selectedStatusCode === '404' && log.statusCode !== 404) return false
           if (selectedStatusCode === '500' && (log.statusCode || 0) < 500) return false
-          if (selectedStatusCode === 'OTHER' && [401, 403, 404, 500].includes(log.statusCode || 0)) return false
+          if (selectedStatusCode === 'OTHER' && [401, 403, 404, 500].includes(log.statusCode || 0))
+            return false
         }
         // Search query
         if (searchQuery.trim()) {
@@ -272,7 +287,9 @@ export default function AuthFailureView({
   }
 
   return (
-    <div className={`flex flex-col h-full w-full bg-zinc-950/90 border border-white/10 rounded-2xl overflow-hidden shadow-2xl text-zinc-100 ${isEmbedded ? '' : 'p-4 sm:p-6'}`}>
+    <div
+      className={`flex flex-col h-full w-full bg-zinc-950/90 border border-white/10 rounded-2xl overflow-hidden shadow-2xl text-zinc-100 ${isEmbedded ? '' : 'p-4 sm:p-6'}`}
+    >
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-3">
@@ -423,7 +440,9 @@ export default function AuthFailureView({
             <button
               onClick={() => setViewMode('cards')}
               className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                viewMode === 'cards' ? 'bg-zinc-800 text-emerald-400' : 'text-zinc-400 hover:text-zinc-200'
+                viewMode === 'cards'
+                  ? 'bg-zinc-800 text-emerald-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
               title="Card view with diagnostic remediation"
             >
@@ -432,7 +451,9 @@ export default function AuthFailureView({
             <button
               onClick={() => setViewMode('table')}
               className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                viewMode === 'table' ? 'bg-zinc-800 text-emerald-400' : 'text-zinc-400 hover:text-zinc-200'
+                viewMode === 'table'
+                  ? 'bg-zinc-800 text-emerald-400'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
               title="Dense sortable table view"
             >
@@ -481,7 +502,10 @@ export default function AuthFailureView({
                   >
                     <div className="flex items-center gap-1">
                       <span>Time</span>
-                      <ArrowUpDown size={11} className={sortField === 'timestamp' ? 'text-emerald-400' : ''} />
+                      <ArrowUpDown
+                        size={11}
+                        className={sortField === 'timestamp' ? 'text-emerald-400' : ''}
+                      />
                     </div>
                   </th>
                   <th
@@ -490,7 +514,10 @@ export default function AuthFailureView({
                   >
                     <div className="flex items-center gap-1">
                       <span>Service</span>
-                      <ArrowUpDown size={11} className={sortField === 'service' ? 'text-emerald-400' : ''} />
+                      <ArrowUpDown
+                        size={11}
+                        className={sortField === 'service' ? 'text-emerald-400' : ''}
+                      />
                     </div>
                   </th>
                   <th
@@ -499,7 +526,10 @@ export default function AuthFailureView({
                   >
                     <div className="flex items-center gap-1">
                       <span>HTTP</span>
-                      <ArrowUpDown size={11} className={sortField === 'statusCode' ? 'text-emerald-400' : ''} />
+                      <ArrowUpDown
+                        size={11}
+                        className={sortField === 'statusCode' ? 'text-emerald-400' : ''}
+                      />
                     </div>
                   </th>
                   <th
@@ -508,7 +538,10 @@ export default function AuthFailureView({
                   >
                     <div className="flex items-center gap-1">
                       <span>Error Diagnostic</span>
-                      <ArrowUpDown size={11} className={sortField === 'error' ? 'text-emerald-400' : ''} />
+                      <ArrowUpDown
+                        size={11}
+                        className={sortField === 'error' ? 'text-emerald-400' : ''}
+                      />
                     </div>
                   </th>
                   <th className="py-2.5 px-3 text-right">Actions</th>
@@ -547,16 +580,14 @@ export default function AuthFailureView({
                               log.statusCode === 401
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                 : log.statusCode === 403
-                                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                                  ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                  : 'bg-zinc-800 text-zinc-300 border border-white/10'
                             }`}
                           >
                             {log.statusCode || 'ERR'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 max-w-md truncate text-zinc-300">
-                          {log.error}
-                        </td>
+                        <td className="py-2.5 px-3 max-w-md truncate text-zinc-300">{log.error}</td>
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <button
                             onClick={(e) => {
@@ -576,7 +607,10 @@ export default function AuthFailureView({
                       </tr>
                       {isExpanded && (
                         <tr className="bg-zinc-950/80">
-                          <td colSpan={5} className="p-4 border-b border-white/10 font-sans text-xs">
+                          <td
+                            colSpan={5}
+                            className="p-4 border-b border-white/10 font-sans text-xs"
+                          >
                             <div className="space-y-3">
                               <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1">
@@ -641,8 +675,8 @@ export default function AuthFailureView({
                   log.statusCode === 401
                     ? 'bg-amber-950/20 border-amber-500/30 hover:border-amber-500/50'
                     : log.statusCode === 403
-                    ? 'bg-red-950/20 border-red-500/30 hover:border-red-500/50'
-                    : 'bg-zinc-900/60 border-white/10 hover:border-white/20'
+                      ? 'bg-red-950/20 border-red-500/30 hover:border-red-500/50'
+                      : 'bg-zinc-900/60 border-white/10 hover:border-white/20'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -660,8 +694,8 @@ export default function AuthFailureView({
                             log.statusCode === 401
                               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                               : log.statusCode === 403
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                              : 'bg-zinc-800 text-zinc-300 border border-white/10'
+                                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                : 'bg-zinc-800 text-zinc-300 border border-white/10'
                           }`}
                         >
                           HTTP {log.statusCode || 'ERR'}

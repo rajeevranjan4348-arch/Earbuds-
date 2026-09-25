@@ -9,6 +9,7 @@ IRIS translates voice intent into direct, physical actions on your machine. The 
 IRIS relies on powerful underlying libraries, prominently **Nut.js**, to interact with the operating system at a low level.
 
 ### Hardware Injection
+
 - **Keyboard Injection:** IRIS can globally inject keystrokes, simulate complex hotkeys, and perform "phantom typing" to write code or text directly into active windows (e.g., your IDE or terminal).
 - **Mouse Control:** Using exact coordinate targeting, IRIS takes control of the cursor to click, drag, and scroll across the UI autonomously.
 
@@ -26,7 +27,7 @@ flowchart TD
     C -->|File System| D[Read/Write API]
     C -->|UI Interaction| E[Nut.js Engine]
     C -->|Process| F[OS Exec/Spawn]
-    
+
     D --> G[Local Disk Modified]
     E --> H[Keyboard/Mouse Injected]
     F --> I[Application Launched/Killed]

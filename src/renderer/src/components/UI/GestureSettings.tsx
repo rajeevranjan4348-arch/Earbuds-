@@ -46,7 +46,9 @@ export const GestureSettings: React.FC<GestureSettingsProps> = ({ onStatusChange
 
   const handleActionChange = (gesture: GestureType, action: GestureActionId) => {
     gestureRecognitionService.setActionMapping(gesture, action)
-    onStatusChange?.(`Mapped ${GESTURE_DEFINITIONS[gesture].name} to: ${ACTION_DESCRIPTIONS[action]}`)
+    onStatusChange?.(
+      `Mapped ${GESTURE_DEFINITIONS[gesture].name} to: ${ACTION_DESCRIPTIONS[action]}`
+    )
   }
 
   const testGesture = (g: GestureType) => {

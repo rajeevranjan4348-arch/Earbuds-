@@ -152,7 +152,9 @@ export const Mem0Provider: React.FC<Mem0ProviderProps> = ({ children, autoExtrac
   // Natural language "Remember that..." statement
   const remember = useCallback(
     async (statement: string): Promise<MemoryItem> => {
-      const clean = statement.replace(/^(please\s+)?(remember\s+(that\s+)?|note\s+(that\s+)?)/i, '').trim()
+      const clean = statement
+        .replace(/^(please\s+)?(remember\s+(that\s+)?|note\s+(that\s+)?)/i, '')
+        .trim()
       const item = await memoryService.addMemory(clean || statement, activeUserId, {
         source: 'explicit'
       })
@@ -264,10 +266,7 @@ export const Mem0Provider: React.FC<Mem0ProviderProps> = ({ children, autoExtrac
 
   // Context-aware Prompt Synthesizer
   const enrichPrompt = useCallback(
-    async (
-      userPrompt: string,
-      baseSystemInstruction = ''
-    ): Promise<PromptEnrichmentResult> => {
+    async (userPrompt: string, baseSystemInstruction = ''): Promise<PromptEnrichmentResult> => {
       const relevant = await memoryService.searchMemories(userPrompt, activeUserId, 5)
       const contextText = await memoryService.buildContextPrompt(userPrompt, activeUserId)
 
@@ -420,7 +419,8 @@ export function useMem0(): Mem0ContextType {
       clearAllMemories: () => memoryService.clearAllMemories(activeUserId),
       searchMemories: (q, limit) => memoryService.searchMemories(q, activeUserId, limit),
       filterByCategory: (cat) => memories.filter((m) => m.category === cat),
-      recordInteraction: (u) => memoryService.processAutomaticMemoryExtraction(u, 'user', activeUserId),
+      recordInteraction: (u) =>
+        memoryService.processAutomaticMemoryExtraction(u, 'user', activeUserId),
       getContextForPrompt: (q) => memoryService.buildContextPrompt(q, activeUserId),
       enrichPrompt: async (prompt, base) => {
         const relevant = await memoryService.searchMemories(prompt, activeUserId, 5)

@@ -3,6 +3,7 @@
 IRIS uses an absolute Zero-Trust, local-only keychain for API integrations.
 
 ## Core APIs
+
 - **Gemini API:** Required for Voice.
 - **Groq API:** Required for ultra-fast fallback.
 - **Tavily:** Required for Deep Research.

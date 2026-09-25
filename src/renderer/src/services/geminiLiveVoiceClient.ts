@@ -346,12 +346,15 @@ class GeminiLiveVoiceClient {
         const isPermissionDenied =
           err1?.name === 'NotAllowedError' ||
           err1?.name === 'PermissionDeniedError' ||
-          String(err1?.message || err1).toLowerCase().includes('permission denied')
+          String(err1?.message || err1)
+            .toLowerCase()
+            .includes('permission denied')
 
         if (isPermissionDenied) {
           console.warn('[GeminiLive] Microphone permission was not granted by the user/browser.')
           this.notify('error', {
-            error: 'Microphone permission denied. Please allow microphone access in browser settings.',
+            error:
+              'Microphone permission denied. Please allow microphone access in browser settings.',
             isPermissionDenied: true
           })
           return false
@@ -367,7 +370,9 @@ class GeminiLiveVoiceClient {
             isPermissionDenied:
               err2?.name === 'NotAllowedError' ||
               err2?.name === 'PermissionDeniedError' ||
-              String(err2?.message || err2).toLowerCase().includes('permission denied')
+              String(err2?.message || err2)
+                .toLowerCase()
+                .includes('permission denied')
           })
           return false
         }

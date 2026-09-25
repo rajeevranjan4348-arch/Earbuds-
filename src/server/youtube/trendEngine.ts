@@ -11,11 +11,13 @@ export class TrendDiscoveryEngine {
   /**
    * Discovers candidate topics across defined niches and calculates opportunity profile
    */
-  public async discoverTrends(options: {
-    niche?: string
-    count?: number
-    searchQuery?: string
-  } = {}): Promise<TrendTopic[]> {
+  public async discoverTrends(
+    options: {
+      niche?: string
+      count?: number
+      searchQuery?: string
+    } = {}
+  ): Promise<TrendTopic[]> {
     const profile = channelMemoryStore.getProfile()
     const targetNiches = options.niche ? [options.niche] : profile.contentNiches
     const count = options.count || 6
@@ -46,7 +48,11 @@ export class TrendDiscoveryEngine {
       })
 
       // Generate objective selection reasoning
-      const selectionReason = this.generateSelectionReason(seed, opportunityScore, dupCheck.isDuplicate)
+      const selectionReason = this.generateSelectionReason(
+        seed,
+        opportunityScore,
+        dupCheck.isDuplicate
+      )
 
       // Widened so live feeds (not just the curated seeds below) can raise risk.
       const seedRisk: string = seed.safetyPolicyRisk
@@ -68,7 +74,8 @@ export class TrendDiscoveryEngine {
         selectionReason,
         factualClaims: seed.factualClaims,
         copyrightRisk: seed.copyrightRisk,
-        requiresHumanReview: seed.requiresHumanReview || dupCheck.isDuplicate || seedRisk === 'HIGH',
+        requiresHumanReview:
+          seed.requiresHumanReview || dupCheck.isDuplicate || seedRisk === 'HIGH',
         isDuplicate: dupCheck.isDuplicate,
         duplicateMatchId: dupCheck.matchTitle
       }
@@ -107,7 +114,11 @@ export class TrendDiscoveryEngine {
     return Math.round(Math.min(100, Math.max(0, raw)))
   }
 
-  private generateSelectionReason(seed: any, opportunityScore: number, isDuplicate: boolean): string {
+  private generateSelectionReason(
+    seed: any,
+    opportunityScore: number,
+    isDuplicate: boolean
+  ): string {
     if (isDuplicate) {
       return `Topic shows high search volume (${seed.searchDemand}/100) but strongly overlaps with a previously covered video. Recommended for fresh angle or Short format.`
     }
@@ -190,7 +201,8 @@ export class TrendDiscoveryEngine {
         requiresHumanReview: false,
         factualClaims: [
           {
-            claim: 'Over 82% of enterprise developers now utilize daily AI agentic coding copilots.',
+            claim:
+              'Over 82% of enterprise developers now utilize daily AI agentic coding copilots.',
             source: 'Stack Overflow & Developer Survey Data',
             status: 'CONFIRMED_FACT' as const,
             verified: true
@@ -236,7 +248,8 @@ export class TrendDiscoveryEngine {
         requiresHumanReview: false,
         factualClaims: [
           {
-            claim: 'YouTube Data API v3 supports automated video uploads, playlisting, and metadata sync.',
+            claim:
+              'YouTube Data API v3 supports automated video uploads, playlisting, and metadata sync.',
             source: 'Official Google YouTube Data API Reference',
             status: 'CONFIRMED_FACT' as const,
             verified: true
@@ -259,7 +272,8 @@ export class TrendDiscoveryEngine {
         requiresHumanReview: false,
         factualClaims: [
           {
-            claim: 'Multimodal token compression allows sub-100ms video frame inference on edge GPUs.',
+            claim:
+              'Multimodal token compression allows sub-100ms video frame inference on edge GPUs.',
             source: 'Computer Vision Benchmark Papers',
             status: 'CONFIRMED_FACT' as const,
             verified: true
@@ -270,7 +284,9 @@ export class TrendDiscoveryEngine {
 
     if (query) {
       const qLower = query.toLowerCase()
-      return defaultSeeds.filter((s) => s.title.toLowerCase().includes(qLower) || s.niche.toLowerCase().includes(qLower))
+      return defaultSeeds.filter(
+        (s) => s.title.toLowerCase().includes(qLower) || s.niche.toLowerCase().includes(qLower)
+      )
     }
 
     return defaultSeeds

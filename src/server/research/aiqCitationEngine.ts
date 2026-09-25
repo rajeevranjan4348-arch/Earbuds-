@@ -118,10 +118,7 @@ AI-Q Grounding & Citation Directives:
       // Regex for [1], [Source 1], [src 1]
       const numPattern = new RegExp(`\\[(?:Source\\s*)?${c.index}\\]`, 'gi')
       if (numPattern.test(annotatedText)) {
-        annotatedText = annotatedText.replace(
-          numPattern,
-          `[[${c.index}: ${c.title}](${c.url})]`
-        )
+        annotatedText = annotatedText.replace(numPattern, `[[${c.index}: ${c.title}](${c.url})]`)
         replacedCount++
       }
     })

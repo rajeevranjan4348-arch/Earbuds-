@@ -49,10 +49,7 @@ export class ChannelMemoryStore {
       'Spatial AI Telemetry in Real-Time Maps',
       'Mastering Full-Stack TypeScript Workspaces'
     ],
-    failedTopics: [
-      'Generic top 10 AI tools with no code',
-      'Over-simplified buzzword overviews'
-    ],
+    failedTopics: ['Generic top 10 AI tools with no code', 'Over-simplified buzzword overviews'],
     publishedVideosCount: 14,
     totalViews: 248900,
     subscribers: 18450
@@ -126,7 +123,9 @@ export class ChannelMemoryStore {
     return { ...this.scheduleConfig }
   }
 
-  public updateScheduleConfig(updates: Partial<AutomationScheduleConfig>): AutomationScheduleConfig {
+  public updateScheduleConfig(
+    updates: Partial<AutomationScheduleConfig>
+  ): AutomationScheduleConfig {
     this.scheduleConfig = {
       ...this.scheduleConfig,
       ...updates

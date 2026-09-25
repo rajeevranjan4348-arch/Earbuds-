@@ -88,8 +88,7 @@ export class EmbeddingsEngine {
 
             // The GenAI SDK returns an `embeddings[]` array (one entry per
             // embedded content part).
-            const vector =
-              resp?.embeddings?.[0]?.values ?? (resp as any)?.embedding?.values
+            const vector = resp?.embeddings?.[0]?.values ?? (resp as any)?.embedding?.values
             if (vector) {
               results[globalIdx] = vector
             } else {

@@ -53,7 +53,10 @@ export class CentralizedWorkspaceSessionManager {
   private sessions: Map<string, WorkspaceSessionData> = new Map()
   private primaryUserId: string = 'usr_kumarimamta87565'
   private authFailures: AuthFailureLog[] = []
-  private refreshPromises: Map<string, Promise<{ success: boolean; accessToken?: string; error?: string }>> = new Map()
+  private refreshPromises: Map<
+    string,
+    Promise<{ success: boolean; accessToken?: string; error?: string }>
+  > = new Map()
 
   constructor() {
     this.ensureDataDirectory()
@@ -127,12 +130,15 @@ export class CentralizedWorkspaceSessionManager {
     const now = Date.now()
     const bufferMs = bufferSeconds * 1000
     if (session.expiresAt && session.expiresAt > 0) {
-      return now < (session.expiresAt - bufferMs)
+      return now < session.expiresAt - bufferMs
     }
     return true
   }
 
-  public async getValidAccessToken(userId?: string, callingService = 'workspace'): Promise<string | null> {
+  public async getValidAccessToken(
+    userId?: string,
+    callingService = 'workspace'
+  ): Promise<string | null> {
     const uid = this.resolveUserId(userId)
     const session = this.sessions.get(uid)
 
@@ -156,18 +162,33 @@ export class CentralizedWorkspaceSessionManager {
     return session.accessToken
   }
 
-  public async refreshToken(userId?: string, callingService = 'workspace'): Promise<{ success: boolean; accessToken?: string; error?: string }> {
+  public async refreshToken(
+    userId?: string,
+    callingService = 'workspace'
+  ): Promise<{ success: boolean; accessToken?: string; error?: string }> {
     const uid = this.resolveUserId(userId)
-    
+
     if (this.refreshPromises.has(uid)) {
       return await this.refreshPromises.get(uid)!
     }
 
     const refreshPromise = (async () => {
       const session = this.sessions.get(uid)
-      const refreshToken = session?.refreshToken || process.env.GOOGLE_WORKSPACE_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN || process.env.YOUTUBE_REFRESH_TOKEN
-      const clientId = process.env.GOOGLE_WORKSPACE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || process.env.YOUTUBE_CLIENT_ID || '692533244658-0pl49eo1pq8d5ljrtp8pdi6g5vrrfemp.apps.googleusercontent.com'
-      const clientSecret = process.env.GOOGLE_WORKSPACE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || process.env.YOUTUBE_CLIENT_SECRET || ''
+      const refreshToken =
+        session?.refreshToken ||
+        process.env.GOOGLE_WORKSPACE_REFRESH_TOKEN ||
+        process.env.GOOGLE_REFRESH_TOKEN ||
+        process.env.YOUTUBE_REFRESH_TOKEN
+      const clientId =
+        process.env.GOOGLE_WORKSPACE_CLIENT_ID ||
+        process.env.GOOGLE_CLIENT_ID ||
+        process.env.YOUTUBE_CLIENT_ID ||
+        '692533244658-0pl49eo1pq8d5ljrtp8pdi6g5vrrfemp.apps.googleusercontent.com'
+      const clientSecret =
+        process.env.GOOGLE_WORKSPACE_CLIENT_SECRET ||
+        process.env.GOOGLE_CLIENT_SECRET ||
+        process.env.YOUTUBE_CLIENT_SECRET ||
+        ''
 
       if (!refreshToken) {
         return {
@@ -200,7 +221,11 @@ export class CentralizedWorkspaceSessionManager {
             session.lastError = 'Google OAuth authorization revoked or expired'
             this.persistSessions()
           }
-          this.logAuthFailure(callingService, `OAuth token refresh failed: ${errDetail}`, response.status)
+          this.logAuthFailure(
+            callingService,
+            `OAuth token refresh failed: ${errDetail}`,
+            response.status
+          )
           return { success: false, error: errDetail }
         }
 
@@ -210,7 +235,7 @@ export class CentralizedWorkspaceSessionManager {
 
         if (session) {
           session.accessToken = newAccessToken
-          session.expiresAt = now + (expiresInSec * 1000)
+          session.expiresAt = now + expiresInSec * 1000
           session.issuedAt = now
           session.isConnected = true
           session.lastVerifiedAt = now
@@ -223,7 +248,7 @@ export class CentralizedWorkspaceSessionManager {
             displayName: 'Mamta Kumari',
             accessToken: newAccessToken,
             refreshToken,
-            expiresAt: now + (expiresInSec * 1000),
+            expiresAt: now + expiresInSec * 1000,
             issuedAt: now,
             tokenType: 'Bearer',
             scopes: DEFAULT_WORKSPACE_SCOPES,
@@ -262,7 +287,7 @@ export class CentralizedWorkspaceSessionManager {
     const uid = params.userId || this.primaryUserId
     const now = Date.now()
     const expiresIn = params.expiresIn || 3600
-    const expiresAt = params.expiresAt || (now + expiresIn * 1000)
+    const expiresAt = params.expiresAt || now + expiresIn * 1000
     const existing = this.sessions.get(uid)
 
     const sessionData: WorkspaceSessionData = {
@@ -275,7 +300,9 @@ export class CentralizedWorkspaceSessionManager {
       expiresAt,
       issuedAt: now,
       tokenType: 'Bearer',
-      scopes: Array.from(new Set([...(existing?.scopes || DEFAULT_WORKSPACE_SCOPES), ...(params.scopes || [])])),
+      scopes: Array.from(
+        new Set([...(existing?.scopes || DEFAULT_WORKSPACE_SCOPES), ...(params.scopes || [])])
+      ),
       isConnected: true,
       lastVerifiedAt: now
     }
@@ -304,7 +331,9 @@ export class CentralizedWorkspaceSessionManager {
     const timeRemainingMs = Math.max(0, session.expiresAt - now)
 
     return {
-      isConnected: session.isConnected && (isValid || Boolean(session.refreshToken || process.env.GOOGLE_WORKSPACE_REFRESH_TOKEN)),
+      isConnected:
+        session.isConnected &&
+        (isValid || Boolean(session.refreshToken || process.env.GOOGLE_WORKSPACE_REFRESH_TOKEN)),
       userId: session.userId,
       email: session.email,
       displayName: session.displayName,
@@ -340,7 +369,9 @@ export class CentralizedWorkspaceSessionManager {
     }
     this.authFailures.unshift(failureLog)
     if (this.authFailures.length > 50) this.authFailures.pop()
-    console.error(`[WorkspaceAuthFailure] [${service.toUpperCase()}] [HTTP ${statusCode || 'ERR'}] ${error}`)
+    console.error(
+      `[WorkspaceAuthFailure] [${service.toUpperCase()}] [HTTP ${statusCode || 'ERR'}] ${error}`
+    )
   }
 
   public getAuthFailures(): AuthFailureLog[] {

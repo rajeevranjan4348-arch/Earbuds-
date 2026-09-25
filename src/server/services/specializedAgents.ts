@@ -45,11 +45,20 @@ function getGemini(): GoogleGenAI | null {
 export class ResearchAgent extends BaseAgent {
   public readonly name = 'Research Agent'
   public readonly role: SpecializedAgentRole = 'Research Agent'
-  public readonly description = 'Multi-engine research, academic discovery, citation synthesis, and factual grounding.'
-  public readonly capabilities = ['web_search', 'citation_ranking', 'academic_search', 'content_extraction']
+  public readonly description =
+    'Multi-engine research, academic discovery, citation synthesis, and factual grounding.'
+  public readonly capabilities = [
+    'web_search',
+    'citation_ranking',
+    'academic_search',
+    'content_extraction'
+  ]
   public readonly supportedTools = ['search_web', 'academic_research', 'extract_page_content']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const query = task.parameters?.query || task.description
     const startTime = Date.now()
 
@@ -96,7 +105,12 @@ export class ResearchAgent extends BaseAgent {
 
   public async verify(task: BrainTask, result: any): Promise<AgentVerificationResult> {
     if (!result) {
-      return { passed: false, reason: 'Empty research result', safeToRetry: true, suggestedAction: 'RETRY' }
+      return {
+        passed: false,
+        reason: 'Empty research result',
+        safeToRetry: true,
+        suggestedAction: 'RETRY'
+      }
     }
     if (result.resultsCount === 0 && (!result.summary || result.summary.length < 20)) {
       return {
@@ -107,7 +121,11 @@ export class ResearchAgent extends BaseAgent {
         correctedParameters: { ...task.parameters, query: `${task.description} overview` }
       }
     }
-    return { passed: true, reason: 'Research verified with valid citations and content', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Research verified with valid citations and content',
+      safeToRetry: false
+    }
   }
 }
 
@@ -115,11 +133,20 @@ export class ResearchAgent extends BaseAgent {
 export class CodingAgent extends BaseAgent {
   public readonly name = 'Coding Agent'
   public readonly role: SpecializedAgentRole = 'Coding Agent'
-  public readonly description = 'Codebase AST analysis, semantic symbol search, code generation, refactoring, and linting.'
-  public readonly capabilities = ['codebase_search', 'symbol_lookup', 'code_generation', 'code_refactor']
+  public readonly description =
+    'Codebase AST analysis, semantic symbol search, code generation, refactoring, and linting.'
+  public readonly capabilities = [
+    'codebase_search',
+    'symbol_lookup',
+    'code_generation',
+    'code_refactor'
+  ]
   public readonly supportedTools = ['codebase_search', 'symbol_lookup', 'execute_code_analysis']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const query = task.parameters?.query || task.description
     const projectId = task.parameters?.projectId || 'default_project'
@@ -154,9 +181,18 @@ export class CodingAgent extends BaseAgent {
 
   public async verify(task: BrainTask, result: any): Promise<AgentVerificationResult> {
     if (!result) {
-      return { passed: false, reason: 'Empty codebase analysis result', safeToRetry: true, suggestedAction: 'RETRY' }
+      return {
+        passed: false,
+        reason: 'Empty codebase analysis result',
+        safeToRetry: true,
+        suggestedAction: 'RETRY'
+      }
     }
-    return { passed: true, reason: 'Codebase symbols and chunks successfully retrieved', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Codebase symbols and chunks successfully retrieved',
+      safeToRetry: false
+    }
   }
 }
 
@@ -164,18 +200,25 @@ export class CodingAgent extends BaseAgent {
 export class BrowserAgent extends BaseAgent {
   public readonly name = 'Browser Agent'
   public readonly role: SpecializedAgentRole = 'Browser Agent'
-  public readonly description = 'Autonomous DOM navigation, interactive page extraction, web automation.'
+  public readonly description =
+    'Autonomous DOM navigation, interactive page extraction, web automation.'
   public readonly capabilities = ['web_navigation', 'dom_extraction', 'interactive_clicking']
   public readonly supportedTools = ['browser_navigate', 'browser_extract', 'browse_url']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const targetUrl = task.parameters?.url || task.parameters?.targetUrl
 
     try {
       if (targetUrl) {
         const session = browserUseAgent.getOrCreateSession('browser_agent_session')
-        const navResult = await browserUseAgent.executeAction({ type: 'navigate', url: targetUrl }, session.id)
+        const navResult = await browserUseAgent.executeAction(
+          { type: 'navigate', url: targetUrl },
+          session.id
+        )
         return {
           success: navResult.success,
           output: { session, extracted: navResult.content || navResult.title },
@@ -203,9 +246,18 @@ export class BrowserAgent extends BaseAgent {
 
   public async verify(task: BrainTask, result: any): Promise<AgentVerificationResult> {
     if (!result || (result.extracted && result.extracted.error)) {
-      return { passed: false, reason: 'Browser navigation extraction failed', safeToRetry: true, suggestedAction: 'RETRY' }
+      return {
+        passed: false,
+        reason: 'Browser navigation extraction failed',
+        safeToRetry: true,
+        suggestedAction: 'RETRY'
+      }
     }
-    return { passed: true, reason: 'Page content parsed and loaded successfully', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Page content parsed and loaded successfully',
+      safeToRetry: false
+    }
   }
 }
 
@@ -213,11 +265,15 @@ export class BrowserAgent extends BaseAgent {
 export class FileAgent extends BaseAgent {
   public readonly name = 'File Agent'
   public readonly role: SpecializedAgentRole = 'File Agent'
-  public readonly description = 'Safe project filesystem operations, document reading, structured data export.'
+  public readonly description =
+    'Safe project filesystem operations, document reading, structured data export.'
   public readonly capabilities = ['file_read', 'file_write', 'directory_list', 'pdf_ingestion']
   public readonly supportedTools = ['file_read', 'file_write', 'file_list', 'rag_ingest']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const action = task.parameters?.action || 'read'
     const filePath = task.parameters?.filePath || task.parameters?.path
@@ -290,11 +346,15 @@ export class FileAgent extends BaseAgent {
 export class VisionAgent extends BaseAgent {
   public readonly name = 'Vision Agent'
   public readonly role: SpecializedAgentRole = 'Vision Agent'
-  public readonly description = 'Multimodal image inspection, OCR, Mermaid architecture diagrams, FLUX asset generation.'
+  public readonly description =
+    'Multimodal image inspection, OCR, Mermaid architecture diagrams, FLUX asset generation.'
   public readonly capabilities = ['vision_inspect', 'diagram_generation', 'flux_image_generation']
   public readonly supportedTools = ['vision_inspect', 'render_diagram', 'generate_image']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const prompt = task.parameters?.prompt || task.description
 
@@ -336,9 +396,18 @@ export class VisionAgent extends BaseAgent {
 
   public async verify(task: BrainTask, result: any): Promise<AgentVerificationResult> {
     if (!result) {
-      return { passed: false, reason: 'Empty vision output', safeToRetry: true, suggestedAction: 'RETRY' }
+      return {
+        passed: false,
+        reason: 'Empty vision output',
+        safeToRetry: true,
+        suggestedAction: 'RETRY'
+      }
     }
-    return { passed: true, reason: 'Visual/diagram output generated successfully', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Visual/diagram output generated successfully',
+      safeToRetry: false
+    }
   }
 }
 
@@ -346,11 +415,15 @@ export class VisionAgent extends BaseAgent {
 export class AndroidAgent extends BaseAgent {
   public readonly name = 'Android Agent'
   public readonly role: SpecializedAgentRole = 'Android Agent'
-  public readonly description = 'Android device state integration, package discovery, intent triggering, mobile workflows.'
+  public readonly description =
+    'Android device state integration, package discovery, intent triggering, mobile workflows.'
   public readonly capabilities = ['android_intents', 'package_resolution', 'mobile_automation']
   public readonly supportedTools = ['android_action', 'launch_app', 'device_intent']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const query = task.parameters?.appName || task.parameters?.query || task.description
 
@@ -381,7 +454,11 @@ export class AndroidAgent extends BaseAgent {
     if (!result) {
       return { passed: false, reason: 'Empty Android action response', safeToRetry: false }
     }
-    return { passed: true, reason: 'Android intent parameters resolved and verified', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Android intent parameters resolved and verified',
+      safeToRetry: false
+    }
   }
 }
 
@@ -389,11 +466,15 @@ export class AndroidAgent extends BaseAgent {
 export class VoiceAgent extends BaseAgent {
   public readonly name = 'Voice Agent'
   public readonly role: SpecializedAgentRole = 'Voice Agent'
-  public readonly description = 'Speech transcription, tone adaptation, dialogue response formatting, conversational voice synthesis.'
+  public readonly description =
+    'Speech transcription, tone adaptation, dialogue response formatting, conversational voice synthesis.'
   public readonly capabilities = ['voice_synthesis', 'dialogue_formatting', 'speech_cleanup']
   public readonly supportedTools = ['synthesize_voice', 'voice_dialogue']
 
-  public async execute(task: BrainTask, context?: AgentExecutionContext): Promise<AgentExecutionResult> {
+  public async execute(
+    task: BrainTask,
+    context?: AgentExecutionContext
+  ): Promise<AgentExecutionResult> {
     const startTime = Date.now()
     const text = task.parameters?.text || task.parameters?.content || task.description
 
@@ -414,7 +495,11 @@ export class VoiceAgent extends BaseAgent {
     if (!result || !result.spokenText) {
       return { passed: false, reason: 'Voice formatting output missing', safeToRetry: false }
     }
-    return { passed: true, reason: 'Voice response cleanly formatted for speech delivery', safeToRetry: false }
+    return {
+      passed: true,
+      reason: 'Voice response cleanly formatted for speech delivery',
+      safeToRetry: false
+    }
   }
 }
 

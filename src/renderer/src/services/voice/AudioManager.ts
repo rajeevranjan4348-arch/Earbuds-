@@ -1,6 +1,6 @@
 /**
  * AudioManager - Composite Audio Pipeline Orchestrator
- * 
+ *
  * Hierarchy:
  * AudioManager
  * ├── MicrophoneManager
@@ -9,7 +9,7 @@
  * ├── SpeechRecognitionManager
  * ├── TTSManager
  * └── AudioPlaybackManager
- * 
+ *
  * Rules:
  * - All components implement AudioLifecycleComponent: start(), stop(), pause(), resume(), destroy().
  * - Ensure event listeners, media streams, AudioContext instances, and timers are cleaned up cleanly.
@@ -125,7 +125,10 @@ export class AudioManager implements AudioLifecycleComponent {
           }
         )
       } catch (streamErr: any) {
-        console.warn('[AudioManager] Hardware stream acquisition failed, falling back directly to speech recognition:', streamErr?.message)
+        console.warn(
+          '[AudioManager] Hardware stream acquisition failed, falling back directly to speech recognition:',
+          streamErr?.message
+        )
       }
 
       this.wakeDetector.start()

@@ -8,7 +8,15 @@ export const VOICE_PERSONALITIES: Record<VoicePersonalityId, VoicePersonality> =
     description: 'Refined, articulate British butler style. Authoritative and measured.',
     systemInstructionModifier:
       'Adopt the persona of J.A.R.V.I.S. Respond calmly, intelligently, and with polite British professionalism. Be articulate, precise, and measured. Address the user with respect (e.g. "Certainly, sir" or "Right away"). Keep spoken explanations concise and crisp.',
-    preferredVoiceKeywords: ['daniel', 'george', 'oliver', 'british', 'en-gb', 'natural', 'google uk'],
+    preferredVoiceKeywords: [
+      'daniel',
+      'george',
+      'oliver',
+      'british',
+      'en-gb',
+      'natural',
+      'google uk'
+    ],
     pitch: 0.95,
     rate: 1.02,
     accentColor: '#10b981' // emerald
@@ -20,7 +28,15 @@ export const VOICE_PERSONALITIES: Record<VoicePersonalityId, VoicePersonality> =
     description: 'Warm, helpful, conversational, and natural companion tone.',
     systemInstructionModifier:
       'Adopt a warm, friendly, natural assistant tone. Speak in an encouraging, clear, and conversational voice. Provide straightforward answers and helpful suggestions naturally.',
-    preferredVoiceKeywords: ['samantha', 'karen', 'victoria', 'serena', 'natural', 'google us english', 'en-us'],
+    preferredVoiceKeywords: [
+      'samantha',
+      'karen',
+      'victoria',
+      'serena',
+      'natural',
+      'google us english',
+      'en-us'
+    ],
     pitch: 1.05,
     rate: 1.05,
     accentColor: '#06b6d4' // cyan
@@ -54,8 +70,7 @@ export const VOICE_PERSONALITIES: Record<VoicePersonalityId, VoicePersonality> =
     name: 'Custom',
     title: 'User-Defined Instructions',
     description: 'Follows user customized behavioral directives.',
-    systemInstructionModifier:
-      'Follow the custom user-defined instructions provided in settings.',
+    systemInstructionModifier: 'Follow the custom user-defined instructions provided in settings.',
     preferredVoiceKeywords: ['natural', 'google', 'en-us'],
     pitch: 1.0,
     rate: 1.0,

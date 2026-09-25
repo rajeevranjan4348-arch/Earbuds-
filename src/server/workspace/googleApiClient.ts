@@ -15,7 +15,9 @@ export interface GoogleApiRequestOptions extends RequestInit {
 }
 
 export class GoogleWorkspaceApiClient {
-  public async execute<T = any>(options: GoogleApiRequestOptions): Promise<{ ok: boolean; status: number; data: T; headers: Headers }> {
+  public async execute<T = any>(
+    options: GoogleApiRequestOptions
+  ): Promise<{ ok: boolean; status: number; data: T; headers: Headers }> {
     const {
       service,
       url,
@@ -36,14 +38,20 @@ export class GoogleWorkspaceApiClient {
     }
 
     if (!token) {
-      const err = new Error(`Session expired or unauthenticated. Please reconnect your Google Workspace account.`)
+      const err = new Error(
+        `Session expired or unauthenticated. Please reconnect your Google Workspace account.`
+      )
       workspaceSessionManager.logAuthFailure(service, err.message, 401, url)
       throw err
     }
 
     const reqHeaders = new Headers(fetchOptions.headers || {})
     reqHeaders.set('Authorization', `Bearer ${token}`)
-    if (!reqHeaders.has('Content-Type') && fetchOptions.body && typeof fetchOptions.body === 'string') {
+    if (
+      !reqHeaders.has('Content-Type') &&
+      fetchOptions.body &&
+      typeof fetchOptions.body === 'string'
+    ) {
       reqHeaders.set('Content-Type', 'application/json')
     }
 
@@ -70,14 +78,22 @@ export class GoogleWorkspaceApiClient {
               })
             }
           }
-          throw new Error(`Session expired or unauthenticated. Please reconnect your Google Workspace account.`)
+          throw new Error(
+            `Session expired or unauthenticated. Please reconnect your Google Workspace account.`
+          )
         }
 
         if (response.status === 403) {
           const errJson = await response.json().catch(() => null)
           const errText = errJson?.error?.message || response.statusText
-          const isScope = errText.toLowerCase().includes('insufficient') || errText.toLowerCase().includes('scope')
-          throw new Error(isScope ? `Insufficient permissions or missing scopes for Google Workspace service "${service}". Please re-authorize.` : `Access denied: ${errText}`)
+          const isScope =
+            errText.toLowerCase().includes('insufficient') ||
+            errText.toLowerCase().includes('scope')
+          throw new Error(
+            isScope
+              ? `Insufficient permissions or missing scopes for Google Workspace service "${service}". Please re-authorize.`
+              : `Access denied: ${errText}`
+          )
         }
 
         if (!response.ok) {
@@ -85,7 +101,9 @@ export class GoogleWorkspaceApiClient {
         }
 
         const contentType = response.headers.get('content-type') || ''
-        const data = contentType.includes('application/json') ? await response.json() : await response.text()
+        const data = contentType.includes('application/json')
+          ? await response.json()
+          : await response.text()
         return { ok: true, status: response.status, data, headers: response.headers }
       } catch (err: any) {
         clearTimeout(timer)

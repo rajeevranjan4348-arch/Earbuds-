@@ -220,7 +220,9 @@ class ChatHistoryService {
     maybeMessage?: Message,
     userId?: string
   ): ChatSession {
-    const message = (typeof sessionIdOrMessage === 'string' ? maybeMessage : sessionIdOrMessage) as Message
+    const message = (
+      typeof sessionIdOrMessage === 'string' ? maybeMessage : sessionIdOrMessage
+    ) as Message
     const targetSessionId = typeof sessionIdOrMessage === 'string' ? sessionIdOrMessage : undefined
 
     if (!message) {

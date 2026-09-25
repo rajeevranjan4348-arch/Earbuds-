@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RiGoogleFill, RiRefreshLine, RiShieldCheckLine, RiAlertLine, RiCloseCircleLine, RiExternalLinkLine } from 'react-icons/ri'
+import {
+  RiGoogleFill,
+  RiRefreshLine,
+  RiShieldCheckLine,
+  RiAlertLine,
+  RiCloseCircleLine,
+  RiExternalLinkLine
+} from 'react-icons/ri'
 import { getCachedAccessToken, setCachedAccessToken, signInWithGoogle } from '../../lib/firebase'
 
 interface SessionInfo {
@@ -171,17 +178,24 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
         className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[11px] font-mono tracking-wider transition-all duration-200 cursor-pointer ${badgeColor} backdrop-blur-md shadow-sm`}
         title={`Google Workspace: ${statusText}${countdownStr ? ` (${countdownStr} left)` : ''}`}
       >
-        <RiGoogleFill size={14} className={statusType === 'connected' ? 'text-blue-400' : statusType === 'warning' ? 'text-amber-400' : 'text-zinc-500'} />
-        
-        <span className="hidden sm:inline font-bold">
-          Workspace
-        </span>
+        <RiGoogleFill
+          size={14}
+          className={
+            statusType === 'connected'
+              ? 'text-blue-400'
+              : statusType === 'warning'
+                ? 'text-amber-400'
+                : 'text-zinc-500'
+          }
+        />
+
+        <span className="hidden sm:inline font-bold">Workspace</span>
 
         <div className="flex items-center gap-1.5">
-          <div className={`h-2 w-2 rounded-full ${dotColor} ${statusType === 'connected' ? 'shadow-[0_0_8px_rgba(52,211,153,0.8)]' : statusType === 'warning' ? 'animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]' : ''}`} />
-          <span className="text-[10px] font-medium hidden md:inline">
-            {statusText}
-          </span>
+          <div
+            className={`h-2 w-2 rounded-full ${dotColor} ${statusType === 'connected' ? 'shadow-[0_0_8px_rgba(52,211,153,0.8)]' : statusType === 'warning' ? 'animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.8)]' : ''}`}
+          />
+          <span className="text-[10px] font-medium hidden md:inline">{statusText}</span>
         </div>
 
         {statusType === 'connected' && countdownStr && (
@@ -208,7 +222,9 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
                 </div>
                 <div>
                   <div className="font-bold text-zinc-100 text-[12px]">Google Workspace</div>
-                  <div className="text-[10px] text-zinc-400">{session?.email || 'No active user'}</div>
+                  <div className="text-[10px] text-zinc-400">
+                    {session?.email || 'No active user'}
+                  </div>
                 </div>
               </div>
               <button
@@ -222,7 +238,9 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
             <div className="py-2.5 space-y-2 text-[11px]">
               <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-zinc-900/60 border border-white/5">
                 <span className="text-zinc-400">Connection State:</span>
-                <span className={`font-bold ${statusType === 'connected' ? 'text-emerald-400' : statusType === 'warning' ? 'text-amber-400' : 'text-rose-400'}`}>
+                <span
+                  className={`font-bold ${statusType === 'connected' ? 'text-emerald-400' : statusType === 'warning' ? 'text-amber-400' : 'text-rose-400'}`}
+                >
                   {statusText}
                 </span>
               </div>
@@ -236,7 +254,9 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
 
               <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-zinc-900/60 border border-white/5">
                 <span className="text-zinc-400">Active Scopes:</span>
-                <span className="text-zinc-200 font-mono">{session?.scopes?.length || 14} authorized</span>
+                <span className="text-zinc-200 font-mono">
+                  {session?.scopes?.length || 14} authorized
+                </span>
               </div>
 
               {session?.lastError && (
@@ -253,7 +273,10 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
                 disabled={isRefreshing}
                 className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-200 text-[10px] font-bold transition-colors cursor-pointer disabled:opacity-50"
               >
-                <RiRefreshLine size={12} className={isRefreshing ? 'animate-spin text-blue-400' : 'text-zinc-400'} />
+                <RiRefreshLine
+                  size={12}
+                  className={isRefreshing ? 'animate-spin text-blue-400' : 'text-zinc-400'}
+                />
                 <span>{isRefreshing ? 'Refreshing...' : 'Refresh Token'}</span>
               </button>
 

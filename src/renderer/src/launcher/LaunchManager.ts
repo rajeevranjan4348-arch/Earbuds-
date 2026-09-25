@@ -17,7 +17,10 @@ class LaunchManager {
   /**
    * Finds and launches an app matching the given name or spoken query
    */
-  public async launchAppByName(nameOrQuery: string, secondaryQuery?: string): Promise<LaunchResult> {
+  public async launchAppByName(
+    nameOrQuery: string,
+    secondaryQuery?: string
+  ): Promise<LaunchResult> {
     const matched = appRegistry.matchVoiceCommand(nameOrQuery) || appRegistry.search(nameOrQuery)[0]
     if (matched) {
       return this.launch(matched, secondaryQuery)
@@ -28,10 +31,7 @@ class LaunchManager {
   /**
    * Executes launch of an application item by id or item object
    */
-  public async launch(
-    appOrId: string | AppItem,
-    secondaryQuery?: string
-  ): Promise<LaunchResult> {
+  public async launch(appOrId: string | AppItem, secondaryQuery?: string): Promise<LaunchResult> {
     const app = typeof appOrId === 'string' ? appRegistry.getById(appOrId) : appOrId
 
     if (!app) {
@@ -104,9 +104,7 @@ class LaunchManager {
       if (this.navigateCallback) {
         this.navigateCallback(app.target)
       } else if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('iris:navigate', { detail: { tab: app.target } })
-        )
+        window.dispatchEvent(new CustomEvent('iris:navigate', { detail: { tab: app.target } }))
       }
       return {
         success: true,
@@ -155,9 +153,7 @@ class LaunchManager {
 
       case 'ACTION_CAMERA_VISION': {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('iris:vision-mode', { detail: { mode: 'camera' } })
-          )
+          window.dispatchEvent(new CustomEvent('iris:vision-mode', { detail: { mode: 'camera' } }))
         }
         return {
           success: true,
@@ -171,9 +167,7 @@ class LaunchManager {
 
       case 'ACTION_SCREEN_VISION': {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(
-            new CustomEvent('iris:vision-mode', { detail: { mode: 'screen' } })
-          )
+          window.dispatchEvent(new CustomEvent('iris:vision-mode', { detail: { mode: 'screen' } }))
         }
         return {
           success: true,

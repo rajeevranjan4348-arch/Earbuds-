@@ -28,7 +28,11 @@ export class TitleEngine {
       }
 
       // Check for excessive exclamation marks or spam words
-      if (cand.title.includes('!!!') || cand.title.includes('FREE MONEY') || cand.title.includes('1000X')) {
+      if (
+        cand.title.includes('!!!') ||
+        cand.title.includes('FREE MONEY') ||
+        cand.title.includes('1000X')
+      ) {
         score -= 40
       }
 

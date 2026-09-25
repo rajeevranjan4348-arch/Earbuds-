@@ -432,9 +432,7 @@ export class LongTermMemoryService {
 
     if (memories.length === 0) return ''
 
-    const formatted = memories
-      .map((m) => `- [${m.type}] ${m.content}`)
-      .join('\n')
+    const formatted = memories.map((m) => `- [${m.type}] ${m.content}`).join('\n')
 
     return `\n[RELEVANT CROSS-TASK CONTEXT FOR ${agentRole.toUpperCase()}]:\n${formatted}\n`
   }
@@ -531,9 +529,7 @@ export class LongTermMemoryService {
   public listMemories(userId?: string, limit: number = 50): LongTermMemoryItem[] {
     const all = Array.from(this.memories.values())
     const filtered = userId ? all.filter((m) => m.userId === userId || m.userId === 'system') : all
-    return filtered
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, limit)
+    return filtered.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit)
   }
 
   public getSessionSnapshot(sessionId: string): SessionContextSnapshot | undefined {

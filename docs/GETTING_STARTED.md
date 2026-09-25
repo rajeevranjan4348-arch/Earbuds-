@@ -63,15 +63,15 @@ npm run dev:electron
 
 The desktop build exposes everything the web shim only simulates:
 
-| Capability          | Web (shim)             | Electron (native)                        |
-| ------------------- | ---------------------- | ---------------------------------------- |
-| Notes / gallery     | `localStorage`         | JSON + media files in `userData`         |
-| Media URLs          | remote sample images   | `iris-media://gallery/<file>` protocol   |
-| App launch / close  | simulated              | real process launch per platform         |
-| System telemetry    | simulated values       | live CPU / RAM / thermals / drives       |
-| ADB (Phone panel)   | simulated device       | real `adb` bridge (Wi-Fi pairing)        |
-| Accessibilty bridge | simulated              | `adb shell input …` dispatch             |
-| API keys            | `.iris-keys.json`      | OS keychain vault                        |
+| Capability          | Web (shim)           | Electron (native)                      |
+| ------------------- | -------------------- | -------------------------------------- |
+| Notes / gallery     | `localStorage`       | JSON + media files in `userData`       |
+| Media URLs          | remote sample images | `iris-media://gallery/<file>` protocol |
+| App launch / close  | simulated            | real process launch per platform       |
+| System telemetry    | simulated values     | live CPU / RAM / thermals / drives     |
+| ADB (Phone panel)   | simulated device     | real `adb` bridge (Wi-Fi pairing)      |
+| Accessibilty bridge | simulated            | `adb shell input …` dispatch           |
+| API keys            | `.iris-keys.json`    | OS keychain vault                      |
 
 ## 5. Production
 

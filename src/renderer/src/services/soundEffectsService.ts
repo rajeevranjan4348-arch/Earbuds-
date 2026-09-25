@@ -361,9 +361,12 @@ class SoundEffectsService {
         try {
           const rawTarget = e.target as any
           if (!rawTarget) return
-          const target = typeof rawTarget.closest === 'function' 
-            ? rawTarget 
-            : (rawTarget.parentElement && typeof rawTarget.parentElement.closest === 'function' ? rawTarget.parentElement : null)
+          const target =
+            typeof rawTarget.closest === 'function'
+              ? rawTarget
+              : rawTarget.parentElement && typeof rawTarget.parentElement.closest === 'function'
+                ? rawTarget.parentElement
+                : null
           if (!target) return
           const interactive = target.closest(
             'button, a, [role="button"], input[type="range"], input[type="checkbox"], .interactive-sound, .tab-btn'
@@ -385,15 +388,21 @@ class SoundEffectsService {
         try {
           const rawTarget = e.target as any
           if (!rawTarget) return
-          const target = typeof rawTarget.closest === 'function' 
-            ? rawTarget 
-            : (rawTarget.parentElement && typeof rawTarget.parentElement.closest === 'function' ? rawTarget.parentElement : null)
+          const target =
+            typeof rawTarget.closest === 'function'
+              ? rawTarget
+              : rawTarget.parentElement && typeof rawTarget.parentElement.closest === 'function'
+                ? rawTarget.parentElement
+                : null
           if (!target) return
           const interactive = target.closest(
             'button, a, [role="button"], input[type="range"], input[type="checkbox"], .interactive-sound, .tab-btn'
           )
           if (interactive && !interactive.hasAttribute('disabled')) {
-            const isTab = interactive.getAttribute('role') === 'tab' || interactive.classList.contains('tab-btn') || (typeof interactive.closest === 'function' && interactive.closest('nav'))
+            const isTab =
+              interactive.getAttribute('role') === 'tab' ||
+              interactive.classList.contains('tab-btn') ||
+              (typeof interactive.closest === 'function' && interactive.closest('nav'))
             if (isTab) {
               this.play('tab')
             } else {

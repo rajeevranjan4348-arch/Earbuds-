@@ -4,7 +4,7 @@ IRIS has deep system-level execution privileges. To secure these capabilities, t
 
 ## The BYOK Philosophy
 
-IRIS operates on a **Bring Your Own Key (BYOK)** model. The system requires external API credentials (e.g., Gemini, Groq, Tavily) to function, but we do not provide, manage, or proxy these keys. 
+IRIS operates on a **Bring Your Own Key (BYOK)** model. The system requires external API credentials (e.g., Gemini, Groq, Tavily) to function, but we do not provide, manage, or proxy these keys.
 
 You control your own credentials. If a key is revoked, IRIS loses access immediately.
 

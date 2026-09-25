@@ -84,7 +84,10 @@ export class BrainMemoryManager {
    * Retrieves relevant previous task contexts given a new user request
    */
   public findRelevantTaskHistory(prompt: string, limit: number = 3): TaskMemoryRecord[] {
-    const tokens = prompt.toLowerCase().split(/\s+/).filter((w) => w.length > 2)
+    const tokens = prompt
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 2)
     if (tokens.length === 0) return []
 
     const scored = this.taskHistory.map((rec) => {

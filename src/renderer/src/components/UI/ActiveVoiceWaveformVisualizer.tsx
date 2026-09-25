@@ -1,19 +1,6 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Activity,
-  Mic,
-  MicOff,
-  Volume2,
-  Radio,
-  Sliders,
-  Sparkles,
-  Zap,
-  Gauge,
-  ChevronDown,
-  VolumeX,
-  RefreshCw
-} from 'lucide-react'
+import { Activity, Mic, MicOff, Volume2, Radio, Sliders, Sparkles, Zap, Gauge } from 'lucide-react'
 
 export type WaveformMode = 'oscilloscope' | 'frequency_bars' | 'radial_pulse' | 'neural_flux'
 
@@ -60,7 +47,6 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
   isSpeaking = false,
   isMuted = false,
   transcript = '',
-  status = 'Listening',
   height = 100,
   accentColor = '#00ff41',
   className = '',
@@ -76,6 +62,9 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
   const [showSettings, setShowSettings] = useState<boolean>(false)
   const [decibels, setDecibels] = useState<number>(-60)
   const [vadConfidence, setVadConfidence] = useState<number>(0)
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _status = status
   const [dominantFreq, setDominantFreq] = useState<number>(0)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -218,7 +207,8 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
       // ==========================================
       if (mode === 'oscilloscope') {
         const centerY = h / 2
-        const numWaves = 4
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _numWaves = 4
         const waveConfigs = [
           { freq: 0.015, amp: 0.85, speed: 1.0, alpha: 0.95, width: 2.5, color: primaryColor },
           { freq: 0.022, amp: 0.6, speed: -1.2, alpha: 0.7, width: 1.8, color: secondaryColor },
@@ -260,7 +250,7 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
           ctx.globalAlpha = cfg.alpha
 
           // Dynamic Amplitude modulation based on audio sensitivity
-          const baseAmp = (h * 0.38) * (0.08 + level * 0.92) * cfg.amp
+          const baseAmp = h * 0.38 * (0.08 + level * 0.92) * cfg.amp
 
           for (let x = 0; x <= width; x += 3) {
             // Envelope tapering at left and right edges for smooth visual boundary
@@ -276,13 +266,8 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
 
             const y =
               centerY +
-              Math.sin(x * cfg.freq + phase * cfg.speed) *
-                baseAmp *
-                envelope *
-                freqFactor +
-              Math.cos(x * cfg.freq * 0.5 - phase * 0.5) *
-                (baseAmp * 0.25) *
-                envelope
+              Math.sin(x * cfg.freq + phase * cfg.speed) * baseAmp * envelope * freqFactor +
+              Math.cos(x * cfg.freq * 0.5 - phase * 0.5) * (baseAmp * 0.25) * envelope
 
             if (x === 0) ctx.moveTo(x, y)
             else ctx.lineTo(x, y)
@@ -455,7 +440,18 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
       active = false
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
     }
-  }, [mode, audioLevel, frequencyData, isListening, isSpeaking, isMuted, height, accentColor, autoGain, sensitivityMultiplier])
+  }, [
+    mode,
+    audioLevel,
+    frequencyData,
+    isListening,
+    isSpeaking,
+    isMuted,
+    height,
+    accentColor,
+    autoGain,
+    sensitivityMultiplier
+  ])
 
   // Decibel meter status color
   const decibelColor = useMemo(() => {
@@ -515,7 +511,12 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
                   : 'bg-zinc-900/60 text-zinc-400 border-zinc-800'
               }`}
             >
-              <Zap size={10} className={vadConfidence > 40 ? 'text-emerald-400 fill-emerald-400' : 'text-zinc-500'} />
+              <Zap
+                size={10}
+                className={
+                  vadConfidence > 40 ? 'text-emerald-400 fill-emerald-400' : 'text-zinc-500'
+                }
+              />
               <span>VAD {vadConfidence}%</span>
             </span>
           )}

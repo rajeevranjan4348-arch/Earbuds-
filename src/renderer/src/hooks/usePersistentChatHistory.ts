@@ -6,11 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  chatHistoryService,
-  Message,
-  ChatSession
-} from '../services/chatHistoryService'
+import { chatHistoryService, Message, ChatSession } from '../services/chatHistoryService'
 import { useMem0 } from '../context/Mem0Context'
 import { firebaseAuthService } from '../services/firebaseAuth'
 
@@ -141,9 +137,7 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
       // 2. Automatically record interaction context to Mem0 for conversational continuity
       const shouldExtract = options?.persistToMem0 ?? autoExtractMem0
       if (shouldExtract && msg.role === 'model' && msg.text && msg.text.trim()) {
-        const lastUserMsg = updated.messages
-          .filter((m) => m.role === 'user')
-          .slice(-1)[0]
+        const lastUserMsg = updated.messages.filter((m) => m.role === 'user').slice(-1)[0]
         if (lastUserMsg && lastUserMsg.text) {
           try {
             await mem0.recordInteraction(lastUserMsg.text, msg.text)

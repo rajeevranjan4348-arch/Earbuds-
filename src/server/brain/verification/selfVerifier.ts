@@ -21,7 +21,11 @@ export class BrainSelfVerifier {
   public verify(task: BrainTask, rawOutput: any, errorMsg?: string): VerificationEvaluation {
     // 1. Explicit Error or Null Output
     if (errorMsg || rawOutput === null || rawOutput === undefined) {
-      return this.handleFailure(task, errorMsg || 'Task produced null or undefined output.', rawOutput)
+      return this.handleFailure(
+        task,
+        errorMsg || 'Task produced null or undefined output.',
+        rawOutput
+      )
     }
 
     // 2. Output contains error flags
@@ -49,11 +53,21 @@ export class BrainSelfVerifier {
 
       if (rules.type === 'schema' && rules.expectedFields && rules.expectedFields.length > 0) {
         if (typeof rawOutput !== 'object') {
-          return this.handleFailure(task, `Output must be an object matching schema [${rules.expectedFields.join(', ')}]`, rawOutput)
+          return this.handleFailure(
+            task,
+            `Output must be an object matching schema [${rules.expectedFields.join(', ')}]`,
+            rawOutput
+          )
         }
-        const missing = rules.expectedFields.filter((f) => !(f in rawOutput) || rawOutput[f] === undefined)
+        const missing = rules.expectedFields.filter(
+          (f) => !(f in rawOutput) || rawOutput[f] === undefined
+        )
         if (missing.length > 0) {
-          return this.handleFailure(task, `Missing required fields: [${missing.join(', ')}]`, rawOutput)
+          return this.handleFailure(
+            task,
+            `Missing required fields: [${missing.join(', ')}]`,
+            rawOutput
+          )
         }
       }
     }
@@ -118,7 +132,7 @@ export class BrainSelfVerifier {
       task.description.toLowerCase().includes('remove') ||
       task.description.toLowerCase().includes('erase')
 
-    const safeToRetry = !isSensitive && (task.retrySafe !== false)
+    const safeToRetry = !isSensitive && task.retrySafe !== false
 
     if (!safeToRetry) {
       return {

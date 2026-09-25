@@ -15,11 +15,11 @@ Audio processing relies on a continuous, real-time WebRTC stream.
 
 IRIS dynamically routes requests based on task complexity and latency requirements.
 
-| Engine | Primary Use Case | Execution Profile |
-| :--- | :--- | :--- |
+| Engine                     | Primary Use Case       | Execution Profile                                                                            |
+| :------------------------- | :--------------------- | :------------------------------------------------------------------------------------------- |
 | **Google Gemini Live API** | Primary Voice & Vision | Handles the core conversational loop and complex, multimodal task orchestration over WebRTC. |
-| **Groq** | Low-Latency Routing | Utilized for split-second decisions, rapid tool routing, and fast fallback text-generation. |
-| **Hugging Face** | Local Media & Tasks | Manages local inference for specific media parsing or offline fallback tasks. |
-| **Tavily** | Deep Search | Executes high-speed, agentic web crawling when external research is required. |
+| **Groq**                   | Low-Latency Routing    | Utilized for split-second decisions, rapid tool routing, and fast fallback text-generation.  |
+| **Hugging Face**           | Local Media & Tasks    | Manages local inference for specific media parsing or offline fallback tasks.                |
+| **Tavily**                 | Deep Search            | Executes high-speed, agentic web crawling when external research is required.                |
 
 This multi-model architecture ensures IRIS always uses the optimal engine for the specific execution requirement.

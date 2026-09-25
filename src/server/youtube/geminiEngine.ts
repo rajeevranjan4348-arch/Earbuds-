@@ -40,22 +40,10 @@ export class GeminiContentEngine {
     const model = this.getModelName()
 
     const targetWords =
-      format === 'SHORTS'
-        ? 130
-        : format === 'MINI'
-          ? 350
-          : format === 'STANDARD'
-            ? 1100
-            : 2200
+      format === 'SHORTS' ? 130 : format === 'MINI' ? 350 : format === 'STANDARD' ? 1100 : 2200
 
     const durationSec =
-      format === 'SHORTS'
-        ? 50
-        : format === 'MINI'
-          ? 150
-          : format === 'STANDARD'
-            ? 480
-            : 900
+      format === 'SHORTS' ? 50 : format === 'MINI' ? 150 : format === 'STANDARD' ? 480 : 900
 
     const prompt = `You are a world-class YouTube producer, scriptwriter, and educator for the channel "${profile.channelName}".
 Channel Tone: ${profile.brandStyle.tone}
@@ -287,7 +275,8 @@ Respond in structured JSON format with this schema:
         id: `thumb_c1_${Date.now()}`,
         conceptName: 'Curiosity Contrast',
         headlineText: 'IT ACTUALLY WORKS',
-        compositionDescription: 'Left: Shocked/focused engineer looking at glowing holographic terminal. Right: Bold neon emerald text "100% AUTONOMOUS" on pitch black.',
+        compositionDescription:
+          'Left: Shocked/focused engineer looking at glowing holographic terminal. Right: Bold neon emerald text "100% AUTONOMOUS" on pitch black.',
         visualPrompt: `YouTube thumbnail background, minimalist high-tech cybersecurity lab, glowing holographic data matrix, high contrast, 16:9, ultra sharp, 8k, vibrant emerald lighting`,
         colorPalette: ['#10B981', '#000000', '#FFFFFF', '#064E3B'],
         mobileReadabilityScore: 96,
@@ -297,7 +286,8 @@ Respond in structured JSON format with this schema:
         id: `thumb_c2_${Date.now()}`,
         conceptName: 'Before vs After Architecture',
         headlineText: '10X FASTER',
-        compositionDescription: 'Split-screen: Red "Traditional 45min" vs Emerald "Autonomous 4.2s" with speed meter graphic.',
+        compositionDescription:
+          'Split-screen: Red "Traditional 45min" vs Emerald "Autonomous 4.2s" with speed meter graphic.',
         visualPrompt: `Split-screen comparison YouTube thumbnail background, clean futuristic user interface, speed benchmark gauge, cinematic lighting, 16:9`,
         colorPalette: ['#EF4444', '#10B981', '#09090B', '#F4F4F5'],
         mobileReadabilityScore: 92,
@@ -307,7 +297,8 @@ Respond in structured JSON format with this schema:
         id: `thumb_c3_${Date.now()}`,
         conceptName: 'Blueprint Deep-Dive',
         headlineText: 'THE SECRET CODE',
-        compositionDescription: 'Close-up of clean code snippets floating above glowing 3D hardware chip with glowing circuits.',
+        compositionDescription:
+          'Close-up of clean code snippets floating above glowing 3D hardware chip with glowing circuits.',
         visualPrompt: `Close-up glowing semiconductor microchip with golden circuits and emerald light rays, clean TypeScript code overlays, 16:9, photorealistic`,
         colorPalette: ['#10B981', '#3B82F6', '#18181B', '#FBBF24'],
         mobileReadabilityScore: 88,

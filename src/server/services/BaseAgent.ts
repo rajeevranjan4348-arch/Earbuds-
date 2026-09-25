@@ -59,10 +59,7 @@ export abstract class BaseAgent {
   /**
    * Perform automated self-verification to validate the result before marking task complete
    */
-  public abstract verify(
-    task: BrainTask,
-    result: any
-  ): Promise<AgentVerificationResult>
+  public abstract verify(task: BrainTask, result: any): Promise<AgentVerificationResult>
 
   /**
    * Common recovery logic when a task fails
@@ -173,12 +170,18 @@ export class AgentRegistry {
     const descLower = description.toLowerCase()
 
     // 1. Tool-based exact match
-    if (requiredTools.some((t) => ['codebase_search', 'read_code', 'write_code', 'symbol_lookup'].includes(t))) {
+    if (
+      requiredTools.some((t) =>
+        ['codebase_search', 'read_code', 'write_code', 'symbol_lookup'].includes(t)
+      )
+    ) {
       const coding = this.get('Coding Agent')
       if (coding) return coding
     }
 
-    if (requiredTools.some((t) => ['browser_navigate', 'browser_extract', 'browse_url'].includes(t))) {
+    if (
+      requiredTools.some((t) => ['browser_navigate', 'browser_extract', 'browse_url'].includes(t))
+    ) {
       const browser = this.get('Browser Agent')
       if (browser) return browser
     }
@@ -188,7 +191,9 @@ export class AgentRegistry {
       if (file) return file
     }
 
-    if (requiredTools.some((t) => ['vision_inspect', 'generate_image', 'render_diagram'].includes(t))) {
+    if (
+      requiredTools.some((t) => ['vision_inspect', 'generate_image', 'render_diagram'].includes(t))
+    ) {
       const vision = this.get('Vision Agent')
       if (vision) return vision
     }
@@ -210,7 +215,7 @@ export class AgentRegistry {
       descLower.includes('function') ||
       descLower.includes('refactor') ||
       descLower.includes('bug') ||
-      descLower.includes('file') && descLower.includes('.ts')
+      (descLower.includes('file') && descLower.includes('.ts'))
     ) {
       return this.get('Coding Agent') || this.getDefaultAgent()
     }

@@ -37,7 +37,7 @@
   --iris-text-primary: #0f172a;
   --iris-text-secondary: #334155;
   --iris-text-muted: #64748b;
-  --iris-border-subtle: rgba(15, 23, 42, 0.10);
+  --iris-border-subtle: rgba(15, 23, 42, 0.1);
   --iris-border-medium: rgba(15, 23, 42, 0.18);
   --iris-border-strong: rgba(15, 23, 42, 0.28);
   --iris-shadow-ambient: 0 12px 40px rgba(15, 23, 42, 0.08);
@@ -58,7 +58,9 @@ body {
   text-rendering: optimizeLegibility;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 * {
@@ -100,11 +102,18 @@ body {
 }
 
 .smooth-spring {
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .smooth-card {
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }
 
@@ -139,7 +148,8 @@ body {
 }
 
 @keyframes smoothPulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -150,7 +160,8 @@ body {
 }
 
 @keyframes subtleFloat {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -159,7 +170,8 @@ body {
 }
 
 @keyframes softGlow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
   }
   50% {
@@ -169,7 +181,9 @@ body {
 
 /* Premium AI Thinking Dot Animation (GPU-friendly, 0 layout shifts) */
 @keyframes thinkingDot {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0.6) translateY(0);
     opacity: 0.4;
   }
@@ -201,7 +215,12 @@ body {
 }
 
 .animate-thinking-shimmer {
-  background: linear-gradient(90deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.25) 50%, rgba(16, 185, 129, 0.05) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 0.05) 0%,
+    rgba(16, 185, 129, 0.25) 50%,
+    rgba(16, 185, 129, 0.05) 100%
+  );
   background-size: 200% 100%;
   animation: thinkingShimmer 2.2s linear infinite;
 }
@@ -242,4 +261,3 @@ body {
     animation: none !important;
   }
 }
-

@@ -4,7 +4,7 @@ To execute tasks with deep contextual awareness, IRIS implements a local memory 
 
 ## The RAG Oracle
 
-The **RAG (Retrieval-Augmented Generation) Oracle** is IRIS's embedded memory engine, powered by **LanceDB**. 
+The **RAG (Retrieval-Augmented Generation) Oracle** is IRIS's embedded memory engine, powered by **LanceDB**.
 
 ### Workflow
 

@@ -511,94 +511,92 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
         </button>
       </div>
 
-      {panelView === 'telemetry' && (
-        <SystemTelemetryRecharts compact={false} />
-      )}
+      {panelView === 'telemetry' && <SystemTelemetryRecharts compact={false} />}
 
       {panelView === 'optics' && (
         <PremiumGlassPanel accent="green" className="group" glow>
-        <div className="p-3 flex flex-col h-full gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <PulseIndicator active={isActive && visionMode !== 'off'} />
-              <div className="flex flex-col">
-                <span className="font-mono text-[7px] tracking-[0.25em] text-white/50 uppercase font-light">
-                  Vision Feed
-                </span>
-                <span className="font-mono text-[8px] tracking-tight text-white/30">
-                  Optics @ 60Hz
-                </span>
+          <div className="p-3 flex flex-col h-full gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <PulseIndicator active={isActive && visionMode !== 'off'} />
+                <div className="flex flex-col">
+                  <span className="font-mono text-[7px] tracking-[0.25em] text-white/50 uppercase font-light">
+                    Vision Feed
+                  </span>
+                  <span className="font-mono text-[8px] tracking-tight text-white/30">
+                    Optics @ 60Hz
+                  </span>
+                </div>
+              </div>
+              <div
+                className="px-2 py-0.5 rounded border text-[7px] font-mono tracking-widest uppercase font-semibold transition-colors duration-500"
+                style={
+                  visionMode && visionMode !== 'off'
+                    ? {
+                        borderColor: 'rgba(0, 255, 136, 0.2)',
+                        background: 'rgba(0, 255, 136, 0.05)',
+                        color: '#00ff88'
+                      }
+                    : {
+                        borderColor: 'rgba(255, 255, 255, 0.05)',
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        color: 'rgba(255, 255, 255, 0.4)'
+                      }
+                }
+              >
+                {visionMode && visionMode !== 'off' ? 'Tracking' : isActive ? 'Ready' : 'Offline'}
               </div>
             </div>
-            <div
-              className="px-2 py-0.5 rounded border text-[7px] font-mono tracking-widest uppercase font-semibold transition-colors duration-500"
-              style={
-                visionMode && visionMode !== 'off'
-                  ? {
-                      borderColor: 'rgba(0, 255, 136, 0.2)',
-                      background: 'rgba(0, 255, 136, 0.05)',
-                      color: '#00ff88'
-                    }
-                  : {
-                      borderColor: 'rgba(255, 255, 255, 0.05)',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      color: 'rgba(255, 255, 255, 0.4)'
-                    }
-              }
-            >
-              {visionMode && visionMode !== 'off' ? 'Tracking' : isActive ? 'Ready' : 'Offline'}
-            </div>
-          </div>
 
-          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg border border-white/5 bg-[#050505] flex-1">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`absolute inset-0 z-10 w-full h-full object-cover transition-opacity duration-500 ${
-                visionMode && visionMode !== 'off' ? 'opacity-90' : 'opacity-0'
-              }`}
-            />
-
-            <canvas ref={canvasRef} width="640" height="480" className="hidden" />
-
-            <div
-              className={`absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 transition-opacity duration-500 ${
-                !visionMode || visionMode === 'off'
-                  ? 'opacity-100'
-                  : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              <Camera
-                size={20}
-                style={{ color: isActive ? '#00ff88' : 'rgba(255, 255, 255, 0.2)' }}
-                strokeWidth={1.5}
+            <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg border border-white/5 bg-[#050505] flex-1">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`absolute inset-0 z-10 w-full h-full object-cover transition-opacity duration-500 ${
+                  visionMode && visionMode !== 'off' ? 'opacity-90' : 'opacity-0'
+                }`}
               />
-              <span className="font-mono text-[7px] tracking-[0.3em] text-white/30 uppercase">
-                No Input
-              </span>
-            </div>
 
-            {visionMode && visionMode !== 'off' && (
-              <>
-                {[
-                  'top-2 left-2 border-t border-l',
-                  'top-2 right-2 border-t border-r',
-                  'bottom-2 left-2 border-b border-l',
-                  'bottom-2 right-2 border-b border-r'
-                ].map((pos, i) => (
-                  <div
-                    key={i}
-                    className={`absolute h-3 w-3 z-30 ${pos} transition-colors duration-500`}
-                    style={{ borderColor: 'rgba(0, 255, 136, 0.4)' }}
-                  />
-                ))}
-              </>
-            )}
+              <canvas ref={canvasRef} width="640" height="480" className="hidden" />
+
+              <div
+                className={`absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 transition-opacity duration-500 ${
+                  !visionMode || visionMode === 'off'
+                    ? 'opacity-100'
+                    : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                <Camera
+                  size={20}
+                  style={{ color: isActive ? '#00ff88' : 'rgba(255, 255, 255, 0.2)' }}
+                  strokeWidth={1.5}
+                />
+                <span className="font-mono text-[7px] tracking-[0.3em] text-white/30 uppercase">
+                  No Input
+                </span>
+              </div>
+
+              {visionMode && visionMode !== 'off' && (
+                <>
+                  {[
+                    'top-2 left-2 border-t border-l',
+                    'top-2 right-2 border-t border-r',
+                    'bottom-2 left-2 border-b border-l',
+                    'bottom-2 right-2 border-b border-r'
+                  ].map((pos, i) => (
+                    <div
+                      key={i}
+                      className={`absolute h-3 w-3 z-30 ${pos} transition-colors duration-500`}
+                      style={{ borderColor: 'rgba(0, 255, 136, 0.4)' }}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </PremiumGlassPanel>
+        </PremiumGlassPanel>
       )}
 
       <PremiumGlassPanel accent="cyan" glow className="group">

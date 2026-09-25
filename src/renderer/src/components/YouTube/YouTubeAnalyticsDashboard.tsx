@@ -118,9 +118,23 @@ function generateTimelineData(channelId: string, days: number = 28): TimelinePoi
   const now = new Date()
 
   // Base multipliers depending on channel
-  const mult = channelId === 'all' ? 2.1 : channelId === 'iris_intelligence' ? 1.0 : channelId === 'iris_devops' ? 0.62 : 0.44
+  const mult =
+    channelId === 'all'
+      ? 2.1
+      : channelId === 'iris_intelligence'
+        ? 1.0
+        : channelId === 'iris_devops'
+          ? 0.62
+          : 0.44
 
-  let cumulativeSubs = channelId === 'all' ? 41200 : channelId === 'iris_intelligence' ? 16200 : channelId === 'iris_devops' ? 13100 : 10800
+  let cumulativeSubs =
+    channelId === 'all'
+      ? 41200
+      : channelId === 'iris_intelligence'
+        ? 16200
+        : channelId === 'iris_devops'
+          ? 13100
+          : 10800
 
   for (let i = days; i >= 0; i--) {
     const d = new Date(now)
@@ -132,10 +146,12 @@ function generateTimelineData(channelId: string, days: number = 28): TimelinePoi
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
     const releaseBump = i === 18 || i === 9 || i === 2 ? 1.9 : 1.0
 
-    const rawDailyViews = Math.round((2800 + Math.sin(i * 0.45) * 800 + (isWeekend ? 1200 : 0)) * mult * releaseBump)
+    const rawDailyViews = Math.round(
+      (2800 + Math.sin(i * 0.45) * 800 + (isWeekend ? 1200 : 0)) * mult * releaseBump
+    )
     const likes = Math.round(rawDailyViews * (0.075 + Math.cos(i * 0.3) * 0.015))
     const comments = Math.round(rawDailyViews * 0.014)
-    const netSubs = Math.round((rawDailyViews * 0.009) + (releaseBump > 1 ? 40 : 0))
+    const netSubs = Math.round(rawDailyViews * 0.009 + (releaseBump > 1 ? 40 : 0))
     cumulativeSubs += netSubs
 
     const engagementRate = Number((((likes + comments) / rawDailyViews) * 100).toFixed(2))
@@ -174,7 +190,9 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
 }) => {
   const [selectedChannelId, setSelectedChannelId] = useState<string>('all')
   const [selectedPeriod, setSelectedPeriod] = useState<number>(28)
-  const [activeMetricTab, setActiveMetricTab] = useState<'VIEWS' | 'ENGAGEMENT' | 'SUBSCRIBERS' | 'RETENTION'>('VIEWS')
+  const [activeMetricTab, setActiveMetricTab] = useState<
+    'VIEWS' | 'ENGAGEMENT' | 'SUBSCRIBERS' | 'RETENTION'
+  >('VIEWS')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const activeChannel = useMemo(() => {
@@ -191,9 +209,15 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
     const totalLikes = timelineData.reduce((acc, p) => acc + p.likes, 0)
     const totalComments = timelineData.reduce((acc, p) => acc + p.comments, 0)
     const totalSubsGained = timelineData.reduce((acc, p) => acc + p.netSubs, 0)
-    const avgEngagement = (timelineData.reduce((acc, p) => acc + p.engagementRate, 0) / timelineData.length).toFixed(1)
-    const avgCtr = (timelineData.reduce((acc, p) => acc + p.ctr, 0) / timelineData.length).toFixed(1)
-    const avgRetention = (timelineData.reduce((acc, p) => acc + p.avgRetention, 0) / timelineData.length).toFixed(1)
+    const avgEngagement = (
+      timelineData.reduce((acc, p) => acc + p.engagementRate, 0) / timelineData.length
+    ).toFixed(1)
+    const avgCtr = (timelineData.reduce((acc, p) => acc + p.ctr, 0) / timelineData.length).toFixed(
+      1
+    )
+    const avgRetention = (
+      timelineData.reduce((acc, p) => acc + p.avgRetention, 0) / timelineData.length
+    ).toFixed(1)
 
     return {
       totalViews,
@@ -238,7 +262,8 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
   }
 
   const handleExportCSV = () => {
-    const headers = 'Date,Views,MovingAvg,Likes,Comments,NetSubs,CumulativeSubs,EngagementRate,CTR,Retention\n'
+    const headers =
+      'Date,Views,MovingAvg,Likes,Comments,NetSubs,CumulativeSubs,EngagementRate,CTR,Retention\n'
     const rows = timelineData
       .map(
         (d) =>
@@ -277,7 +302,8 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
                 <span>Managed by IRIS-AI Automation Agent</span>
                 <span aria-hidden="true">·</span>
                 <span className="font-mono text-zinc-500 tabular-nums">
-                  Updated {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  Updated{' '}
+                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
@@ -458,12 +484,16 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
           <div>
             <h3 className="text-xs font-mono font-bold text-zinc-200 uppercase tracking-wider">
               {activeMetricTab === 'VIEWS' && 'Daily Video Views & 7-Day Moving Average'}
-              {activeMetricTab === 'ENGAGEMENT' && 'Engagement Rate (%) & Click-Through Rate (CTR %)'}
-              {activeMetricTab === 'SUBSCRIBERS' && 'Daily Net Subscribers Gained & Cumulative Growth'}
+              {activeMetricTab === 'ENGAGEMENT' &&
+                'Engagement Rate (%) & Click-Through Rate (CTR %)'}
+              {activeMetricTab === 'SUBSCRIBERS' &&
+                'Daily Net Subscribers Gained & Cumulative Growth'}
               {activeMetricTab === 'RETENTION' && 'Audience Retention Curve vs Platform Benchmark'}
             </h3>
             <p className="text-[11px] text-zinc-500">
-              {selectedChannelId === 'all' ? 'All Managed YouTube Channels Combined' : `${activeChannel.name} (${activeChannel.handle})`}
+              {selectedChannelId === 'all'
+                ? 'All Managed YouTube Channels Combined'
+                : `${activeChannel.name} (${activeChannel.handle})`}
             </p>
           </div>
 
@@ -565,7 +595,9 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
                   itemStyle={{ color: '#f4f4f5', fontFamily: 'monospace' }}
                   formatter={(value: any, name: any) => [
                     `${value}%`,
-                    name === 'engagementRate' ? 'Engagement Rate (Likes+Comments/Views)' : 'Click-Through Rate (CTR)'
+                    name === 'engagementRate'
+                      ? 'Engagement Rate (Likes+Comments/Views)'
+                      : 'Click-Through Rate (CTR)'
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
@@ -632,7 +664,10 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
 
           {activeMetricTab === 'RETENTION' && (
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={retentionCurve} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              <LineChart
+                data={retentionCurve}
+                margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                 <XAxis
                   dataKey="progress"
@@ -788,7 +823,8 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
           <div className="p-2.5 bg-zinc-900/40 border border-white/5 rounded-xl text-[11px] text-zinc-400 flex items-center gap-2">
             <RiMagicLine className="text-emerald-400 w-4 h-4 shrink-0" />
             <span>
-              All 3 channels synchronize with automated scripting, thumbnail rendering, and scheduled publishing.
+              All 3 channels synchronize with automated scripting, thumbnail rendering, and
+              scheduled publishing.
             </span>
           </div>
         </div>
@@ -805,17 +841,20 @@ export const YouTubeAnalyticsDashboard: React.FC<YouTubeAnalyticsDashboardProps>
           {[
             {
               title: 'Split-Screen Code Visualizers Boost Retention',
-              detail: 'Videos featuring code terminals alongside live applet renders experienced +14.2% higher retention through the 3-minute mark.',
+              detail:
+                'Videos featuring code terminals alongside live applet renders experienced +14.2% higher retention through the 3-minute mark.',
               action: 'Apply Terminal Overlay Hook'
             },
             {
               title: 'High-Demand Search Keywords Identified',
-              detail: 'Organic search volume for "Gemini 2.5 Agents", "Autonomous Workflows", and "Full-Stack TypeScript" grew 38% this week.',
+              detail:
+                'Organic search volume for "Gemini 2.5 Agents", "Autonomous Workflows", and "Full-Stack TypeScript" grew 38% this week.',
               action: 'Draft Next Topic Batch'
             },
             {
               title: 'Shorts-to-Longform Funnel Optimization',
-              detail: 'Shorts published on Wednesdays drove 420 direct click-through subscribers to corresponding long-form architectural deep dives.',
+              detail:
+                'Shorts published on Wednesdays drove 420 direct click-through subscribers to corresponding long-form architectural deep dives.',
               action: 'Schedule Wednesday Release'
             }
           ].map((item, idx) => (

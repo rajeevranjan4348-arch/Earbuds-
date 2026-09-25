@@ -18,7 +18,10 @@ export interface ScoredAppItem {
  * Normalizes text for scoring: lowercases, removes non-alphanumeric punctuation
  */
 function normalize(str: string): string {
-  return str.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim()
+  return str
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
 }
 
 /**
@@ -130,7 +133,12 @@ export class LauncherSearch {
     }
 
     // Context Relevance Boost: if relevant to currently active tab/page
-    if (score > 0 && currentTab && app.contextScope && app.contextScope.includes(currentTab.toUpperCase())) {
+    if (
+      score > 0 &&
+      currentTab &&
+      app.contextScope &&
+      app.contextScope.includes(currentTab.toUpperCase())
+    ) {
       score += 40
     }
 

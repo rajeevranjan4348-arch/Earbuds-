@@ -126,7 +126,10 @@ export class VoiceTranscriptStorageService {
         personalityName: personality.name,
         personalityColor: personality.accentColor || '#10b981',
         language: config?.language || 'auto',
-        title: message.role === 'user' ? this.generateTitle(message.text) : `Voice Session with ${personality.name}`,
+        title:
+          message.role === 'user'
+            ? this.generateTitle(message.text)
+            : `Voice Session with ${personality.name}`,
         previewText: message.text.substring(0, 100),
         messages: [],
         totalTurns: 0,
@@ -147,7 +150,10 @@ export class VoiceTranscriptStorageService {
     session.totalTurns = session.messages.length
 
     // Update title based on first user question if still default
-    if (message.role === 'user' && (!session.title || session.title.startsWith('Voice Session with'))) {
+    if (
+      message.role === 'user' &&
+      (!session.title || session.title.startsWith('Voice Session with'))
+    ) {
       session.title = this.generateTitle(message.text)
     }
 
@@ -230,11 +236,19 @@ export class VoiceTranscriptStorageService {
       `==================================================\n`
     ].join('\n')
 
-    const turns = session.messages.map((m) => {
-      const timeStr = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
-      const speaker = m.role === 'user' ? 'USER' : session.personalityName.toUpperCase()
-      return `[${timeStr}] ${speaker}:\n${m.text}\n`
-    }).join('\n')
+    const turns = session.messages
+      .map((m) => {
+        const timeStr = m.timestamp
+          ? new Date(m.timestamp).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })
+          : ''
+        const speaker = m.role === 'user' ? 'USER' : session.personalityName.toUpperCase()
+        return `[${timeStr}] ${speaker}:\n${m.text}\n`
+      })
+      .join('\n')
 
     return `${header}\n${turns}`
   }

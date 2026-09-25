@@ -119,7 +119,11 @@ export const syncSessionToBackend = async (params: {
 /**
  * Check backend centralized session status
  */
-export const fetchBackendSession = async (): Promise<{ isConnected: boolean; accessToken?: string; session?: any }> => {
+export const fetchBackendSession = async (): Promise<{
+  isConnected: boolean
+  accessToken?: string
+  session?: any
+}> => {
   try {
     const res = await fetch('/api/workspace/auth/session')
     if (res.ok) {
@@ -216,7 +220,7 @@ export const setCachedAccessToken = (token: string | null) => {
 export const logOutGoogle = async () => {
   await signOut(auth)
   cachedAccessToken = null
-  
+
   // Clear centralized backend session
   try {
     await fetch('/api/workspace/auth/session', { method: 'DELETE' })
@@ -234,7 +238,10 @@ export const testFirestoreConnection = async () => {
     await Promise.race([checkPromise, timeoutPromise])
   } catch (error) {
     // Graceful silent fallback to offline cache
-    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('timeout'))) {
+    if (
+      error instanceof Error &&
+      (error.message.includes('offline') || error.message.includes('timeout'))
+    ) {
       // Client is in offline mode or will sync when online
     }
   }

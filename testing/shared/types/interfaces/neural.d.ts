@@ -1,1 +1,3 @@
-export interface INeuralNet { weights: number[]; }
+export interface INeuralNet {
+  weights: number[]
+}

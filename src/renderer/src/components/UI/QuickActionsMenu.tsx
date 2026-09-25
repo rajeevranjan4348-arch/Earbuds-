@@ -17,7 +17,16 @@ import {
   RiPlayCircleLine,
   RiFolderOpenLine
 } from 'react-icons/ri'
-import { Sparkles, TrendingUp, Images, PenTool, LayoutDashboard, Copy, Check, ArrowRight } from 'lucide-react'
+import {
+  Sparkles,
+  TrendingUp,
+  Images,
+  PenTool,
+  LayoutDashboard,
+  Copy,
+  Check,
+  ArrowRight
+} from 'lucide-react'
 import { shortcutService, formatKeyCombo } from '../../services/shortcutService'
 
 interface QuickActionsMenuProps {
@@ -58,7 +67,9 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
 
   // Script modal state
   const [scriptTopic, setScriptTopic] = useState('')
-  const [scriptFormat, setScriptFormat] = useState<'SHORTS' | 'MINI' | 'STANDARD' | 'LONG_FORM'>('SHORTS')
+  const [scriptFormat, setScriptFormat] = useState<'SHORTS' | 'MINI' | 'STANDARD' | 'LONG_FORM'>(
+    'SHORTS'
+  )
   const [scriptTone, setScriptTone] = useState('Authoritative & Engaging')
   const [isGeneratingScript, setIsGeneratingScript] = useState(false)
   const [generatedScript, setGeneratedScript] = useState<string | null>(null)
@@ -389,7 +400,9 @@ Keep the formatting clean with bold cues and visual stage notes [Visual: ...].`
 
               {/* Footer */}
               <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-zinc-400">
-                <span>Active: <b className="text-emerald-400">{activeTab}</b></span>
+                <span>
+                  Active: <b className="text-emerald-400">{activeTab}</b>
+                </span>
                 <button
                   onClick={handleNavigateToTrends}
                   className="hover:text-emerald-300 text-zinc-400 transition-colors flex items-center gap-1"
@@ -459,7 +472,8 @@ Keep the formatting clean with bold cues and visual stage notes [Visual: ...].`
                       </span>
                     </h2>
                     <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                      Real-time validation against search demand, competition density, and audience affinity.
+                      Real-time validation against search demand, competition density, and audience
+                      affinity.
                     </p>
                   </div>
                 </div>
@@ -524,8 +538,12 @@ Keep the formatting clean with bold cues and visual stage notes [Visual: ...].`
                             {item.selectionReason}
                           </p>
                           <div className="flex items-center gap-4 text-[10px] font-mono text-zinc-400 pt-1">
-                            <span>Demand: <b className="text-zinc-200">{item.searchDemand}%</b></span>
-                            <span>Competition: <b className="text-zinc-200">{item.competitionScore}%</b></span>
+                            <span>
+                              Demand: <b className="text-zinc-200">{item.searchDemand}%</b>
+                            </span>
+                            <span>
+                              Competition: <b className="text-zinc-200">{item.competitionScore}%</b>
+                            </span>
                           </div>
                         </div>
 
@@ -664,13 +682,13 @@ Keep the formatting clean with bold cues and visual stage notes [Visual: ...].`
                       className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-black font-mono text-xs font-bold uppercase tracking-wider rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                     >
                       <Sparkles size={14} className={isGeneratingScript ? 'animate-spin' : ''} />
-                      <span>{isGeneratingScript ? 'Generating Script...' : 'Draft Script with Gemini'}</span>
+                      <span>
+                        {isGeneratingScript ? 'Generating Script...' : 'Draft Script with Gemini'}
+                      </span>
                     </button>
 
                     {scriptStatus && (
-                      <span className="text-[11px] font-mono text-zinc-400">
-                        {scriptStatus}
-                      </span>
+                      <span className="text-[11px] font-mono text-zinc-400">{scriptStatus}</span>
                     )}
                   </div>
                 </div>
@@ -688,7 +706,11 @@ Keep the formatting clean with bold cues and visual stage notes [Visual: ...].`
                           onClick={handleCopyScript}
                           className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-200 text-xs font-mono flex items-center gap-1.5 transition-colors"
                         >
-                          {copiedScript ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                          {copiedScript ? (
+                            <Check size={13} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
                           <span>{copiedScript ? 'Copied' : 'Copy Script'}</span>
                         </button>
                         <button

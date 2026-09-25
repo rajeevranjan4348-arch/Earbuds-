@@ -33,10 +33,7 @@ export class PlanGenerator {
     const entities = intent.entities || {}
 
     // Pattern 1: YouTube Trends -> Video Production
-    if (
-      tools.includes('youtube_discover_trends') &&
-      tools.includes('youtube_create_video_job')
-    ) {
+    if (tools.includes('youtube_discover_trends') && tools.includes('youtube_create_video_job')) {
       const step1: PlanStep = {
         stepId: `${taskId}_step_1`,
         stepIndex: 1,
@@ -68,7 +65,8 @@ export class PlanGenerator {
         goal: 'Run complete 7-part script, storyboard, and quality gate pipeline for top trend',
         toolName: 'youtube_create_video_job',
         parameters: {
-          topicTitle: '{{step_1.output.0.title || step_1.output.trends.0.title || "Autonomous AI Agents Breakout"}}',
+          topicTitle:
+            '{{step_1.output.0.title || step_1.output.trends.0.title || "Autonomous AI Agents Breakout"}}',
           format: entities.format || 'STANDARD'
         },
         parameterTemplates: {
@@ -92,7 +90,8 @@ export class PlanGenerator {
         taskId,
         goal,
         category: 'multi_step',
-        summary: '2-step workflow: Discover live YouTube trends, then compile script, storyboard, and quality-verified production job for the top opportunity.',
+        summary:
+          '2-step workflow: Discover live YouTube trends, then compile script, storyboard, and quality-verified production job for the top opportunity.',
         steps: [step1, step2],
         estimatedDurationMs: 8000,
         requiresUserApproval: false,
@@ -101,10 +100,7 @@ export class PlanGenerator {
     }
 
     // Pattern 2: PDF Document Knowledge Search / QA + Diagram
-    if (
-      tools.includes('document_knowledge_qa') &&
-      tools.includes('generate_diagram')
-    ) {
+    if (tools.includes('document_knowledge_qa') && tools.includes('generate_diagram')) {
       const step1: PlanStep = {
         stepId: `${taskId}_step_1`,
         stepIndex: 1,
@@ -150,7 +146,8 @@ export class PlanGenerator {
         taskId,
         goal,
         category: 'multi_step',
-        summary: '2-step workflow: Query PDF knowledge base with exact citations, then create a visual Mermaid architecture diagram.',
+        summary:
+          '2-step workflow: Query PDF knowledge base with exact citations, then create a visual Mermaid architecture diagram.',
         steps: [step1, step2],
         estimatedDurationMs: 5000,
         requiresUserApproval: false,
@@ -168,7 +165,10 @@ export class PlanGenerator {
         goal,
         toolName,
         parameters: { ...entities },
-        requiresConfirmation: toolName.includes('publish') || toolName.includes('delete') || toolName.includes('reboot'),
+        requiresConfirmation:
+          toolName.includes('publish') ||
+          toolName.includes('delete') ||
+          toolName.includes('reboot'),
         confirmationReason: toolName.includes('publish')
           ? 'Requires confirmation before publishing content to live channels.'
           : undefined,
@@ -202,10 +202,7 @@ export class PlanGenerator {
   /**
    * Generates a structured multi-step plan, using Gemini AI for complex / novel requests
    */
-  public async generatePlan(
-    taskId: string,
-    intent: IntentAnalysisResult
-  ): Promise<ExecutionPlan> {
+  public async generatePlan(taskId: string, intent: IntentAnalysisResult): Promise<ExecutionPlan> {
     // 1. Check deterministic fast path first
     const fastPlan = this.generateDeterministicPlan(taskId, intent)
     if (fastPlan) {
@@ -314,7 +311,10 @@ Return valid JSON conforming to this schema:
           }
         }
       } catch (err) {
-        console.warn('[PlanGenerator] Gemini plan generation warning, falling back to heuristic:', err)
+        console.warn(
+          '[PlanGenerator] Gemini plan generation warning, falling back to heuristic:',
+          err
+        )
       }
     }
 

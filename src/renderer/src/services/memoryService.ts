@@ -374,7 +374,9 @@ class MemoryService {
     const relevant = await this.getRelevantMemories(query, userId, maxMemories)
     if (!relevant || relevant.length === 0) return ''
 
-    const lines = relevant.map((m, idx) => `[Memory ${idx + 1}] (${m.category || 'general'}): ${m.memory}`)
+    const lines = relevant.map(
+      (m, idx) => `[Memory ${idx + 1}] (${m.category || 'general'}): ${m.memory}`
+    )
     return `[MEM0 USER LONG-TERM MEMORY & PREFERENCES]:\n${lines.join('\n')}`
   }
 

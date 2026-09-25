@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { History, X, Search, Trash2, Clock, MessageSquare, Plus } from 'lucide-react'
-import { ChatSession, chatHistoryService } from '../services/chatHistoryService'
+import { X, Search, Trash2, Clock, Plus, MessageSquare } from 'lucide-react'
+import { ChatSession } from '../services/chatHistoryService'
 
 interface HistoryNavigationSectionProps {
   isOpen: boolean

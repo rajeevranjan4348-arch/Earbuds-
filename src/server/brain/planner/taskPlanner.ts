@@ -85,10 +85,21 @@ export class TaskPlanner {
 
   private detectUrgency(prompt: string): TaskPriority {
     const p = prompt.toLowerCase()
-    if (p.includes('urgent') || p.includes('critical') || p.includes('immediately') || p.includes('emergency') || p.includes('asap')) {
+    if (
+      p.includes('urgent') ||
+      p.includes('critical') ||
+      p.includes('immediately') ||
+      p.includes('emergency') ||
+      p.includes('asap')
+    ) {
       return 'CRITICAL'
     }
-    if (p.includes('important') || p.includes('priority') || p.includes('quick') || p.includes('fast')) {
+    if (
+      p.includes('important') ||
+      p.includes('priority') ||
+      p.includes('quick') ||
+      p.includes('fast')
+    ) {
       return 'HIGH'
     }
     if (p.includes('when possible') || p.includes('low priority') || p.includes('whenever')) {
@@ -99,10 +110,14 @@ export class TaskPlanner {
 
   private detectCategory(prompt: string): string {
     const p = prompt.toLowerCase()
-    if (p.includes('code') || p.includes('function') || p.includes('bug')) return 'software_engineering'
-    if (p.includes('paper') || p.includes('research') || p.includes('why') || p.includes('what is')) return 'academic_research'
-    if (p.includes('app') || p.includes('phone') || p.includes('android')) return 'device_automation'
-    if (p.includes('diagram') || p.includes('chart') || p.includes('image')) return 'visual_creative'
+    if (p.includes('code') || p.includes('function') || p.includes('bug'))
+      return 'software_engineering'
+    if (p.includes('paper') || p.includes('research') || p.includes('why') || p.includes('what is'))
+      return 'academic_research'
+    if (p.includes('app') || p.includes('phone') || p.includes('android'))
+      return 'device_automation'
+    if (p.includes('diagram') || p.includes('chart') || p.includes('image'))
+      return 'visual_creative'
     if (p.includes('file') || p.includes('directory')) return 'filesystem'
     return 'general_intelligence'
   }
@@ -186,7 +201,9 @@ Return ONLY valid JSON matching this schema:
           model: modelCandidate,
           contents: [
             { text: systemPrompt },
-            { text: `User Request: "${prompt}"\nRelevant Memories: ${JSON.stringify(context.relevantMemories)}` }
+            {
+              text: `User Request: "${prompt}"\nRelevant Memories: ${JSON.stringify(context.relevantMemories)}`
+            }
           ],
           config: {
             responseMimeType: 'application/json'
@@ -226,7 +243,10 @@ Return ONLY valid JSON matching this schema:
         dependencies: deps,
         status: 'QUEUED',
         assignedAgent: brainAgentRegistry.selectAgentForGoal(t.description, t.assignedAgent),
-        requiredTools: Array.isArray(t.requiredTools) && t.requiredTools.length > 0 ? t.requiredTools : ['search_web'],
+        requiredTools:
+          Array.isArray(t.requiredTools) && t.requiredTools.length > 0
+            ? t.requiredTools
+            : ['search_web'],
         attempts: 0,
         maxAttempts: 3,
         retrySafe: t.retrySafe !== false,
@@ -250,8 +270,16 @@ Return ONLY valid JSON matching this schema:
     const tasks: BrainTask[] = []
 
     // 1. Android App launch
-    if (p.startsWith('open ') || p.startsWith('launch ') || p.includes('on my phone') || p.includes('android app')) {
-      const appName = prompt.replace(/^(open|launch|start)\s+/i, '').replace(/on my phone|app/gi, '').trim()
+    if (
+      p.startsWith('open ') ||
+      p.startsWith('launch ') ||
+      p.includes('on my phone') ||
+      p.includes('android app')
+    ) {
+      const appName = prompt
+        .replace(/^(open|launch|start)\s+/i, '')
+        .replace(/on my phone|app/gi, '')
+        .trim()
       tasks.push({
         taskId: `${graphId}_t1`,
         description: `Resolve package and launch application "${appName}"`,
@@ -271,7 +299,11 @@ Return ONLY valid JSON matching this schema:
     }
 
     // 2. Multi-step Web Search + Synthesize
-    if (understanding.estimatedComplexity === 'MULTI_STAGE' || p.includes('research') || p.includes('compare')) {
+    if (
+      understanding.estimatedComplexity === 'MULTI_STAGE' ||
+      p.includes('research') ||
+      p.includes('compare')
+    ) {
       const t1Id = `${graphId}_t1`
       const t2Id = `${graphId}_t2`
 

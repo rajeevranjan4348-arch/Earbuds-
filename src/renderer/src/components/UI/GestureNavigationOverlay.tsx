@@ -279,9 +279,7 @@ export const GestureNavigationOverlay: React.FC<GestureNavigationOverlayProps> =
                     <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/70 backdrop-blur-md border border-white/10 text-[10px] font-mono">
                       <div
                         className={`w-2 h-2 rounded-full ${
-                          landmarks?.isHandPresent
-                            ? 'bg-emerald-400 animate-pulse'
-                            : 'bg-zinc-600'
+                          landmarks?.isHandPresent ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'
                         }`}
                       />
                       <span className="text-zinc-300">

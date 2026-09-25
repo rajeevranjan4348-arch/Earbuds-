@@ -24,7 +24,8 @@ export class ThumbnailEngine {
 
       if (wordCount > 4) readabilityScore -= (wordCount - 4) * 8
       if (c.headlineText === c.headlineText.toUpperCase()) readabilityScore += 5 // All caps boost mobile legibility
-      if (c.colorPalette.includes('#000000') || c.colorPalette.includes('#18181B')) readabilityScore += 5 // High contrast dark anchor
+      if (c.colorPalette.includes('#000000') || c.colorPalette.includes('#18181B'))
+        readabilityScore += 5 // High contrast dark anchor
 
       return {
         ...c,

@@ -106,10 +106,14 @@ export const AppIconRenderer: React.FC<AppIconProps> = ({
     case 'RiShieldCrossLine':
       return <RiShieldCrossLine size={size} className={className || 'text-red-500'} />
     default:
-      if (category === 'media') return <RiYoutubeFill size={size} className={className || 'text-rose-400'} />
-      if (category === 'communication') return <RiChat3Line size={size} className={className || 'text-cyan-400'} />
-      if (category === 'developer') return <RiGithubFill size={size} className={className || 'text-white'} />
-      if (category === 'tools') return <Sparkles size={size} className={className || 'text-emerald-400'} />
+      if (category === 'media')
+        return <RiYoutubeFill size={size} className={className || 'text-rose-400'} />
+      if (category === 'communication')
+        return <RiChat3Line size={size} className={className || 'text-cyan-400'} />
+      if (category === 'developer')
+        return <RiGithubFill size={size} className={className || 'text-white'} />
+      if (category === 'tools')
+        return <Sparkles size={size} className={className || 'text-emerald-400'} />
       return <RiAppsLine size={size} className={className || 'text-zinc-400'} />
   }
 }

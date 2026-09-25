@@ -18,9 +18,7 @@
         "dependencies": [],
         "status": "COMPLETED",
         "assignedAgent": "Research Agent",
-        "requiredTools": [
-          "search_web"
-        ],
+        "requiredTools": ["search_web"],
         "attempts": 1,
         "maxAttempts": 3,
         "createdAt": 1790150994496,
@@ -121,14 +119,10 @@
         "taskId": "graph_1790150994174_cuklx_t2",
         "description": "Synthesize research findings into comprehensive answer for user",
         "priority": "NORMAL",
-        "dependencies": [
-          "graph_1790150994174_cuklx_t1"
-        ],
+        "dependencies": ["graph_1790150994174_cuklx_t1"],
         "status": "COMPLETED",
         "assignedAgent": "Voice Agent",
-        "requiredTools": [
-          "voice_dialogue"
-        ],
+        "requiredTools": ["voice_dialogue"],
         "attempts": 1,
         "maxAttempts": 3,
         "createdAt": 1790150994496,
@@ -172,9 +166,7 @@
         "dependencies": [],
         "status": "COMPLETED",
         "assignedAgent": "Research Agent",
-        "requiredTools": [
-          "search_web"
-        ],
+        "requiredTools": ["search_web"],
         "attempts": 1,
         "maxAttempts": 3,
         "createdAt": 1790152001129,
@@ -275,14 +267,10 @@
         "taskId": "graph_1790152000776_hxyei_t2",
         "description": "Synthesize research findings into comprehensive answer for user",
         "priority": "NORMAL",
-        "dependencies": [
-          "graph_1790152000776_hxyei_t1"
-        ],
+        "dependencies": ["graph_1790152000776_hxyei_t1"],
         "status": "COMPLETED",
         "assignedAgent": "Voice Agent",
-        "requiredTools": [
-          "voice_dialogue"
-        ],
+        "requiredTools": ["voice_dialogue"],
         "attempts": 1,
         "maxAttempts": 3,
         "createdAt": 1790152001129,

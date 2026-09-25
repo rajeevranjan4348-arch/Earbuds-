@@ -112,7 +112,10 @@ export class VoiceLauncher {
     this.callbacks.onStateChange?.('idle')
   }
 
-  public async handleFinalTranscript(transcript: string, currentTab?: string): Promise<LaunchResult> {
+  public async handleFinalTranscript(
+    transcript: string,
+    currentTab?: string
+  ): Promise<LaunchResult> {
     this.callbacks.onStateChange?.('processing', 'Resolving command...')
 
     const intent = IntentResolver.resolve(transcript, currentTab)

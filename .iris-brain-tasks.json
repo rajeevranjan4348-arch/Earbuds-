@@ -19,9 +19,7 @@
         "dependencies": [],
         "status": "COMPLETED",
         "assignedAgent": "Research Agent",
-        "requiredTools": [
-          "search_web"
-        ],
+        "requiredTools": ["search_web"],
         "attempts": 1,
         "maxAttempts": 3,
         "parameters": {
@@ -129,14 +127,10 @@
         "taskId": "graph_1790149924661_8jy7d_t2",
         "description": "Synthesize research findings into comprehensive answer for user",
         "priority": "NORMAL",
-        "dependencies": [
-          "graph_1790149924661_8jy7d_t1"
-        ],
+        "dependencies": ["graph_1790149924661_8jy7d_t1"],
         "status": "COMPLETED",
         "assignedAgent": "Voice Agent",
-        "requiredTools": [
-          "voice_format_dialogue"
-        ],
+        "requiredTools": ["voice_format_dialogue"],
         "attempts": 1,
         "maxAttempts": 2,
         "parameters": {
@@ -277,9 +271,7 @@
         "dependencies": [],
         "status": "COMPLETED",
         "assignedAgent": "Coding Agent",
-        "requiredTools": [
-          "codebase_search"
-        ],
+        "requiredTools": ["codebase_search"],
         "attempts": 1,
         "maxAttempts": 3,
         "retrySafe": true,
@@ -355,14 +347,10 @@
         "taskId": "graph_1790149978508_mmdce_t2",
         "description": "Search codebase for all symbol definitions and references matching 'MultiAgentOrchestrator'.",
         "priority": "CRITICAL",
-        "dependencies": [
-          "graph_1790149978508_mmdce_t1"
-        ],
+        "dependencies": ["graph_1790149978508_mmdce_t1"],
         "status": "COMPLETED",
         "assignedAgent": "Coding Agent",
-        "requiredTools": [
-          "codebase_search"
-        ],
+        "requiredTools": ["codebase_search"],
         "attempts": 1,
         "maxAttempts": 3,
         "retrySafe": true,
@@ -500,14 +488,10 @@
         "taskId": "graph_1790149978508_mmdce_t3",
         "description": "Extract AST symbols, class signatures, methods, and dependencies of 'MultiAgentOrchestrator'.",
         "priority": "HIGH",
-        "dependencies": [
-          "graph_1790149978508_mmdce_t2"
-        ],
+        "dependencies": ["graph_1790149978508_mmdce_t2"],
         "status": "COMPLETED",
         "assignedAgent": "Coding Agent",
-        "requiredTools": [
-          "codebase_search"
-        ],
+        "requiredTools": ["codebase_search"],
         "attempts": 1,
         "maxAttempts": 3,
         "retrySafe": true,

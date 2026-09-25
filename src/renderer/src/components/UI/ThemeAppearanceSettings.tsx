@@ -1,28 +1,12 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import {
-  Sun,
-  Moon,
-  Laptop,
-  Palette,
-  Sparkles,
-  Check,
-  Eye,
-  Sliders
-} from 'lucide-react'
+import { Sun, Moon, Laptop, Palette, Sparkles, Check, Eye, Sliders } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { ThemeMode, AccentColor, ACCENT_PALETTES } from '../../services/themeService'
 
 export const ThemeAppearanceSettings: React.FC = () => {
-  const {
-    mode,
-    resolvedTheme,
-    systemPrefersDark,
-    accent,
-    accentConfig,
-    setThemeMode,
-    setAccent
-  } = useTheme()
+  const { mode, resolvedTheme, systemPrefersDark, accent, accentConfig, setThemeMode, setAccent } =
+    useTheme()
 
   const themeOptions: {
     id: ThemeMode
@@ -163,9 +147,7 @@ export const ThemeAppearanceSettings: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-zinc-400 mt-1 leading-snug">
-                    {opt.sublabel}
-                  </div>
+                  <div className="text-[11px] text-zinc-400 mt-1 leading-snug">{opt.sublabel}</div>
                 </div>
               </motion.button>
             )
@@ -268,8 +250,8 @@ export const ThemeAppearanceSettings: React.FC = () => {
           </div>
 
           <p className="text-xs leading-relaxed" style={{ color: 'var(--iris-text-secondary)' }}>
-            CSS variables dynamically update across the entire document tree whenever the OS switches
-            between light and dark color schemes, or when manual overrides are selected.
+            CSS variables dynamically update across the entire document tree whenever the OS
+            switches between light and dark color schemes, or when manual overrides are selected.
           </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[10px]">

@@ -23,7 +23,12 @@ export class WorkspaceIntentRouter {
 
     // 1. Identify Service
     let service: WorkspaceServiceType = 'drive'
-    if (lower.includes('.pdf') || lower.includes('pdf') || lower.includes('drive') || lower.includes('homework')) {
+    if (
+      lower.includes('.pdf') ||
+      lower.includes('pdf') ||
+      lower.includes('drive') ||
+      lower.includes('homework')
+    ) {
       service = 'drive'
     } else if (
       lower.includes('sheet') ||
@@ -183,7 +188,9 @@ export class WorkspaceIntentRouter {
 
     // 4. Extract Chapter or Section target
     let chapterOrSection: string | undefined
-    const chapterMatch = lower.match(/\b(?:chapter|ch|section|part|unit)\s*([0-9]+[a-z]?|[ivxlcdm]+)\b/i)
+    const chapterMatch = lower.match(
+      /\b(?:chapter|ch|section|part|unit)\s*([0-9]+[a-z]?|[ivxlcdm]+)\b/i
+    )
     if (chapterMatch) {
       chapterOrSection = `Chapter ${chapterMatch[1]}`
     }

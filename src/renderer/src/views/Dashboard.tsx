@@ -345,9 +345,7 @@ export default function Dashboard({
                   : 'bg-red-500/10 text-red-400 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.2)] hover:bg-red-500/20'
               }`}
               title={
-                !isConnected
-                  ? 'Click to start voice listening'
-                  : 'Click to stop voice listening'
+                !isConnected ? 'Click to start voice listening' : 'Click to stop voice listening'
               }
             >
               {isConnected ? (

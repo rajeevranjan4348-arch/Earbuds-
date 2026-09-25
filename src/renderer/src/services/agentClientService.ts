@@ -13,7 +13,15 @@ export interface PlanStepItem {
   parameters: Record<string, any>
   requiresConfirmation: boolean
   confirmationReason?: string
-  status: 'pending' | 'running' | 'waiting_confirmation' | 'verifying' | 'completed' | 'failed' | 'recovered' | 'skipped'
+  status:
+    | 'pending'
+    | 'running'
+    | 'waiting_confirmation'
+    | 'verifying'
+    | 'completed'
+    | 'failed'
+    | 'recovered'
+    | 'skipped'
   output?: any
   error?: string
   retryCount: number
@@ -37,7 +45,18 @@ export interface TaskMemoryData {
   rawInput: string
   cleanedInput: string
   inputType: 'voice' | 'text'
-  status: 'created' | 'analyzing' | 'clarification_needed' | 'planning' | 'waiting_confirmation' | 'executing' | 'verifying' | 'healing' | 'completed' | 'failed' | 'cancelled'
+  status:
+    | 'created'
+    | 'analyzing'
+    | 'clarification_needed'
+    | 'planning'
+    | 'waiting_confirmation'
+    | 'executing'
+    | 'verifying'
+    | 'healing'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
   category?: string
   createdAt: number
   updatedAt: number
@@ -110,7 +129,12 @@ class AgentClientService {
     input: string,
     inputType: 'voice' | 'text' = 'text',
     contextMemory?: Record<string, any>
-  ): Promise<{ success: boolean; task: TaskMemoryData; spokenResponse: string; displayText: string }> {
+  ): Promise<{
+    success: boolean
+    task: TaskMemoryData
+    spokenResponse: string
+    displayText: string
+  }> {
     try {
       const response = await fetch('/api/agent/execute', {
         method: 'POST',
@@ -160,7 +184,9 @@ class AgentClientService {
         updatedAt: Date.now(),
         currentStepIndex: 0,
         stepOutputs: {},
-        traces: [{ timestamp: Date.now(), level: 'error', message: err.message || 'Execution error' }],
+        traces: [
+          { timestamp: Date.now(), level: 'error', message: err.message || 'Execution error' }
+        ],
         error: err.message || 'Agent connection error',
         finalResponse: {
           spokenText: 'I encountered an issue executing that plan.',
@@ -266,7 +292,9 @@ class AgentClientService {
    */
   public async fetchBrainTasks(userId?: string): Promise<any[]> {
     try {
-      const url = userId ? `/api/brain/tasks?userId=${encodeURIComponent(userId)}` : '/api/brain/tasks'
+      const url = userId
+        ? `/api/brain/tasks?userId=${encodeURIComponent(userId)}`
+        : '/api/brain/tasks'
       const res = await fetch(url)
       const data = await res.json()
       return data.graphs || []

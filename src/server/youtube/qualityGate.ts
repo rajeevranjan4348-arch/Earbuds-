@@ -22,7 +22,8 @@ export class QualityGate {
     const checks: QualityCheckItem[] = []
 
     // 1. FACT_CHECK
-    const unconfirmedClaims = job.topic.factualClaims?.filter((c) => c.status === 'UNCONFIRMED_REPORT') || []
+    const unconfirmedClaims =
+      job.topic.factualClaims?.filter((c) => c.status === 'UNCONFIRMED_REPORT') || []
     const factPassed = unconfirmedClaims.length === 0
     checks.push({
       check: 'FACT_CHECK',
@@ -36,7 +37,8 @@ export class QualityGate {
     })
 
     // 2. COPYRIGHT_CHECK
-    const highRiskAssets = job.assetManifest?.filter((a) => a.licenseStatus === 'LICENSED' && !a.usageRestrictions) || []
+    const highRiskAssets =
+      job.assetManifest?.filter((a) => a.licenseStatus === 'LICENSED' && !a.usageRestrictions) || []
     const copyPassed = job.topic.copyrightRisk !== 'HIGH' && highRiskAssets.length === 0
     checks.push({
       check: 'COPYRIGHT_CHECK',
@@ -141,7 +143,8 @@ export class QualityGate {
 
     // 9. METADATA_CHECK
     const metadata = job.metadata
-    const metaValid = !!metadata && !!metadata.title && !!metadata.description && metadata.tags.length >= 3
+    const metaValid =
+      !!metadata && !!metadata.title && !!metadata.description && metadata.tags.length >= 3
     checks.push({
       check: 'METADATA_CHECK',
       passed: metaValid,

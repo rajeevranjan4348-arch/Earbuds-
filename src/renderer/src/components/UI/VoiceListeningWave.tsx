@@ -119,9 +119,7 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
                 <span className="text-zinc-500 text-[9px]">VAD</span>
                 <div className="flex items-end gap-0.5 h-3">
                   {[0.6, 1.4, 0.9, 1.6, 1.1, 1.3, 0.8].map((scale, i) => {
-                    const h = isSpeaking
-                      ? 8
-                      : Math.max(2, Math.min(12, micLevel * 20 * scale))
+                    const h = isSpeaking ? 8 : Math.max(2, Math.min(12, micLevel * 20 * scale))
                     return (
                       <span
                         key={i}
@@ -151,7 +149,11 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
                 }`}
                 title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
               >
-                {isMuted ? <MicOff size={11} className="text-red-400" /> : <Mic size={11} className="text-emerald-400" />}
+                {isMuted ? (
+                  <MicOff size={11} className="text-red-400" />
+                ) : (
+                  <Mic size={11} className="text-emerald-400" />
+                )}
                 <span>{isMuted ? 'UNMUTE' : 'MUTE'}</span>
               </button>
             )}
@@ -191,7 +193,9 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
           ) : (
             <div className="w-full h-16 bg-black/50 rounded-2xl flex items-center justify-between px-4 border border-white/5">
               <div className="flex flex-col">
-                <span className="text-xs font-mono font-bold text-zinc-300">Voice Core Standby</span>
+                <span className="text-xs font-mono font-bold text-zinc-300">
+                  Voice Core Standby
+                </span>
                 <span className="text-[10px] text-zinc-500 font-mono">
                   Microphone & Voice interface offline
                 </span>

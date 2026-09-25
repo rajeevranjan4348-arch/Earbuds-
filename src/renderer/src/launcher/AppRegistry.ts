@@ -39,7 +39,8 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
   {
     id: 'youtube-studio',
     name: 'YouTube Studio & Pipeline',
-    description: 'Autonomous YouTube automation, trending topics, video scripts, and upload manager',
+    description:
+      'Autonomous YouTube automation, trending topics, video scripts, and upload manager',
     category: 'media',
     type: 'internal',
     icon: 'RiYoutubeFill',
@@ -76,7 +77,16 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     target: 'MAPS',
     launchMethod: 'internal_route',
     availability: 'available',
-    keywords: ['maps', 'navigation', 'gps', 'traffic', 'routes', 'places', 'directions', 'location'],
+    keywords: [
+      'maps',
+      'navigation',
+      'gps',
+      'traffic',
+      'routes',
+      'places',
+      'directions',
+      'location'
+    ],
     aliases: ['google maps', 'directions', 'geo'],
     isFavorite: false,
     contextScope: ['ALL']
@@ -121,7 +131,16 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     target: 'PHONE',
     launchMethod: 'internal_route',
     availability: 'available',
-    keywords: ['phone', 'android', 'mobile', 'adb', 'companion', 'device', 'battery', 'notifications'],
+    keywords: [
+      'phone',
+      'android',
+      'mobile',
+      'adb',
+      'companion',
+      'device',
+      'battery',
+      'notifications'
+    ],
     aliases: ['mobile', 'smartphone', 'adb phone'],
     isFavorite: false,
     contextScope: ['ALL']
@@ -136,7 +155,15 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     target: 'SETTINGS',
     launchMethod: 'internal_route',
     availability: 'available',
-    keywords: ['settings', 'preferences', 'configuration', 'voice settings', 'keys', 'shortcuts', 'appearance'],
+    keywords: [
+      'settings',
+      'preferences',
+      'configuration',
+      'voice settings',
+      'keys',
+      'shortcuts',
+      'appearance'
+    ],
     aliases: ['preferences', 'config', 'options'],
     isFavorite: true,
     contextScope: ['ALL']
@@ -262,7 +289,16 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     webFallbackUrl: 'https://www.youtube.com',
     launchMethod: 'deep_link',
     availability: 'available',
-    keywords: ['youtube', 'video', 'watch', 'music', 'streaming', 'clips', 'youtube video', 'youtube app'],
+    keywords: [
+      'youtube',
+      'video',
+      'watch',
+      'music',
+      'streaming',
+      'clips',
+      'youtube video',
+      'youtube app'
+    ],
     aliases: ['yt', 'videos', 'youtube app', 'youtube on device', 'open youtube'],
     isFavorite: true,
     contextScope: ['ALL']
@@ -468,7 +504,8 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     aliases: ['clear chat', 'delete chats', 'reset conversation'],
     confirmationPrompt: {
       title: 'Confirm Chat Purge',
-      message: 'Are you sure you want to delete all saved chat history? This action cannot be undone.',
+      message:
+        'Are you sure you want to delete all saved chat history? This action cannot be undone.',
       confirmLabel: 'Delete All Chats',
       cancelLabel: 'Keep History'
     },
@@ -477,7 +514,8 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
   {
     id: 'clear-memory-vault',
     name: 'Reset Neural Memory Vault',
-    description: 'Erase all long-term user facts, contextual preferences, and learned profile points',
+    description:
+      'Erase all long-term user facts, contextual preferences, and learned profile points',
     category: 'settings',
     type: 'command',
     icon: 'RiBrainLine',
@@ -489,7 +527,8 @@ export const DEFAULT_APP_CATALOG: AppItem[] = [
     aliases: ['forget everything', 'wipe brain', 'clear memories'],
     confirmationPrompt: {
       title: 'Wipe Neural Memory',
-      message: 'Are you sure you want to wipe all long-term memory facts stored in your personal vault?',
+      message:
+        'Are you sure you want to wipe all long-term memory facts stored in your personal vault?',
       confirmLabel: 'Erase Memories',
       cancelLabel: 'Cancel'
     },

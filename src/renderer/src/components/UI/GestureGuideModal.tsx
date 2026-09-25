@@ -34,7 +34,9 @@ export const GestureGuideModal: React.FC<GestureGuideModalProps> = ({ isOpen, on
 
   const handleTestGesture = (g: GestureType) => {
     gestureRecognitionService.triggerGesture(g, 0.98)
-    setTestResult(`Executed: ${ACTION_DESCRIPTIONS[gestureRecognitionService.getConfig().actionMappings[g]]}`)
+    setTestResult(
+      `Executed: ${ACTION_DESCRIPTIONS[gestureRecognitionService.getConfig().actionMappings[g]]}`
+    )
     setTimeout(() => setTestResult(null), 2500)
   }
 
@@ -102,7 +104,12 @@ export const GestureGuideModal: React.FC<GestureGuideModalProps> = ({ isOpen, on
                         <div>
                           <p className="text-xs font-semibold text-zinc-200">{g.name}</p>
                           <p className="text-[10px] font-mono text-emerald-400/80">
-                            → {ACTION_DESCRIPTIONS[gestureRecognitionService.getConfig().actionMappings[g.id]]}
+                            →{' '}
+                            {
+                              ACTION_DESCRIPTIONS[
+                                gestureRecognitionService.getConfig().actionMappings[g.id]
+                              ]
+                            }
                           </p>
                         </div>
                       </div>
@@ -126,7 +133,12 @@ export const GestureGuideModal: React.FC<GestureGuideModalProps> = ({ isOpen, on
                     <div>
                       <h3 className="text-lg font-bold text-white">{currentDef.name}</h3>
                       <p className="text-xs text-emerald-400 font-mono">
-                        Action: {ACTION_DESCRIPTIONS[gestureRecognitionService.getConfig().actionMappings[currentDef.id]]}
+                        Action:{' '}
+                        {
+                          ACTION_DESCRIPTIONS[
+                            gestureRecognitionService.getConfig().actionMappings[currentDef.id]
+                          ]
+                        }
                       </p>
                     </div>
                   </div>
@@ -186,16 +198,23 @@ export const GestureGuideModal: React.FC<GestureGuideModalProps> = ({ isOpen, on
                   IRIS Hands-Free Interface Cycle
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-mono">
-                  {['Command', 'YouTube', 'Workspace', 'Maps', 'Notes', 'Gallery', 'Mobile', 'Settings'].map(
-                    (tab, idx) => (
-                      <React.Fragment key={tab}>
-                        <span className="px-2 py-1 rounded bg-zinc-900 border border-white/10 text-zinc-300">
-                          {tab}
-                        </span>
-                        {idx < 7 && <span className="text-emerald-500 font-bold">⇄</span>}
-                      </React.Fragment>
-                    )
-                  )}
+                  {[
+                    'Command',
+                    'YouTube',
+                    'Workspace',
+                    'Maps',
+                    'Notes',
+                    'Gallery',
+                    'Mobile',
+                    'Settings'
+                  ].map((tab, idx) => (
+                    <React.Fragment key={tab}>
+                      <span className="px-2 py-1 rounded bg-zinc-900 border border-white/10 text-zinc-300">
+                        {tab}
+                      </span>
+                      {idx < 7 && <span className="text-emerald-500 font-bold">⇄</span>}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
             </div>

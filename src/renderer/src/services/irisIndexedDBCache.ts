@@ -66,18 +66,14 @@ class IrisIndexedDBCache {
     window.addEventListener('online', () => {
       this.isOnlineState = true
       this.notifyListeners()
-      window.dispatchEvent(
-        new CustomEvent('iris:network-status', { detail: { online: true } })
-      )
+      window.dispatchEvent(new CustomEvent('iris:network-status', { detail: { online: true } }))
       this.processOfflineOutbox().catch(() => {})
     })
 
     window.addEventListener('offline', () => {
       this.isOnlineState = false
       this.notifyListeners()
-      window.dispatchEvent(
-        new CustomEvent('iris:network-status', { detail: { online: false } })
-      )
+      window.dispatchEvent(new CustomEvent('iris:network-status', { detail: { online: false } }))
     })
   }
 
@@ -211,7 +207,9 @@ class IrisIndexedDBCache {
         req.onsuccess = () => {
           let results = (req.result || []) as (ChatSession & { userId?: string })[]
           if (userId) {
-            results = results.filter((s) => !s.userId || s.userId === userId || s.userId === 'local_user')
+            results = results.filter(
+              (s) => !s.userId || s.userId === userId || s.userId === 'local_user'
+            )
           }
           results.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
           resolve(results)

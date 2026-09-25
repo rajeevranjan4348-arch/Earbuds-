@@ -1,6 +1,6 @@
 /**
  * VoiceCommandRouter - Voice Command to Action Execution with Safety Layer
- * 
+ *
  * Rules:
  * - Uses the same tool/action system as text commands (no isolated engine).
  * - Safety confirmation layer for potentially consequential actions.
@@ -108,7 +108,8 @@ export class VoiceCommandRouter {
       }
       return {
         type: 'handled',
-        message: processorResult.spokenResponse || processorResult.displayText || 'Command executed.',
+        message:
+          processorResult.spokenResponse || processorResult.displayText || 'Command executed.',
         actionTaken: processorResult.intent
       }
     }

@@ -48,7 +48,10 @@ export class TopicValidator {
         factCheckSummary: `Topic rejected by channel safety policy: ${blockCheck.reason}`,
         claims: topic.factualClaims || [],
         copyrightAssessment: { risk: 'HIGH', details: 'Contains banned or blacklisted content.' },
-        policyAssessment: { passed: false, reasons: [blockCheck.reason || 'Blocked keyword detected'] },
+        policyAssessment: {
+          passed: false,
+          reasons: [blockCheck.reason || 'Blocked keyword detected']
+        },
         duplicateAssessment: { isDuplicate: false },
         freshnessAssessment: { isCurrent: true, discoveredAge: 'Now' }
       }
@@ -63,9 +66,19 @@ export class TopicValidator {
       const lower = claim.claim.toLowerCase()
       let status: FactStatus = claim.status || 'CONFIRMED_FACT'
 
-      if (lower.includes('allegedly') || lower.includes('rumor') || lower.includes('unverified') || lower.includes('supposedly')) {
+      if (
+        lower.includes('allegedly') ||
+        lower.includes('rumor') ||
+        lower.includes('unverified') ||
+        lower.includes('supposedly')
+      ) {
         status = 'UNCONFIRMED_REPORT'
-      } else if (lower.includes('opinion') || lower.includes('we believe') || lower.includes('analysis') || lower.includes('prediction')) {
+      } else if (
+        lower.includes('opinion') ||
+        lower.includes('we believe') ||
+        lower.includes('analysis') ||
+        lower.includes('prediction')
+      ) {
         status = 'COMMENTARY_ANALYSIS'
       }
 
@@ -73,9 +86,10 @@ export class TopicValidator {
         ...claim,
         status,
         verified: status === 'CONFIRMED_FACT' ? true : false,
-        verificationNotes: status === 'CONFIRMED_FACT'
-          ? `Grounded against official documentation and primary technical references.`
-          : `Flagged as ${status} — must be transparently disclosed to viewers in the script.`
+        verificationNotes:
+          status === 'CONFIRMED_FACT'
+            ? `Grounded against official documentation and primary technical references.`
+            : `Flagged as ${status} — must be transparently disclosed to viewers in the script.`
       }
     })
 
@@ -92,12 +106,18 @@ export class TopicValidator {
 
     // 4. Copyright & Asset Permissions Assessment
     let copyrightRisk: 'NONE' | 'LOW' | 'MODERATE' | 'HIGH' = 'NONE'
-    let copyrightDetails = 'All generated assets will use original synthesizers, proprietary AI visuals, or open licensed diagrams.'
+    let copyrightDetails =
+      'All generated assets will use original synthesizers, proprietary AI visuals, or open licensed diagrams.'
 
     const titleLower = topic.title.toLowerCase()
-    if (titleLower.includes('trailer') || titleLower.includes('movie clip') || titleLower.includes('full match')) {
+    if (
+      titleLower.includes('trailer') ||
+      titleLower.includes('movie clip') ||
+      titleLower.includes('full match')
+    ) {
       copyrightRisk = 'HIGH'
-      copyrightDetails = 'High risk of third-party broadcast copyright infringement. Script must focus on original commentary.'
+      copyrightDetails =
+        'High risk of third-party broadcast copyright infringement. Script must focus on original commentary.'
       policyReasons.push('Direct copyrighted broadcast material must not be redistributed.')
     }
 
@@ -107,21 +127,31 @@ export class TopicValidator {
     let status: 'APPROVED' | 'NEEDS_HUMAN_REVIEW' | 'REJECTED' = 'APPROVED'
     let valid = true
 
-    if (policyReasons.length > 0 || copyrightRiskLevel === 'HIGH' || topic.safetyPolicyRisk === 'HIGH') {
+    if (
+      policyReasons.length > 0 ||
+      copyrightRiskLevel === 'HIGH' ||
+      topic.safetyPolicyRisk === 'HIGH'
+    ) {
       status = 'REJECTED'
       valid = false
-    } else if (isDuplicate || topic.requiresHumanReview || copyrightRiskLevel === 'MODERATE' || claims.some((c) => c.status === 'UNCONFIRMED_REPORT')) {
+    } else if (
+      isDuplicate ||
+      topic.requiresHumanReview ||
+      copyrightRiskLevel === 'MODERATE' ||
+      claims.some((c) => c.status === 'UNCONFIRMED_REPORT')
+    ) {
       status = 'NEEDS_HUMAN_REVIEW'
       valid = true
     }
 
     const confidenceScore = status === 'APPROVED' ? 95 : status === 'NEEDS_HUMAN_REVIEW' ? 75 : 10
 
-    const factCheckSummary = status === 'APPROVED'
-      ? `All ${claims.length} factual premise(s) verified against official technical sources. Zero policy risks detected.`
-      : status === 'NEEDS_HUMAN_REVIEW'
-        ? `Requires review: Contains unconfirmed elements or partial similarity to past content (${dupCheck.matchTitle || 'past video'}).`
-        : `Rejected due to safety or policy violation: ${policyReasons.join('; ')}`
+    const factCheckSummary =
+      status === 'APPROVED'
+        ? `All ${claims.length} factual premise(s) verified against official technical sources. Zero policy risks detected.`
+        : status === 'NEEDS_HUMAN_REVIEW'
+          ? `Requires review: Contains unconfirmed elements or partial similarity to past content (${dupCheck.matchTitle || 'past video'}).`
+          : `Rejected due to safety or policy violation: ${policyReasons.join('; ')}`
 
     return {
       valid,

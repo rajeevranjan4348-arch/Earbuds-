@@ -33,7 +33,9 @@ class VoiceToastService {
   /**
    * Broadcasts a voice command success toast across all subscribers and DOM events
    */
-  public emit(item: Omit<VoiceCommandToastItem, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): VoiceCommandToastItem {
+  public emit(
+    item: Omit<VoiceCommandToastItem, 'id' | 'timestamp'> & { id?: string; timestamp?: number }
+  ): VoiceCommandToastItem {
     const toast: VoiceCommandToastItem = {
       id: item.id || `vcmd_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       timestamp: item.timestamp || Date.now(),

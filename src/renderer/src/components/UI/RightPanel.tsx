@@ -323,8 +323,7 @@ export default function RightPanel({
     setMicError(null)
 
     const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (!SpeechRecognition) {
       setMicError('Voice recognition is not supported in this browser. Please type your message.')
@@ -350,7 +349,9 @@ export default function RightPanel({
           permErr?.name === 'PermissionDeniedError' ||
           permErr?.name === 'SecurityError'
         ) {
-          setMicError('Microphone access blocked. Click the lock/site settings in your browser address bar to allow microphone.')
+          setMicError(
+            'Microphone access blocked. Click the lock/site settings in your browser address bar to allow microphone.'
+          )
           setListening(false)
           return
         }
@@ -387,10 +388,9 @@ export default function RightPanel({
           }
         }
 
-        const combined =
-          `${finalTextRef.current} ${finalTranscript} ${interimTranscript}`
-            .replace(/\s+/g, ' ')
-            .trim()
+        const combined = `${finalTextRef.current} ${finalTranscript} ${interimTranscript}`
+          .replace(/\s+/g, ' ')
+          .trim()
 
         setInputVal(combined)
         chatHistoryService.saveDraft(activeSessionId, combined)
@@ -399,7 +399,9 @@ export default function RightPanel({
       recognition.onerror = (event: any) => {
         const errType = event?.error || 'unknown'
         if (errType === 'not-allowed' || errType === 'service-not-allowed') {
-          setMicError('Microphone permission required. Please allow microphone access in your browser.')
+          setMicError(
+            'Microphone permission required. Please allow microphone access in your browser.'
+          )
         } else if (errType === 'no-speech') {
           // Normal when user pauses or hasn't spoken yet
         } else if (errType !== 'aborted') {
@@ -1074,10 +1076,11 @@ export default function RightPanel({
     if (resolvedApp && resolvedApp.app && resolvedApp.confidence >= 0.75) {
       ;(async () => {
         try {
-          const launchRes = await launchManager.launch(resolvedApp.app, resolvedApp.secondaryParam)
-          const fallbackLink = launchRes.fallbackUrl || (resolvedApp.app.type === 'external' ? resolvedApp.app.target : '')
-          const responseText = `🚀 **Opening ${resolvedApp.app.name}**\n\nCommand executed: opened **${resolvedApp.app.name}** on your device.${fallbackLink ? `\n\n[👉 Open ${resolvedApp.app.name}](${fallbackLink})` : ''}`
-          const spoken = launchRes.spokenResponse || `Opening ${resolvedApp.app.name}.`
+          const app = resolvedApp.app!
+          const launchRes = await launchManager.launch(app, resolvedApp.secondaryParam)
+          const fallbackLink = launchRes.fallbackUrl || (app.type === 'external' ? app.target : '')
+          const responseText = `🚀 **Opening ${app.name}**\n\nCommand executed: opened **${app.name}** on your device.${fallbackLink ? `\n\n[👉 Open ${app.name}](${fallbackLink})` : ''}`
+          const spoken = launchRes.spokenResponse || `Opening ${app.name}.`
 
           seenMessageIdsRef.current.add(assistantMsgId)
           const assistantMsg: Message = {
@@ -1095,8 +1098,10 @@ export default function RightPanel({
           try {
             if (typeof chatHistoryService.addMessage === 'function') {
               chatHistoryService.addMessage(activeSessionId, assistantMsg)
-            } else if (typeof (chatHistoryService as any).appendMessageToActiveSession === 'function') {
-              (chatHistoryService as any).appendMessageToActiveSession(assistantMsg)
+            } else if (
+              typeof (chatHistoryService as any).appendMessageToActiveSession === 'function'
+            ) {
+              ;(chatHistoryService as any).appendMessageToActiveSession(assistantMsg)
             }
           } catch (storageErr) {
             console.warn('[RightPanel] Could not save message to chatHistoryService:', storageErr)

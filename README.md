@@ -974,12 +974,12 @@ To ensure absolute privacy and safety, **IRIS does not use local `.env` files** 
 
 ### What's Protected?
 
-| Path            | Protected?  | Access        |
+| Path | Protected? | Access |
 | --------------- | ----------- | ------------- | ------ |
-| `iris-ai.ts`    | ✅ Bytecode | Sponsors only |
-| `tools.ts`      | ✅ Bytecode | Sponsors only |
-| `src/renderer/` | ✅ React    | ✅ Open       | Public |
-| IPC handlers    | ✅ Bytecode | Built-in only |
+| `iris-ai.ts` | ✅ Bytecode | Sponsors only |
+| `tools.ts` | ✅ Bytecode | Sponsors only |
+| `src/renderer/` | ✅ React | ✅ Open | Public |
+| IPC handlers | ✅ Bytecode | Built-in only |
 
 ---
 

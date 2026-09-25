@@ -1,6 +1,6 @@
 /**
  * VADManager - Voice Activity Detection with Noise Floor Tracking
- * 
+ *
  * Rules:
  * - Start recording/committing when user speech is detected.
  * - Stop/finalize utterance after configurable silence (default 700ms).
@@ -42,7 +42,8 @@ export class VADManager implements VoiceActivityDetectorProvider {
     this.handlers = handlers
     if (options?.enabled !== undefined) this.isEnabled = options.enabled
     if (options?.silenceTimeoutMs !== undefined) this.silenceTimeoutMs = options.silenceTimeoutMs
-    if (options?.minSpeechDurationMs !== undefined) this.minSpeechDurationMs = options.minSpeechDurationMs
+    if (options?.minSpeechDurationMs !== undefined)
+      this.minSpeechDurationMs = options.minSpeechDurationMs
   }
 
   public setEnabled(enabled: boolean) {

@@ -1,6 +1,6 @@
 /**
  * Production-Ready Voice Interaction System - Complete Integration Test Suite
- * 
+ *
  * Verifies:
  * 1. Wake-word detection ("Hey JARVIS", "OK JARVIS", "JARVIS", "Hey IRIS")
  * 2. VAD start/stop & noise-floor adaptation
@@ -15,6 +15,7 @@
  * 11. Duplicate command prevention & debouncing
  */
 
+import { describe, it, expect } from 'vitest'
 import { WakeWordDetector } from '../WakeWordDetector'
 import { VADManager } from '../VADManager'
 import { TTSManager } from '../TTSManager'
@@ -128,7 +129,8 @@ describe('JARVIS Voice Interaction System', () => {
         onInterrupted: () => {}
       })
 
-      const raw = 'Hello **Sir**! Here is the code: ```const x = 10;``` and [link](https://example.com).'
+      const raw =
+        'Hello **Sir**! Here is the code: ```const x = 10;``` and [link](https://example.com).'
       const cleaned = tts.cleanTextForSpeech(raw)
 
       expect(cleaned).not.toContain('**')

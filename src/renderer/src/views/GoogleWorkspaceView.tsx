@@ -106,7 +106,27 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
     const handleSelectService = (e: any) => {
       const svc = (e.detail?.service || '').toUpperCase()
-      if (svc && ['HUB', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
+      if (
+        svc &&
+        [
+          'HUB',
+          'TELEMETRY',
+          'DIAGNOSTICS',
+          'DRIVE',
+          'GMAIL',
+          'CALENDAR',
+          'TASKS',
+          'MEET',
+          'CONTACTS',
+          'SHEETS',
+          'DOCS',
+          'SLIDES',
+          'FORMS',
+          'CHAT',
+          'CLASSROOM',
+          'PICKER'
+        ].includes(svc)
+      ) {
         setActiveSubTab(svc as WorkspaceTab)
       }
     }
@@ -425,8 +445,16 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
   const subTabs = [
     { id: 'HUB', label: 'Hub & Status', icon: <RiShieldCheckLine size={15} /> },
-    { id: 'TELEMETRY', label: 'Telemetry & Latency', icon: <Activity size={15} className="text-[#00ff41]" /> },
-    { id: 'DIAGNOSTICS', label: 'Auth Failures', icon: <ShieldAlert size={15} className="text-red-400" /> },
+    {
+      id: 'TELEMETRY',
+      label: 'Telemetry & Latency',
+      icon: <Activity size={15} className="text-[#00ff41]" />
+    },
+    {
+      id: 'DIAGNOSTICS',
+      label: 'Auth Failures',
+      icon: <ShieldAlert size={15} className="text-red-400" />
+    },
     { id: 'DRIVE', label: 'Drive', icon: <RiDriveLine size={15} /> },
     { id: 'SHEETS', label: 'Sheets', icon: <RiFileExcelLine size={15} /> },
     { id: 'GMAIL', label: 'Gmail', icon: <RiMailLine size={15} /> },
@@ -564,10 +592,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
         </div>
       ) : activeSubTab === 'DIAGNOSTICS' ? (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <AuthFailureView
-            onReauthenticate={handleSignIn}
-            onNavigateService={(tabId) => setActiveSubTab(tabId as WorkspaceTab)}
-          />
+          <AuthFailureView onReauthenticate={handleSignIn} />
         </div>
       ) : (
         <div className="flex-1 min-h-0 bg-zinc-950/80 border border-white/10 rounded-xl p-4 flex flex-col overflow-hidden shadow-2xl">
@@ -581,7 +606,8 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
               </h3>
               <p className="text-xs text-zinc-400 max-w-md leading-relaxed">
                 Connect your authorized Google Workspace account to unlock live bidirectional
-                synchronization with Drive, Gmail, Calendar, Sheets, Docs, Tasks, Meet, and Classroom.
+                synchronization with Drive, Gmail, Calendar, Sheets, Docs, Tasks, Meet, and
+                Classroom.
               </p>
               <button
                 onClick={handleSignIn}
@@ -593,206 +619,206 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
             </div>
           ) : (
             <div className="flex flex-col h-full overflow-hidden">
-            {/* Context Header for Sub-Tab */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
-              <div className="flex items-center gap-2 text-xs text-zinc-300">
-                <span className="font-bold text-blue-400">{activeSubTab}</span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-[11px] text-zinc-500">Live 1P REST Service</span>
-              </div>
+              {/* Context Header for Sub-Tab */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
+                <div className="flex items-center gap-2 text-xs text-zinc-300">
+                  <span className="font-bold text-blue-400">{activeSubTab}</span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="text-[11px] text-zinc-500">Live 1P REST Service</span>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={loadTabItems}
-                  disabled={isLoading}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs rounded transition-colors"
-                >
-                  <RiRefreshLine size={13} className={isLoading ? 'animate-spin' : ''} />
-                  <span className="text-[10px]">Refresh</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Sub-tab view bodies */}
-            <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1 space-y-3">
-              {/* GOOGLE MEET */}
-              {activeSubTab === 'MEET' && (
-                <div className="space-y-4 max-w-xl mx-auto py-6 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
-                    <RiVideoChatLine size={24} />
-                  </div>
-                  <h4 className="text-sm font-bold text-zinc-200 uppercase">
-                    Instant Google Meet Space
-                  </h4>
-                  <p className="text-xs text-zinc-400">
-                    Generate an instant Google Meet room using Google Meet v2 API.
-                  </p>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={handleCreateMeet}
+                    onClick={loadTabItems}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl tracking-wider uppercase transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs rounded transition-colors"
                   >
-                    {isLoading ? 'Generating Room...' : 'Create Instant Meet Space'}
+                    <RiRefreshLine size={13} className={isLoading ? 'animate-spin' : ''} />
+                    <span className="text-[10px]">Refresh</span>
                   </button>
-
-                  {createdMeetUrl && (
-                    <div className="mt-4 p-3 bg-zinc-900 border border-emerald-500/30 rounded-xl flex items-center justify-between">
-                      <span className="text-xs text-emerald-300 truncate">{createdMeetUrl}</span>
-                      <a
-                        href={createdMeetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-black font-bold text-xs rounded-lg"
-                      >
-                        <span>Join</span>
-                        <RiExternalLinkLine size={12} />
-                      </a>
-                    </div>
-                  )}
                 </div>
-              )}
+              </div>
 
-              {/* GOOGLE PICKER */}
-              {activeSubTab === 'PICKER' && (
-                <div className="space-y-4 max-w-xl mx-auto py-6 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mx-auto">
-                    <RiFolderDownloadLine size={24} />
+              {/* Sub-tab view bodies */}
+              <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1 space-y-3">
+                {/* GOOGLE MEET */}
+                {activeSubTab === 'MEET' && (
+                  <div className="space-y-4 max-w-xl mx-auto py-6 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
+                      <RiVideoChatLine size={24} />
+                    </div>
+                    <h4 className="text-sm font-bold text-zinc-200 uppercase">
+                      Instant Google Meet Space
+                    </h4>
+                    <p className="text-xs text-zinc-400">
+                      Generate an instant Google Meet room using Google Meet v2 API.
+                    </p>
+                    <button
+                      onClick={handleCreateMeet}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl tracking-wider uppercase transition-colors"
+                    >
+                      {isLoading ? 'Generating Room...' : 'Create Instant Meet Space'}
+                    </button>
+
+                    {createdMeetUrl && (
+                      <div className="mt-4 p-3 bg-zinc-900 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                        <span className="text-xs text-emerald-300 truncate">{createdMeetUrl}</span>
+                        <a
+                          href={createdMeetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-black font-bold text-xs rounded-lg"
+                        >
+                          <span>Join</span>
+                          <RiExternalLinkLine size={12} />
+                        </a>
+                      </div>
+                    )}
                   </div>
-                  <h4 className="text-sm font-bold text-zinc-200 uppercase">
-                    Google Picker Dialog Widget
-                  </h4>
-                  <p className="text-xs text-zinc-400">
-                    Launch the official interactive Google Drive Picker dialog to select files,
-                    spreadsheets, and presentations.
-                  </p>
-                  <button
-                    onClick={launchGooglePicker}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl tracking-wider uppercase transition-colors"
-                  >
-                    Launch Google Picker
-                  </button>
-                </div>
-              )}
+                )}
 
-              {/* GOOGLE TASKS */}
-              {activeSubTab === 'TASKS' && (
-                <div className="space-y-3">
-                  <form onSubmit={handleCreateTask} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={taskInput}
-                      onChange={(e) => setTaskInput(e.target.value)}
-                      placeholder="Add a new Google Task item..."
-                      className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading || !taskInput.trim()}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
-                    >
-                      <RiAddLine size={16} />
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* GOOGLE DOCS */}
-              {activeSubTab === 'DOCS' && (
-                <div className="space-y-3">
-                  <form onSubmit={handleCreateDoc} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={docTitleInput}
-                      onChange={(e) => setDocTitleInput(e.target.value)}
-                      placeholder="New Google Doc Title..."
-                      className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading || !docTitleInput.trim()}
-                      className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
-                    >
-                      Create Doc
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* GOOGLE SHEETS */}
-              {activeSubTab === 'SHEETS' && (
-                <div className="space-y-3">
-                  <form onSubmit={handleCreateSheet} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={sheetTitleInput}
-                      onChange={(e) => setSheetTitleInput(e.target.value)}
-                      placeholder="New Google Spreadsheet Title..."
-                      className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isLoading || !sheetTitleInput.trim()}
-                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
-                    >
-                      Create Sheet
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* ITEMS LIST (DRIVE, GMAIL, CALENDAR, CONTACTS, CLASSROOM, CHAT) */}
-              {['DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'CONTACTS', 'CHAT', 'CLASSROOM'].includes(
-                activeSubTab
-              ) && (
-                <div className="space-y-2">
-                  {isLoading ? (
-                    <WorkspaceSkeleton />
-                  ) : items.length === 0 ? (
-                    <div className="text-center py-10 text-zinc-500 text-xs">
-                      No records found for {activeSubTab}.
+                {/* GOOGLE PICKER */}
+                {activeSubTab === 'PICKER' && (
+                  <div className="space-y-4 max-w-xl mx-auto py-6 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mx-auto">
+                      <RiFolderDownloadLine size={24} />
                     </div>
-                  ) : (
-                    items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-white/5 hover:border-white/20 rounded-xl flex items-center justify-between transition-all"
+                    <h4 className="text-sm font-bold text-zinc-200 uppercase">
+                      Google Picker Dialog Widget
+                    </h4>
+                    <p className="text-xs text-zinc-400">
+                      Launch the official interactive Google Drive Picker dialog to select files,
+                      spreadsheets, and presentations.
+                    </p>
+                    <button
+                      onClick={launchGooglePicker}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl tracking-wider uppercase transition-colors"
+                    >
+                      Launch Google Picker
+                    </button>
+                  </div>
+                )}
+
+                {/* GOOGLE TASKS */}
+                {activeSubTab === 'TASKS' && (
+                  <div className="space-y-3">
+                    <form onSubmit={handleCreateTask} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={taskInput}
+                        onChange={(e) => setTaskInput(e.target.value)}
+                        placeholder="Add a new Google Task item..."
+                        className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !taskInput.trim()}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
                       >
-                        <div className="min-w-0 pr-3">
-                          <div className="text-xs font-semibold text-zinc-100 truncate">
-                            {item.title}
+                        <RiAddLine size={16} />
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* GOOGLE DOCS */}
+                {activeSubTab === 'DOCS' && (
+                  <div className="space-y-3">
+                    <form onSubmit={handleCreateDoc} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={docTitleInput}
+                        onChange={(e) => setDocTitleInput(e.target.value)}
+                        placeholder="New Google Doc Title..."
+                        className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !docTitleInput.trim()}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
+                      >
+                        Create Doc
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* GOOGLE SHEETS */}
+                {activeSubTab === 'SHEETS' && (
+                  <div className="space-y-3">
+                    <form onSubmit={handleCreateSheet} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={sheetTitleInput}
+                        onChange={(e) => setSheetTitleInput(e.target.value)}
+                        placeholder="New Google Spreadsheet Title..."
+                        className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading || !sheetTitleInput.trim()}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg tracking-wider uppercase"
+                      >
+                        Create Sheet
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* ITEMS LIST (DRIVE, GMAIL, CALENDAR, CONTACTS, CLASSROOM, CHAT) */}
+                {['DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'CONTACTS', 'CHAT', 'CLASSROOM'].includes(
+                  activeSubTab
+                ) && (
+                  <div className="space-y-2">
+                    {isLoading ? (
+                      <WorkspaceSkeleton />
+                    ) : items.length === 0 ? (
+                      <div className="text-center py-10 text-zinc-500 text-xs">
+                        No records found for {activeSubTab}.
+                      </div>
+                    ) : (
+                      items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-3 bg-zinc-900/60 hover:bg-zinc-900 border border-white/5 hover:border-white/20 rounded-xl flex items-center justify-between transition-all"
+                        >
+                          <div className="min-w-0 pr-3">
+                            <div className="text-xs font-semibold text-zinc-100 truncate">
+                              {item.title}
+                            </div>
+                            {item.subtitle && (
+                              <div className="text-[11px] text-zinc-400 mt-0.5 truncate">
+                                {item.subtitle}
+                              </div>
+                            )}
+                            {item.date && (
+                              <div className="text-[10px] text-zinc-500 mt-1">
+                                {new Date(item.date).toLocaleString()}
+                              </div>
+                            )}
                           </div>
-                          {item.subtitle && (
-                            <div className="text-[11px] text-zinc-400 mt-0.5 truncate">
-                              {item.subtitle}
-                            </div>
-                          )}
-                          {item.date && (
-                            <div className="text-[10px] text-zinc-500 mt-1">
-                              {new Date(item.date).toLocaleString()}
-                            </div>
+
+                          {item.link && (
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg transition-colors shrink-0"
+                              title="Open in Google Workspace"
+                            >
+                              <RiExternalLinkLine size={14} />
+                            </a>
                           )}
                         </div>
-
-                        {item.link && (
-                          <a
-                            href={item.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg transition-colors shrink-0"
-                            title="Open in Google Workspace"
-                          >
-                            <RiExternalLinkLine size={14} />
-                          </a>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
       )}
     </div>
   )

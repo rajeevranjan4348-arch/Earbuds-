@@ -17,7 +17,12 @@ import { searchOrchestrator, executeSearchTool, searchToolDefinitions } from './
 import { privacyAlign, cybersecurity } from './security'
 import { unifiedMemory } from './memory'
 import { browserUseAgent } from './browser'
-import { scientificResearch, diagramDesign, aiqCitationEngine, DiscoveredResearchSource } from './research'
+import {
+  scientificResearch,
+  diagramDesign,
+  aiqCitationEngine,
+  DiscoveredResearchSource
+} from './research'
 import { fluxImageEngine, imageStore, getImageApiKey } from './image'
 import { androidPackageResolver } from './android'
 import {
@@ -278,7 +283,11 @@ export async function handleApiRequest(
     if (pathname === '/api/health') {
       return sendJson(res, 200, {
         status: 'ok',
-        mem0Connected: Boolean(process.env.MEM0_API_KEY && !mem0AuthFailed && isMem0KeyValidFormat(process.env.MEM0_API_KEY)),
+        mem0Connected: Boolean(
+          process.env.MEM0_API_KEY &&
+          !mem0AuthFailed &&
+          isMem0KeyValidFormat(process.env.MEM0_API_KEY)
+        ),
         geminiConnected: Boolean(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY),
         codebaseReady: true,
         searchReady: true,
@@ -313,9 +322,10 @@ export async function handleApiRequest(
       }
 
       try {
-        const cleanBase64 = typeof audioData === 'string'
-          ? audioData.replace(/^data:audio\/[a-zA-Z0-9.-]+;base64,/, '').replace(/\s+/g, '')
-          : ''
+        const cleanBase64 =
+          typeof audioData === 'string'
+            ? audioData.replace(/^data:audio\/[a-zA-Z0-9.-]+;base64,/, '').replace(/\s+/g, '')
+            : ''
 
         if (!cleanBase64) {
           return sendJson(res, 200, { success: true, transcript: '' })
@@ -353,7 +363,10 @@ export async function handleApiRequest(
               break
             }
           } catch (modelErr: any) {
-            console.warn(`[API Voice Transcribe] Model ${modelName} failed, trying next:`, modelErr?.message)
+            console.warn(
+              `[API Voice Transcribe] Model ${modelName} failed, trying next:`,
+              modelErr?.message
+            )
           }
         }
 
@@ -376,7 +389,10 @@ export async function handleApiRequest(
     // ==========================================
     // System App & URL Launcher Execution Bridge
     // ==========================================
-    if ((pathname === '/api/system/open' || pathname === '/api/system/launch-app') && req.method === 'POST') {
+    if (
+      (pathname === '/api/system/open' || pathname === '/api/system/launch-app') &&
+      req.method === 'POST'
+    ) {
       try {
         const body = await parseBody(req)
         const { targetUrl, appName = 'Application', command } = body
@@ -398,7 +414,10 @@ export async function handleApiRequest(
             if (openCmd) {
               exec(openCmd, (err) => {
                 if (err) {
-                  console.warn(`[System Open] System command execution notice for ${appName}:`, err.message)
+                  console.warn(
+                    `[System Open] System command execution notice for ${appName}:`,
+                    err.message
+                  )
                 }
               })
             }
@@ -832,7 +851,10 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_auth_refresh', async () => {
         const body = await parseBody(req)
         const userId = body.userId || parsedUrl.searchParams.get('userId') || undefined
-        const refreshResult = await workspaceSessionManager.refreshToken(userId, 'client_requested_refresh')
+        const refreshResult = await workspaceSessionManager.refreshToken(
+          userId,
+          'client_requested_refresh'
+        )
         if (refreshResult.success && refreshResult.accessToken) {
           const info = workspaceSessionManager.getSessionInfo(userId)
           return {
@@ -857,13 +879,19 @@ export async function handleApiRequest(
     }
 
     // Diagnostic Authentication Failure Logs (supporting /api/workspace/auth/failures and /api/workspace/auth/logs)
-    if ((pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') && req.method === 'GET') {
+    if (
+      (pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') &&
+      req.method === 'GET'
+    ) {
       const logs = workspaceSessionManager.getAuthFailures()
       return sendJson(res, 200, { success: true, logs })
     }
 
     // Clear Diagnostic Authentication Failure Logs
-    if ((pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') && req.method === 'DELETE') {
+    if (
+      (pathname === '/api/workspace/auth/logs' || pathname === '/api/workspace/auth/failures') &&
+      req.method === 'DELETE'
+    ) {
       workspaceSessionManager.clearAuthFailures()
       return sendJson(res, 200, { success: true, message: 'Authentication failure logs cleared' })
     }
@@ -884,41 +912,110 @@ export async function handleApiRequest(
         }
 
         const services = [
-          { id: 'drive', name: 'Google Drive', endpoint: 'https://www.googleapis.com/drive/v3/about?fields=user' },
-          { id: 'gmail', name: 'Gmail', endpoint: 'https://gmail.googleapis.com/gmail/v1/users/me/profile' },
-          { id: 'calendar', name: 'Google Calendar', endpoint: 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1' },
-          { id: 'tasks', name: 'Google Tasks', endpoint: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=1' },
-          { id: 'contacts', name: 'Google Contacts', endpoint: 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses' },
-          { id: 'chat', name: 'Google Chat', endpoint: 'https://chat.googleapis.com/v1/spaces?pageSize=1' },
+          {
+            id: 'drive',
+            name: 'Google Drive',
+            endpoint: 'https://www.googleapis.com/drive/v3/about?fields=user'
+          },
+          {
+            id: 'gmail',
+            name: 'Gmail',
+            endpoint: 'https://gmail.googleapis.com/gmail/v1/users/me/profile'
+          },
+          {
+            id: 'calendar',
+            name: 'Google Calendar',
+            endpoint: 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1'
+          },
+          {
+            id: 'tasks',
+            name: 'Google Tasks',
+            endpoint: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=1'
+          },
+          {
+            id: 'contacts',
+            name: 'Google Contacts',
+            endpoint: 'https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses'
+          },
+          {
+            id: 'chat',
+            name: 'Google Chat',
+            endpoint: 'https://chat.googleapis.com/v1/spaces?pageSize=1'
+          },
           { id: 'docs', name: 'Google Docs', endpoint: 'https://docs.googleapis.com/v1/documents' },
-          { id: 'sheets', name: 'Google Sheets', endpoint: 'https://sheets.googleapis.com/v4/spreadsheets' },
-          { id: 'slides', name: 'Google Slides', endpoint: 'https://slides.googleapis.com/v1/presentations' },
-          { id: 'classroom', name: 'Google Classroom', endpoint: 'https://classroom.googleapis.com/v1/courses?pageSize=1' }
+          {
+            id: 'sheets',
+            name: 'Google Sheets',
+            endpoint: 'https://sheets.googleapis.com/v4/spreadsheets'
+          },
+          {
+            id: 'slides',
+            name: 'Google Slides',
+            endpoint: 'https://slides.googleapis.com/v1/presentations'
+          },
+          {
+            id: 'classroom',
+            name: 'Google Classroom',
+            endpoint: 'https://classroom.googleapis.com/v1/courses?pageSize=1'
+          }
         ]
 
-        const results: Record<string, { status: 'healthy' | 'unauthorized' | 'forbidden' | 'error' | 'ready'; message?: string; latencyMs: number }> = {}
+        const results: Record<
+          string,
+          {
+            status: 'healthy' | 'unauthorized' | 'forbidden' | 'error' | 'ready'
+            message?: string
+            latencyMs: number
+          }
+        > = {}
 
         await Promise.all(
           services.map(async (svc) => {
             const start = Date.now()
             try {
               const res = await fetch(svc.endpoint, {
-                method: svc.id === 'docs' || svc.id === 'sheets' || svc.id === 'slides' ? 'HEAD' : 'GET',
+                method:
+                  svc.id === 'docs' || svc.id === 'sheets' || svc.id === 'slides' ? 'HEAD' : 'GET',
                 headers: { Authorization: `Bearer ${token}` }
               })
               const latencyMs = Date.now() - start
               if (res.ok || (svc.id === 'docs' && res.status === 404)) {
-                results[svc.id] = { status: 'healthy', latencyMs, message: 'Connected and verified' }
+                results[svc.id] = {
+                  status: 'healthy',
+                  latencyMs,
+                  message: 'Connected and verified'
+                }
               } else if (res.status === 401) {
-                results[svc.id] = { status: 'unauthorized', latencyMs, message: 'Token rejected (401)' }
-                workspaceSessionManager.logAuthFailure(svc.id, 'Token rejected during health check', 401, svc.endpoint)
+                results[svc.id] = {
+                  status: 'unauthorized',
+                  latencyMs,
+                  message: 'Token rejected (401)'
+                }
+                workspaceSessionManager.logAuthFailure(
+                  svc.id,
+                  'Token rejected during health check',
+                  401,
+                  svc.endpoint
+                )
               } else if (res.status === 403) {
-                results[svc.id] = { status: 'forbidden', latencyMs, message: 'Missing scope or restricted (403)' }
+                results[svc.id] = {
+                  status: 'forbidden',
+                  latencyMs,
+                  message: 'Missing scope or restricted (403)'
+                }
               } else {
-                results[svc.id] = { status: 'ready', latencyMs, message: `Status code ${res.status}` }
+                results[svc.id] = {
+                  status: 'ready',
+                  latencyMs,
+                  message: `Status code ${res.status}`
+                }
               }
             } catch (err: any) {
-              results[svc.id] = { status: 'error', latencyMs: Date.now() - start, message: err?.message || 'Network error' }
+              results[svc.id] = {
+                status: 'error',
+                latencyMs: Date.now() - start,
+                message: err?.message || 'Network error'
+              }
             }
           })
         )
@@ -937,8 +1034,10 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_proxy', async () => {
         const body = await parseBody(req)
         const authHeader = req.headers['authorization'] || ''
-        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : body.accessToken || ''
-        
+        const bearerToken = authHeader.startsWith('Bearer ')
+          ? authHeader.slice(7)
+          : body.accessToken || ''
+
         const service = body.service || 'drive'
         const url = body.url
         if (!url) return { success: false, error: 'Missing target API url' }
@@ -948,7 +1047,11 @@ export async function handleApiRequest(
           url,
           method: body.method || 'GET',
           headers: body.headers,
-          body: body.body ? (typeof body.body === 'string' ? body.body : JSON.stringify(body.body)) : undefined,
+          body: body.body
+            ? typeof body.body === 'string'
+              ? body.body
+              : JSON.stringify(body.body)
+            : undefined,
           userId: body.userId,
           overrideAccessToken: bearerToken || undefined
         })
@@ -971,9 +1074,10 @@ export async function handleApiRequest(
         const pageSize = parsedUrl.searchParams.get('pageSize') || '15'
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
         const url = `https://www.googleapis.com/drive/v3/files?pageSize=${pageSize}&fields=files(id,name,mimeType,modifiedTime,webViewLink,iconLink)&orderBy=modifiedTime desc&q=trashed = false`
-        
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'drive',
           url,
@@ -992,8 +1096,12 @@ export async function handleApiRequest(
         const title = body.title || 'IRIS Telemetry Log'
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          body.userId ||
+          parsedUrl.searchParams.get('userId') ||
+          (req.headers['x-user-id'] as string) ||
+          undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'sheets',
           url: 'https://sheets.googleapis.com/v4/spreadsheets',
@@ -1012,8 +1120,9 @@ export async function handleApiRequest(
         const maxResults = parsedUrl.searchParams.get('maxResults') || '8'
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const listRes = await googleWorkspaceApiClient.execute({
           service: 'gmail',
           url: `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`,
@@ -1066,10 +1175,13 @@ export async function handleApiRequest(
         return handleSafeRoute(res, 'workspace_calendar_list', async () => {
           const authHeader = req.headers['authorization'] || ''
           const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-          const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+          const userId =
+            parsedUrl.searchParams.get('userId') ||
+            (req.headers['x-user-id'] as string) ||
+            undefined
           const now = new Date().toISOString()
           const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=${encodeURIComponent(now)}`
-          
+
           const resObj = await googleWorkspaceApiClient.execute({
             service: 'calendar',
             url,
@@ -1085,8 +1197,12 @@ export async function handleApiRequest(
           const body = await parseBody(req)
           const authHeader = req.headers['authorization'] || ''
           const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-          const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-          
+          const userId =
+            body.userId ||
+            parsedUrl.searchParams.get('userId') ||
+            (req.headers['x-user-id'] as string) ||
+            undefined
+
           const resObj = await googleWorkspaceApiClient.execute({
             service: 'calendar',
             url: 'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -1110,8 +1226,12 @@ export async function handleApiRequest(
         const body = await parseBody(req)
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          body.userId ||
+          parsedUrl.searchParams.get('userId') ||
+          (req.headers['x-user-id'] as string) ||
+          undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'docs',
           url: 'https://docs.googleapis.com/v1/documents',
@@ -1130,8 +1250,12 @@ export async function handleApiRequest(
         const body = await parseBody(req)
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          body.userId ||
+          parsedUrl.searchParams.get('userId') ||
+          (req.headers['x-user-id'] as string) ||
+          undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'slides',
           url: 'https://slides.googleapis.com/v1/presentations',
@@ -1149,8 +1273,9 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_tasks_list', async () => {
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const listsRes = await googleWorkspaceApiClient.execute({
           service: 'tasks',
           url: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
@@ -1177,8 +1302,12 @@ export async function handleApiRequest(
         const body = await parseBody(req)
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          body.userId ||
+          parsedUrl.searchParams.get('userId') ||
+          (req.headers['x-user-id'] as string) ||
+          undefined
+
         const listsRes = await googleWorkspaceApiClient.execute({
           service: 'tasks',
           url: 'https://tasks.googleapis.com/tasks/v1/users/@me/lists',
@@ -1205,8 +1334,9 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_contacts_list', async () => {
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'contacts',
           url: 'https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers&pageSize=15',
@@ -1223,8 +1353,9 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_chat_spaces', async () => {
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'chat',
           url: 'https://chat.googleapis.com/v1/spaces',
@@ -1241,8 +1372,9 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_meet_create', async () => {
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'meet',
           url: 'https://meet.googleapis.com/v2/spaces',
@@ -1261,8 +1393,12 @@ export async function handleApiRequest(
         const body = await parseBody(req)
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          body.userId ||
+          parsedUrl.searchParams.get('userId') ||
+          (req.headers['x-user-id'] as string) ||
+          undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'forms',
           url: 'https://forms.googleapis.com/v1/forms',
@@ -1280,8 +1416,9 @@ export async function handleApiRequest(
       return handleSafeRoute(res, 'workspace_classroom_courses', async () => {
         const authHeader = req.headers['authorization'] || ''
         const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
-        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
-        
+        const userId =
+          parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
         const resObj = await googleWorkspaceApiClient.execute({
           service: 'classroom',
           url: 'https://classroom.googleapis.com/v1/courses?pageSize=15',
@@ -1547,7 +1684,10 @@ export async function handleApiRequest(
     }
 
     // 6. Delete Job
-    if (pathname === '/api/youtube/jobs/delete' && (req.method === 'POST' || req.method === 'DELETE')) {
+    if (
+      pathname === '/api/youtube/jobs/delete' &&
+      (req.method === 'POST' || req.method === 'DELETE')
+    ) {
       return handleSafeRoute(res, 'youtube_delete_job', async () => {
         const body = req.method === 'POST' ? await parseBody(req) : {}
         const jobId = body.jobId || parsedUrl.searchParams.get('id') || ''
@@ -2010,7 +2150,10 @@ export async function handleApiRequest(
 
     // 13-A. Listening + Plan Execution Agent Endpoints
     // Primary Entry Point: Listens, Classifies Intent, Decomposes into Structured Plan, Executes, Verifies & Synthesizes
-    if ((pathname === '/api/agent/execute' || pathname === '/api/agent/listen-and-execute') && req.method === 'POST') {
+    if (
+      (pathname === '/api/agent/execute' || pathname === '/api/agent/listen-and-execute') &&
+      req.method === 'POST'
+    ) {
       return handleSafeRoute(res, 'agent_listen_and_execute', async () => {
         const body = await parseBody(req)
         const rawInput = body.input || body.prompt || body.command || ''
@@ -2022,9 +2165,17 @@ export async function handleApiRequest(
           return { success: false, error: 'Missing input query or command' }
         }
 
-        const taskResult = await taskManager.listenAndExecute(rawInput, inputType, userId, contextMemory)
+        const taskResult = await taskManager.listenAndExecute(
+          rawInput,
+          inputType,
+          userId,
+          contextMemory
+        )
         return {
-          success: taskResult.status === 'completed' || taskResult.status === 'waiting_confirmation' || taskResult.status === 'clarification_needed',
+          success:
+            taskResult.status === 'completed' ||
+            taskResult.status === 'waiting_confirmation' ||
+            taskResult.status === 'clarification_needed',
           task: taskResult
         }
       })
@@ -2040,7 +2191,12 @@ export async function handleApiRequest(
     }
 
     // Get Single Task Status
-    if (pathname.startsWith('/api/agent/task/') && !pathname.endsWith('/confirm') && !pathname.endsWith('/cancel') && req.method === 'GET') {
+    if (
+      pathname.startsWith('/api/agent/task/') &&
+      !pathname.endsWith('/confirm') &&
+      !pathname.endsWith('/cancel') &&
+      req.method === 'GET'
+    ) {
       const taskId = pathname.replace('/api/agent/task/', '').trim()
       const task = taskManager.getTask(taskId)
       if (!task) {
@@ -2050,7 +2206,11 @@ export async function handleApiRequest(
     }
 
     // Confirm / Authorize Gated Plan Step
-    if (pathname.startsWith('/api/agent/task/') && pathname.endsWith('/confirm') && req.method === 'POST') {
+    if (
+      pathname.startsWith('/api/agent/task/') &&
+      pathname.endsWith('/confirm') &&
+      req.method === 'POST'
+    ) {
       const taskId = pathname.replace('/api/agent/task/', '').replace('/confirm', '').trim()
       const body = await parseBody(req)
       const approved = body.approved !== false
@@ -2060,12 +2220,19 @@ export async function handleApiRequest(
         const task = await taskManager.confirmTaskStep(taskId, approved, notes)
         return sendJson(res, 200, { success: true, task })
       } catch (err: any) {
-        return sendJson(res, 400, { success: false, error: err?.message || 'Failed to confirm task' })
+        return sendJson(res, 400, {
+          success: false,
+          error: err?.message || 'Failed to confirm task'
+        })
       }
     }
 
     // Cancel Active Task
-    if (pathname.startsWith('/api/agent/task/') && pathname.endsWith('/cancel') && req.method === 'POST') {
+    if (
+      pathname.startsWith('/api/agent/task/') &&
+      pathname.endsWith('/cancel') &&
+      req.method === 'POST'
+    ) {
       const taskId = pathname.replace('/api/agent/task/', '').replace('/cancel', '').trim()
       const body = await parseBody(req)
       const cancelled = taskManager.cancelTask(taskId, body.reason)
@@ -2344,7 +2511,9 @@ export async function handleApiRequest(
           res.end()
           return
         } catch (streamErr: any) {
-          res.write(`data: ${JSON.stringify({ error: streamErr?.message || 'Streaming failed' })}\n\n`)
+          res.write(
+            `data: ${JSON.stringify({ error: streamErr?.message || 'Streaming failed' })}\n\n`
+          )
           res.end()
           return
         }
@@ -2373,11 +2542,7 @@ export async function handleApiRequest(
 
     // 13f. Gemini Live Voice Conversation Endpoint
     if (pathname === '/api/ai/voice/conversation' && req.method === 'POST') {
-      const {
-        prompt,
-        voiceName = 'Kore',
-        conversationHistory = []
-      } = await parseBody(req)
+      const { prompt, voiceName = 'Kore', conversationHistory = [] } = await parseBody(req)
 
       if (!prompt) {
         return sendJson(res, 400, { error: 'Missing prompt for voice conversation' })
@@ -2402,7 +2567,10 @@ export async function handleApiRequest(
     }
 
     // 13g. Gemini Live Real-Time Continuous Audio Bridge Endpoint
-    if ((pathname === '/api/ai/voice/stream' || pathname === '/api/ai/live-audio-bridge') && req.method === 'POST') {
+    if (
+      (pathname === '/api/ai/voice/stream' || pathname === '/api/ai/live-audio-bridge') &&
+      req.method === 'POST'
+    ) {
       const {
         audioChunk,
         mimeType = 'audio/webm;codecs=opus',
@@ -2478,9 +2646,7 @@ export async function handleApiRequest(
               apiKey: customApiKey
             },
             (chunk, reasoningChunk) => {
-              res.write(
-                `data: ${JSON.stringify({ text: chunk, reasoning: reasoningChunk })}\n\n`
-              )
+              res.write(`data: ${JSON.stringify({ text: chunk, reasoning: reasoningChunk })}\n\n`)
             }
           )
           res.write('data: [DONE]\n\n')
@@ -2567,11 +2733,11 @@ export async function handleApiRequest(
         Array.isArray(rawConversationHistory) && rawConversationHistory.length > 0
           ? rawConversationHistory
           : Array.isArray(rawMessages) && rawMessages.length > 0
-          ? rawMessages.map((m: any) => ({
-              role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
-              text: m.text || m.content || ''
-            }))
-          : []
+            ? rawMessages.map((m: any) => ({
+                role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user',
+                text: m.text || m.content || ''
+              }))
+            : []
 
       if (!rawPrompt) {
         return sendJson(res, 400, { error: 'Missing prompt' })
@@ -2640,7 +2806,10 @@ export async function handleApiRequest(
 
           // Advanced AI Brain: Context Awareness & Previous Task History Retrieval
           try {
-            const relevantTaskHistory = brainMemoryManager.findRelevantTaskHistory(sanitizedPrompt, 3)
+            const relevantTaskHistory = brainMemoryManager.findRelevantTaskHistory(
+              sanitizedPrompt,
+              3
+            )
             if (relevantTaskHistory.length > 0) {
               const brainMemories = relevantTaskHistory
                 .map((h, i) => `${i + 1}. Goal: "${h.goal}" -> Outcome: ${h.summary}`)
@@ -2776,7 +2945,10 @@ export async function handleApiRequest(
           if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
             const historyFormatted = conversationHistory
               .filter((h: any) => h && h.text && h.text.trim())
-              .map((h: any) => `${h.role === 'model' || h.role === 'assistant' ? 'AI Assistant' : 'User'}: ${h.text.trim()}`)
+              .map(
+                (h: any) =>
+                  `${h.role === 'model' || h.role === 'assistant' ? 'AI Assistant' : 'User'}: ${h.text.trim()}`
+              )
               .join('\n')
             if (historyFormatted) {
               systemInstruction += `\n\n[ACTIVE SESSION CONVERSATION HISTORY - PRIOR TURNS]:\n${historyFormatted}\n\nContextual Directives:\n1. Use the prior conversation history above to maintain seamless continuity, context, and recall of user requests and topics discussed earlier in this active session across restarts.\n2. When the user refers to previous items with pronouns or shorthands (like "that", "it", "the first one"), resolve them accurately based on the active conversation history above.`
@@ -2784,7 +2956,10 @@ export async function handleApiRequest(
           }
 
           // Direct DeepSeek Provider execution if requested
-          if (requestedProvider === 'deepseek' || (requestedModel && requestedModel.includes('deepseek'))) {
+          if (
+            requestedProvider === 'deepseek' ||
+            (requestedModel && requestedModel.includes('deepseek'))
+          ) {
             try {
               const dsModel = requestedModel || 'deepseek-chat'
               const dsResult = await deepseekService.generateCompletion({
@@ -2792,7 +2967,8 @@ export async function handleApiRequest(
                 messages: [
                   { role: 'system', content: systemInstruction },
                   ...(conversationHistory || []).map((h: any) => ({
-                    role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+                    role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as
+                      'assistant' | 'user',
                     content: h.text || h.content || ''
                   })),
                   { role: 'user', content: sanitizedPrompt }
@@ -2800,7 +2976,10 @@ export async function handleApiRequest(
                 citations: allDiscoveredSources
               })
 
-              const aiqResult = aiqCitationEngine.annotateResponse(dsResult.text, allDiscoveredSources)
+              const aiqResult = aiqCitationEngine.annotateResponse(
+                dsResult.text,
+                allDiscoveredSources
+              )
               agentHarness.completeTrace(execPlan.traceId)
 
               return sendJson(res, 200, {
@@ -2822,7 +3001,10 @@ export async function handleApiRequest(
                 searchQuery: webSearchQuery
               })
             } catch (dsErr: any) {
-              console.warn('[DeepSeek API Provider] Execution error, falling back to Gemini/NVIDIA:', dsErr?.message || dsErr)
+              console.warn(
+                '[DeepSeek API Provider] Execution error, falling back to Gemini/NVIDIA:',
+                dsErr?.message || dsErr
+              )
             }
           }
 
@@ -2835,7 +3017,11 @@ export async function handleApiRequest(
             'gemini-3.8-flash'
           ]
 
-          console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', promptLength: sanitizedPrompt.length, modelCandidate: chatModelCandidates[0] })
+          console.log('[AI_REQUEST_START]', {
+            endpoint: '/api/ai/chat',
+            promptLength: sanitizedPrompt.length,
+            modelCandidate: chatModelCandidates[0]
+          })
 
           let extractedText = ''
 
@@ -2866,15 +3052,23 @@ export async function handleApiRequest(
 
                 if (extractedText) {
                   usedChatModel = modelCandidate
-                  console.log('[AI_RESPONSE_RECEIVED]', { model: usedChatModel, textLength: extractedText.length })
+                  console.log('[AI_RESPONSE_RECEIVED]', {
+                    model: usedChatModel,
+                    textLength: extractedText.length
+                  })
                   break
                 }
               }
             } catch (err: any) {
               const errMsg = err?.message || String(err)
-              const isQuota = errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')
+              const isQuota =
+                errMsg.includes('429') ||
+                errMsg.includes('quota') ||
+                errMsg.includes('RESOURCE_EXHAUSTED')
               if (isQuota) {
-                console.warn(`[AI_MODEL_FALLBACK] Quota reached on ${modelCandidate}, cascading to next available model...`)
+                console.warn(
+                  `[AI_MODEL_FALLBACK] Quota reached on ${modelCandidate}, cascading to next available model...`
+                )
               } else {
                 console.warn('[AI_REQUEST_NOTE]', { model: modelCandidate, note: errMsg })
               }
@@ -2884,10 +3078,16 @@ export async function handleApiRequest(
           if (extractedText) {
             // Enforce PrivacyAlign output sanitization
             const sanitizedOutput = privacyAlign.sanitize(extractedText).redactedText
-            console.log('[AI_RESPONSE_PARSED]', { outputLength: sanitizedOutput.length, model: usedChatModel })
+            console.log('[AI_RESPONSE_PARSED]', {
+              outputLength: sanitizedOutput.length,
+              model: usedChatModel
+            })
 
             // AI-Q Citation Annotation with verified links
-            const aiqResult = aiqCitationEngine.annotateResponse(sanitizedOutput, allDiscoveredSources)
+            const aiqResult = aiqCitationEngine.annotateResponse(
+              sanitizedOutput,
+              allDiscoveredSources
+            )
 
             agentHarness.completeTrace(execPlan.traceId)
 
@@ -2910,7 +3110,10 @@ export async function handleApiRequest(
             })
           }
         } catch (err: any) {
-          console.warn('[AI_REQUEST_NOTE] Gemini server generation cascading to secondary providers:', err?.message || err)
+          console.warn(
+            '[AI_REQUEST_NOTE] Gemini server generation cascading to secondary providers:',
+            err?.message || err
+          )
         }
       }
 
@@ -2920,7 +3123,8 @@ export async function handleApiRequest(
         const nvidiaResult = await nvidiaChatService.generateCompletion({
           messages: [
             ...(conversationHistory || []).map((h: any) => ({
-              role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+              role: (h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user') as
+                'assistant' | 'user',
               content: h.text || h.content || ''
             })),
             { role: 'user', content: sanitizedPrompt }
@@ -2929,9 +3133,27 @@ export async function handleApiRequest(
         })
         if (nvidiaResult?.text) {
           const fallbackSources: DiscoveredResearchSource[] = [
-            ...webCitations.map((c) => ({ title: c.title, url: c.url, domain: c.domain, snippet: c.snippet, sourceType: 'web' as const })),
-            ...documentCitations.map((d) => ({ title: d.filename || 'Document', url: d.url || '#', domain: 'document-rag', snippet: d.snippet, sourceType: 'document' as const })),
-            ...workspaceCitations.map((w) => ({ title: w.title, url: w.url, domain: w.domain, snippet: w.snippet, sourceType: 'workspace' as const }))
+            ...webCitations.map((c) => ({
+              title: c.title,
+              url: c.url,
+              domain: c.domain,
+              snippet: c.snippet,
+              sourceType: 'web' as const
+            })),
+            ...documentCitations.map((d) => ({
+              title: d.filename || 'Document',
+              url: d.url || '#',
+              domain: 'document-rag',
+              snippet: d.snippet,
+              sourceType: 'document' as const
+            })),
+            ...workspaceCitations.map((w) => ({
+              title: w.title,
+              url: w.url,
+              domain: w.domain,
+              snippet: w.snippet,
+              sourceType: 'workspace' as const
+            }))
           ]
           const aiqResult = aiqCitationEngine.annotateResponse(nvidiaResult.text, fallbackSources)
 
@@ -2951,7 +3173,10 @@ export async function handleApiRequest(
           })
         }
       } catch (nvidiaErr: any) {
-        console.warn('[AI_PROVIDER_FALLBACK] NVIDIA completion note:', nvidiaErr?.message || nvidiaErr)
+        console.warn(
+          '[AI_PROVIDER_FALLBACK] NVIDIA completion note:',
+          nvidiaErr?.message || nvidiaErr
+        )
       }
 
       // Graceful local fallback if Gemini key missing or network down

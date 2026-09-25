@@ -210,19 +210,39 @@ export class TaskOrchestrator {
     let category = 'GENERAL'
     let urgency: TaskPriority = 'NORMAL'
 
-    if (lower.includes('urgent') || lower.includes('critical') || lower.includes('error') || lower.includes('fail')) {
+    if (
+      lower.includes('urgent') ||
+      lower.includes('critical') ||
+      lower.includes('error') ||
+      lower.includes('fail')
+    ) {
       urgency = 'CRITICAL'
     } else if (lower.includes('quick') || lower.includes('fast') || lower.includes('now')) {
       urgency = 'HIGH'
     }
 
-    if (lower.includes('code') || lower.includes('function') || lower.includes('bug') || lower.includes('refactor')) {
+    if (
+      lower.includes('code') ||
+      lower.includes('function') ||
+      lower.includes('bug') ||
+      lower.includes('refactor')
+    ) {
       category = 'CODING'
-    } else if (lower.includes('search') || lower.includes('who is') || lower.includes('what is') || lower.includes('news')) {
+    } else if (
+      lower.includes('search') ||
+      lower.includes('who is') ||
+      lower.includes('what is') ||
+      lower.includes('news')
+    ) {
       category = 'RESEARCH'
     } else if (lower.includes('browse') || lower.includes('website') || lower.includes('http')) {
       category = 'BROWSER'
-    } else if (lower.includes('file') || lower.includes('document') || lower.includes('save') || lower.includes('directory')) {
+    } else if (
+      lower.includes('file') ||
+      lower.includes('document') ||
+      lower.includes('save') ||
+      lower.includes('directory')
+    ) {
       category = 'FILE'
     } else if (lower.includes('image') || lower.includes('draw') || lower.includes('diagram')) {
       category = 'VISION'
@@ -235,7 +255,8 @@ export class TaskOrchestrator {
       category,
       urgency,
       detectedEntities: {},
-      estimatedComplexity: prompt.split(/\s+/).length > 20 ? ('MULTI_STAGE' as const) : ('SIMPLE' as const)
+      estimatedComplexity:
+        prompt.split(/\s+/).length > 20 ? ('MULTI_STAGE' as const) : ('SIMPLE' as const)
     }
   }
 
@@ -258,7 +279,10 @@ export class TaskOrchestrator {
       try {
         tasks = await this.planWithGemini(userPrompt, graphId, continuityContext, understanding)
       } catch (err) {
-        console.warn('[TaskOrchestrator] Gemini planner fallback to deterministic DAG planner:', err)
+        console.warn(
+          '[TaskOrchestrator] Gemini planner fallback to deterministic DAG planner:',
+          err
+        )
         tasks = this.planDeterministic(userPrompt, graphId, understanding)
       }
     } else {
@@ -426,13 +450,16 @@ Output strictly valid JSON with this format:
       const rawDeps: number[] = Array.isArray(t.dependencies) ? t.dependencies : []
       const mappedDeps = rawDeps.map((d) => stepIdMap.get(d)).filter(Boolean) as string[]
 
-      const agentRole: SpecializedAgentRole =
-        agentRegistry.has(t.assignedAgent) ? t.assignedAgent : agentRegistry.selectBestAgent(t.description).role
+      const agentRole: SpecializedAgentRole = agentRegistry.has(t.assignedAgent)
+        ? t.assignedAgent
+        : agentRegistry.selectBestAgent(t.description).role
 
       return {
         taskId,
         description: t.description || `Task step ${stepNum}`,
-        priority: (['CRITICAL', 'HIGH', 'NORMAL', 'LOW'].includes(t.priority) ? t.priority : 'NORMAL') as TaskPriority,
+        priority: (['CRITICAL', 'HIGH', 'NORMAL', 'LOW'].includes(t.priority)
+          ? t.priority
+          : 'NORMAL') as TaskPriority,
         dependencies: mappedDeps,
         status: 'QUEUED' as TaskStatus,
         assignedAgent: agentRole,
@@ -478,7 +505,9 @@ Output strictly valid JSON with this format:
       }
 
       // Sort ready tasks by priority weight (CRITICAL > HIGH > NORMAL > LOW)
-      readyTasks.sort((a, b) => this.PRIORITY_WEIGHTS[b.priority] - this.PRIORITY_WEIGHTS[a.priority])
+      readyTasks.sort(
+        (a, b) => this.PRIORITY_WEIGHTS[b.priority] - this.PRIORITY_WEIGHTS[a.priority]
+      )
 
       for (const task of readyTasks) {
         await this.executeTaskNode(task, graph)
@@ -516,7 +545,8 @@ Output strictly valid JSON with this format:
    * Executes an individual task node through the agent registry, verification, and recovery
    */
   private async executeTaskNode(task: BrainTask, graph: TaskGraph): Promise<void> {
-    const agent = agentRegistry.get(task.assignedAgent) || agentRegistry.selectBestAgent(task.description)
+    const agent =
+      agentRegistry.get(task.assignedAgent) || agentRegistry.selectBestAgent(task.description)
     task.status = 'RUNNING'
     task.updatedAt = Date.now()
 
@@ -605,7 +635,9 @@ Output strictly valid JSON with this format:
   /**
    * Synthesize cohesive response from all task outputs
    */
-  private async synthesizeResponse(graph: TaskGraph): Promise<{ displayText: string; spokenText: string }> {
+  private async synthesizeResponse(
+    graph: TaskGraph
+  ): Promise<{ displayText: string; spokenText: string }> {
     const completed = graph.tasks.filter((t) => t.status === 'COMPLETED' && t.result)
 
     if (completed.length === 0) {

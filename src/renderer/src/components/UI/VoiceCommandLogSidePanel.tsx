@@ -23,10 +23,7 @@ import {
   Play,
   Filter
 } from 'lucide-react'
-import {
-  voiceCommandLogService,
-  VoiceCommandLogEntry
-} from '../../services/voiceCommandLogService'
+import { voiceCommandLogService, VoiceCommandLogEntry } from '../../services/voiceCommandLogService'
 
 interface VoiceCommandLogSidePanelProps {
   isOpen?: boolean
@@ -198,7 +195,9 @@ export const VoiceCommandLogSidePanel: React.FC<VoiceCommandLogSidePanelProps> =
             </h2>
             <div className="text-[11px] text-zinc-400">
               <span>{entries.length} interactions logged</span>
-              <span aria-hidden="true" className="mx-1.5 text-zinc-600">·</span>
+              <span aria-hidden="true" className="mx-1.5 text-zinc-600">
+                ·
+              </span>
               <span className="text-emerald-400 font-mono">Live Recording</span>
             </div>
           </div>
@@ -317,7 +316,8 @@ export const VoiceCommandLogSidePanel: React.FC<VoiceCommandLogSidePanelProps> =
                   : 'No voice command history recorded yet.'}
               </p>
               <p className="text-[11px] text-zinc-500 max-w-xs">
-                Speak a command like "Open YouTube Studio" or "Show system telemetry" to populate this ledger.
+                Speak a command like "Open YouTube Studio" or "Show system telemetry" to populate
+                this ledger.
               </p>
             </div>
             {(searchQuery || selectedCategory !== 'ALL') && (
@@ -348,18 +348,19 @@ export const VoiceCommandLogSidePanel: React.FC<VoiceCommandLogSidePanelProps> =
                 {/* Meta Header */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                    <IconComp
-                      className="w-3.5 h-3.5 shrink-0"
-                      style={{ color: meta.color }}
-                    />
+                    <IconComp className="w-3.5 h-3.5 shrink-0" style={{ color: meta.color }} />
                     <span className="font-semibold text-zinc-200">{meta.label}</span>
-                    <span aria-hidden="true" className="text-zinc-600">·</span>
+                    <span aria-hidden="true" className="text-zinc-600">
+                      ·
+                    </span>
                     <span className="text-[10px] font-mono text-zinc-500">
                       {formatRelativeTime(entry.timestamp)}
                     </span>
                     {entry.executionTimeMs && (
                       <>
-                        <span aria-hidden="true" className="text-zinc-600">·</span>
+                        <span aria-hidden="true" className="text-zinc-600">
+                          ·
+                        </span>
                         <span className="text-[10px] font-mono text-zinc-500 tabular-nums">
                           {entry.executionTimeMs}ms
                         </span>
@@ -469,7 +470,11 @@ export const VoiceCommandLogSidePanel: React.FC<VoiceCommandLogSidePanelProps> =
                     className="flex items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition-colors"
                   >
                     <span>{isExpanded ? 'Hide Raw' : 'Raw JSON'}</span>
-                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {isExpanded ? (
+                      <ChevronUp className="w-3 h-3" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3" />
+                    )}
                   </button>
                 </div>
 
@@ -487,7 +492,9 @@ export const VoiceCommandLogSidePanel: React.FC<VoiceCommandLogSidePanelProps> =
 
       {/* 4. Footer Summary Bar */}
       <div className="px-4 py-2 border-t border-white/10 bg-zinc-950/90 text-[11px] text-zinc-500 flex items-center justify-between font-mono shrink-0">
-        <span>Showing {filteredEntries.length} of {entries.length}</span>
+        <span>
+          Showing {filteredEntries.length} of {entries.length}
+        </span>
         <button
           type="button"
           onClick={() => voiceCommandLogService.resetToDefaultSeeds()}

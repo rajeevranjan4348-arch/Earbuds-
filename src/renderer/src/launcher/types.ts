@@ -13,12 +13,7 @@ export type AppCategory =
 
 export type AppType = 'internal' | 'external' | 'tool' | 'command'
 
-export type LaunchMethod =
-  | 'internal_route'
-  | 'deep_link'
-  | 'web_fallback'
-  | 'command'
-  | 'tool'
+export type LaunchMethod = 'internal_route' | 'deep_link' | 'web_fallback' | 'command' | 'tool'
 
 export type AppAvailability = 'available' | 'requires_permission' | 'beta'
 
@@ -55,7 +50,8 @@ export interface AppItem {
 export interface LaunchResult {
   success: boolean
   app?: AppItem
-  status: 'SUCCESS' | 'APP_NOT_FOUND' | 'PERMISSION_REQUIRED' | 'LAUNCH_FAILED' | 'CONFIRMATION_PENDING'
+  status:
+    'SUCCESS' | 'APP_NOT_FOUND' | 'PERMISSION_REQUIRED' | 'LAUNCH_FAILED' | 'CONFIRMATION_PENDING'
   message: string
   spokenResponse?: string
   methodUsed?: LaunchMethod

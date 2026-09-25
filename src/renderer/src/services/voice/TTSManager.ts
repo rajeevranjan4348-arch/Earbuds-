@@ -1,6 +1,6 @@
 /**
  * TTSManager - Streaming Text-to-Speech Engine with Instant Barge-In
- * 
+ *
  * Rules:
  * - Start speaking as soon as first meaningful sentence chunk is available.
  * - Queue speech chunks efficiently without unnatural pauses.
@@ -103,30 +103,32 @@ export class TTSManager implements TextToSpeechProvider {
    */
   public cleanTextForSpeech(text: string): string {
     if (!text) return ''
-    return text
-      // Remove code fences
-      .replace(/```[\s\S]*?```/g, ' [code omitted] ')
-      // Remove inline code
-      .replace(/`([^`]+)`/g, '$1')
-      // Remove JSON objects
-      .replace(/\{[\s\S]*?\}/g, '')
-      // Remove markdown links [title](url) -> title
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      // Remove raw URLs
-      .replace(/https?:\/\/\S+/g, '')
-      // Remove markdown bold / italic
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/__([^_]+)__/g, '$1')
-      .replace(/_([^_]+)_/g, '$1')
-      // Remove headers #
-      .replace(/#+\s/g, '')
-      // Remove citations like [1], [Source: ...]
-      .replace(/\[\d+\]/g, '')
-      .replace(/\[Source:[^\]]+\]/g, '')
-      // Remove extra whitespace
-      .replace(/\s+/g, ' ')
-      .trim()
+    return (
+      text
+        // Remove code fences
+        .replace(/```[\s\S]*?```/g, ' [code omitted] ')
+        // Remove inline code
+        .replace(/`([^`]+)`/g, '$1')
+        // Remove JSON objects
+        .replace(/\{[\s\S]*?\}/g, '')
+        // Remove markdown links [title](url) -> title
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        // Remove raw URLs
+        .replace(/https?:\/\/\S+/g, '')
+        // Remove markdown bold / italic
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        // Remove headers #
+        .replace(/#+\s/g, '')
+        // Remove citations like [1], [Source: ...]
+        .replace(/\[\d+\]/g, '')
+        .replace(/\[Source:[^\]]+\]/g, '')
+        // Remove extra whitespace
+        .replace(/\s+/g, ' ')
+        .trim()
+    )
   }
 
   /**

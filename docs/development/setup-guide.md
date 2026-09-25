@@ -5,6 +5,7 @@ This guide details the process for standing up the IRIS development environment.
 ## Prerequisites
 
 Ensure your system meets the following requirements:
+
 - **OS:** Windows 10/11, macOS (Apple Silicon recommended), or Ubuntu Linux.
 - **Runtime:** Node.js v23+
 - **Version Control:** Git
@@ -49,4 +50,5 @@ npm run dev
 ```
 
 ### Linking Modules
+
 If you are developing custom tools, place your integration logic within the protected Main Process directory. Ensure that any new IPC channels are properly registered in the `preload` script before invoking them from the React frontend.

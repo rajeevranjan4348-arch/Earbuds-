@@ -28,7 +28,9 @@ export class SearxngProvider {
     const candidates: string[] = []
     if (this.customUrl) {
       try {
-        const parsed = new URL(this.customUrl.startsWith('http') ? this.customUrl : `https://${this.customUrl}`)
+        const parsed = new URL(
+          this.customUrl.startsWith('http') ? this.customUrl : `https://${this.customUrl}`
+        )
         candidates.push(parsed.origin)
       } catch (_e) {
         // Invalid custom URL, ignore
