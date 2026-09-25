@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="iris_accessibility_description">IRIS Accessibility Service enables app automation and control through voice commands. This service helps you control applications using natural language commands.</string>
+    <string name="iris_accessibility_label">IRIS Accessibility Service</string>
+    <string name="iris_accessibility_service_description">Allows IRIS to interact with apps on your behalf through voice commands</string>
+    
+    <!-- Permission explanations -->
+    <string name="permission_accessibility_required">Please enable IRIS Accessibility Service in Settings to allow app control</string>
+    <string name="permission_storage_required">Storage permission is required to save OCR results and app data</string>
+    <string name="permission_camera_required">Camera permission is required for document scanning</string>
+    
+    <!-- App control messages -->
+    <string name="app_not_installed">App not installed</string>
+    <string name="app_opened">App opened</string>
+    <string name="action_completed">Action completed</string>
+    <string name="action_failed">Action failed</string>
+    <string name="confirmation_required">Confirmation required</string>
+    <string name="confirm_send_message">Send this message?</string>
+    <string name="confirm_post">Post this?</string>
+    <string name="confirm_delete">Delete this?</string>
+    <string name="task_cancelled">Task cancelled</string>
+    <string name="task_stopped">Task stopped</string>
+    
+    <!-- Voice commands -->
+    <string name="command_open_app">Open %s</string>
+    <string name="command_search">Search for %s</string>
+    <string name="command_send_message">Send message to %s</string>
+    <string name="command_stop">Stop</string>
+    <string name="command_cancel">Cancel</string>
+</resources>
