@@ -19,6 +19,7 @@ import { chatHistoryService } from './chatHistoryService'
 import { workspacePersistenceService } from './workspacePersistenceService'
 import { notifyVoiceCommandProcessed } from './voiceToastService'
 import { voiceCommandLogService } from './voiceCommandLogService'
+import { normalizeAIResponse } from './aiResponseNormalizer'
 
 export type VoiceCommandIntent =
   | 'PLAN_EXECUTION_AGENT'
@@ -2277,8 +2278,11 @@ class VoiceCommandProcessor {
     // 1. FLUX Image Generation (FLUX #20)
     const imageMatch =
       originalText.match(
-        /^(?:generate an image of|create an image of|generate image of|draw an image of|draw a|paint a|flux image of|flux image|generate picture of|create image of)\s+(.+)$/i
-      ) || cleaned.match(/^(?:generate image|create image|draw picture|paint image)\s+(.+)$/i)
+        /^(?:generate an image of|create an image of|generate image of|draw an image of|draw a|paint a|flux image of|flux image|generate picture of|create image of|generate logo for|create logo for|make logo for|design logo for|generat logo for|generat image of)\s+(.+)$/i
+      ) ||
+      cleaned.match(
+        /^(?:generate image|create image|draw picture|paint image|generate logo|create logo|make logo|design logo|generat logo)\s+(.+)$/i
+      )
 
     if (imageMatch) {
       const prompt = imageMatch[1].trim()
@@ -2659,22 +2663,20 @@ class VoiceCommandProcessor {
 
       if (apiRes.ok) {
         const data = await apiRes.json()
-        const resolvedText =
-          typeof data?.text === 'string' && data.text.trim()
-            ? data.text.trim()
-            : typeof data?.response === 'string' && data.response.trim()
-              ? data.response.trim()
-              : typeof data?.content === 'string' && data.content.trim()
-                ? data.content.trim()
-                : typeof data === 'string'
-                  ? data.trim()
-                  : ''
+        const normalized = normalizeAIResponse(data, {
+          prompt: originalText,
+          provider: data?.provider || 'gemini',
+          model: data?.model || 'gemini-2.5-flash'
+        })
+        const resolvedText = normalized.text
 
-        console.log('[AI_RESPONSE_PARSED]', {
+        console.log('[IRIS][PARSER] Normalized AI response:', {
           hasText: Boolean(resolvedText),
           textLength: resolvedText.length,
-          model: data?.model
+          model: normalized.model,
+          success: normalized.success
         })
+
         if (resolvedText) {
           const isWebGrounded = Boolean(
             (data.webSourcesCount && data.webSourcesCount > 0) ||
@@ -2698,6 +2700,7 @@ class VoiceCommandProcessor {
             actionExecuted,
             spokenResponse: resolvedText,
             displayText: resolvedText,
+            status: normalized.success ? 'success' : 'failed',
             metadata: {
               codebaseSnippets: codebaseContext.length,
               webSources: data.webSourcesCount || 0,
@@ -2708,14 +2711,19 @@ class VoiceCommandProcessor {
         }
       } else {
         const errorData = await apiRes.json().catch(() => ({}))
-        console.warn('[AI_REQUEST_NOTICE] Server returned non-ok status:', apiRes.status, errorData)
+        const normalized = normalizeAIResponse(errorData, {
+          prompt: originalText,
+          provider: 'server',
+          model: 'fallback'
+        })
+        console.warn('[IRIS][AI] Server returned non-ok status:', apiRes.status, normalized.errorMessage)
         return {
           handled: true,
           intent: 'CONVERSATIONAL_AI',
           actionExecuted: 'FALLBACK_LOCAL_ANSWER',
           status: 'success',
-          spokenResponse: `I heard: "${originalText}". I'm operating in resilient local mode and ready to help.`,
-          displayText: `I received your request: *" ${originalText} "*. Standing by to assist.`,
+          spokenResponse: normalized.text,
+          displayText: normalized.text,
           isFallback: true
         }
       }

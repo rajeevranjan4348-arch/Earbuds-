@@ -8,7 +8,7 @@ import { privacyAlign } from '../security/privacyAlign'
 import type { FluxGenerationOptions, FluxGenerationResult } from './types'
 
 const DEFAULT_IMAGE_API_KEY =
-  'sk-api--f69dTaoxcCYkdb-vOEs3ExCrdl-8QBTYr1JKwvSfQinJCXeXxX9PSs8JbcmbNa2CXbqpbG09VAJdt9-eZLP9sRdJPt4nlHjb5ljVzxK-pp-K7WZTKfYX9M'
+  '7b32001d-ea08-4ceb-be8e-2f72c507bd54:6601780593dea6f449464c5d770f70442509d66db40e408fc43b1a8d3a37e3be'
 
 export function getImageApiKey(): string {
   return process.env.IMAGE_API_KEY || process.env.FLUX_API_KEY || DEFAULT_IMAGE_API_KEY

@@ -40,6 +40,9 @@ import {
 } from './lib/store'
 import { fetchInstalledApps, fetchStorageDrives, fetchSystemStats } from './lib/system'
 
+import { agentOrchestrator } from './agent/agent-orchestrator'
+import { permissionManager } from './agent/permission-manager'
+
 export interface IpcContext {
   /** URL of the embedded IRIS backend (empty when running against Vite). */
   getServerUrl?: () => string | null
@@ -129,4 +132,13 @@ export function registerIpcHandlers(context: IpcContext = {}): void {
 
   /* ------------------------------------------------------ runtime context */
   handle(ipcMain, 'iris-server-url', () => ({ url: context.getServerUrl?.() ?? null }))
+
+  /* ------------------------------------------------------ agent & permission */
+  handle(ipcMain, 'agent-execute-task', (prompt: string) => agentOrchestrator.executeTask(prompt))
+  handle(ipcMain, 'agent-get-trace', (taskId: string) => agentOrchestrator.getTrace(taskId))
+  handle(ipcMain, 'agent-get-pending-permissions', () => permissionManager.getPendingApprovals())
+  handle(ipcMain, 'agent-permission-decision', ({ taskId, requestId, decision }: any = {}) =>
+    agentOrchestrator.resumeWithPermissionDecision(taskId, requestId, decision)
+  )
+  handle(ipcMain, 'agent-cancel-task', (taskId: string) => agentOrchestrator.cancelTask(taskId))
 }

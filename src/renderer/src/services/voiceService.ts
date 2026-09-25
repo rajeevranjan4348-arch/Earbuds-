@@ -8,6 +8,8 @@
  */
 
 import { voiceCommandProcessor } from './voiceCommandProcessor'
+import { chatHistoryService } from './chatHistoryService'
+import { normalizeAIResponse } from './aiResponseNormalizer'
 
 export type VoiceStatus =
   | 'idle'
@@ -1071,36 +1073,39 @@ class VoiceService {
       }
     }
 
-    console.log('[AI_REQUEST_START]', { requestId, text, inputType, timestamp: Date.now() })
+    console.log('[IRIS][AI] Request start:', { requestId, text, inputType, timestamp: Date.now() })
     this.isProcessing = true
     const userMsgId = `msg_user_${requestId}`
+    const activeSessionId = chatHistoryService.getActiveSessionId()
 
-    // 1. Post to Conversation UI
+    // 1. Post to Conversation UI and persist to Unified Chat History
+    const userMsg = {
+      id: userMsgId,
+      messageId: userMsgId,
+      conversationId: activeSessionId,
+      requestId,
+      role: 'user' as const,
+      text: text,
+      content: text,
+      timestamp: Date.now(),
+      inputType,
+      audioState: (inputType === 'voice' ? 'transcribed' : 'none') as any,
+      isFinal: true
+    }
+
+    try {
+      chatHistoryService.addMessage(activeSessionId, userMsg)
+      console.log('[IRIS][CHAT] User message persisted:', userMsgId, 'in session:', activeSessionId)
+    } catch (storeErr) {
+      console.warn('[IRIS][DB] Error saving user message:', storeErr)
+    }
+
     if (typeof window !== 'undefined' && (window as any).iris?.emitTranscript) {
-      ;(window as any).iris.emitTranscript({
-        id: userMsgId,
-        messageId: userMsgId,
-        requestId,
-        role: 'user',
-        text: text,
-        content: text,
-        timestamp: Date.now(),
-        inputType,
-        isFinal: true
-      })
+      ;(window as any).iris.emitTranscript(userMsg)
       if ((window as any).iris?.addHistory) {
-        ;(window as any).iris.addHistory({
-          id: userMsgId,
-          messageId: userMsgId,
-          requestId,
-          role: 'user',
-          text,
-          content: text,
-          timestamp: Date.now(),
-          inputType
-        })
+        ;(window as any).iris.addHistory(userMsg)
       }
-      console.log('[AI_STATE_UPDATED]', { requestId, role: 'user', messageId: userMsgId })
+      console.log('[IRIS][AI] State updated:', { requestId, role: 'user', messageId: userMsgId })
     }
 
     this.setStatus('processing', `AI Thinking: "${text}"`)
@@ -1230,29 +1235,32 @@ class VoiceService {
           clearInterval(this.activeStreamInterval)
           this.activeStreamInterval = null
         }
-        iris?.emitTranscriptComplete?.({
+        const activeSessionId = chatHistoryService.getActiveSessionId()
+        const assistantMsg = {
           id: assistantMsgId,
           messageId: assistantMsgId,
+          conversationId: activeSessionId,
           requestId,
-          role: 'model',
+          role: 'assistant' as const,
           text: displayText,
           content: displayText,
           timestamp: Date.now(),
           inputType,
-          status: finalStatus
-        })
-        iris?.addHistory?.({
-          id: assistantMsgId,
-          messageId: assistantMsgId,
-          requestId,
-          role: 'model',
-          text: displayText,
-          content: displayText,
-          timestamp: Date.now(),
-          inputType,
-          status: finalStatus
-        })
-        console.log('[AI_STATE_UPDATED]', {
+          status: finalStatus,
+          audioState: (inputType === 'voice' ? 'speaking' : 'none') as any
+        }
+
+        try {
+          chatHistoryService.addMessage(activeSessionId, assistantMsg)
+          console.log('[IRIS][CHAT] Assistant message persisted:', assistantMsgId, 'in session:', activeSessionId)
+        } catch (dbErr) {
+          console.warn('[IRIS][DB] Error persisting assistant message:', dbErr)
+        }
+
+        iris?.emitTranscriptComplete?.(assistantMsg)
+        iris?.addHistory?.(assistantMsg)
+
+        console.log('[IRIS][AI] Response completed and state updated:', {
           requestId,
           role: 'model',
           messageId: assistantMsgId,
@@ -1263,9 +1271,10 @@ class VoiceService {
       }
     }, 35)
 
-    // Clean text and speak if voice input or speech synthesis desired
+    // Clean text and speak if voice input explicitly used
     const cleanSpeech = cleanTextForSpeech(spokenText || displayText)
-    if (inputType === 'voice' || this.isConversationalMode) {
+    if (inputType === 'voice') {
+      console.log('[IRIS][TTS] Speaking response aloud for voice input')
       this.speak(cleanSpeech, true)
     }
   }

@@ -25,6 +25,7 @@ import {
   analyticsEngine,
   channelMemoryStore
 } from '../youtube'
+import { paddleOcrEngine } from '../ocr'
 
 export interface UnifiedTool {
   name: string
@@ -700,6 +701,84 @@ export class ToolRegistry {
           timestamp: new Date().toISOString(),
           message: 'All autonomous workflows halted. Sandboxes locked.'
         }
+      }
+    })
+
+    // 28. PaddleOCR: Text Detection & Recognition
+    this.tools.set('paddle_ocr_extract', {
+      name: 'paddle_ocr_extract',
+      description:
+        'Extracts high-precision text, bounding boxes, confidence scores, and document structure from any image or PDF using PaddleOCR PP-OCRv4.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          imageOrPdfData: {
+            type: 'STRING',
+            description: 'Base64-encoded image or PDF data, or image data URI.'
+          },
+          language: {
+            type: 'STRING',
+            description: 'OCR language code (en, ch, latin, devanagari, multilingual). Defaults to en.'
+          }
+        },
+        required: ['imageOrPdfData']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 30000,
+      execute: async (args) => {
+        return paddleOcrEngine.ocr(args.imageOrPdfData, {
+          language: args.language || 'en'
+        })
+      }
+    })
+
+    // 29. PaddleOCR: PP-Structure Document Parser & Key-Value Extraction
+    this.tools.set('paddle_document_parse', {
+      name: 'paddle_document_parse',
+      description:
+        'Parses complex multi-page documents, invoices, receipts, contracts, and forms into structured key-value pairs, sections, and layout hierarchy using PaddleOCR PP-Structure.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          documentData: {
+            type: 'STRING',
+            description: 'Base64-encoded image or PDF data of the document.'
+          },
+          language: {
+            type: 'STRING',
+            description: 'Language of the document (en, ch, latin, devanagari, multilingual).'
+          }
+        },
+        required: ['documentData']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 30000,
+      execute: async (args) => {
+        return paddleOcrEngine.parseDocument(args.documentData, {
+          language: args.language || 'en'
+        })
+      }
+    })
+
+    // 30. PaddleOCR: PP-Structure Table Recognition
+    this.tools.set('paddle_table_recognition', {
+      name: 'paddle_table_recognition',
+      description:
+        'Detects and reconstructs tabular data into clean HTML and Markdown tables from scanned documents and images using PaddleOCR PP-Structure Table Engine.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          tableImageData: {
+            type: 'STRING',
+            description: 'Base64-encoded image or PDF data containing tables.'
+          }
+        },
+        required: ['tableImageData']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 30000,
+      execute: async (args) => {
+        return paddleOcrEngine.recognizeTable(args.tableImageData)
       }
     })
   }

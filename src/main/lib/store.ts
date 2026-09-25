@@ -144,6 +144,19 @@ export function deleteNote(filename: string): { success: boolean } {
 
 /* ---------------------------------------------------------------- gallery */
 
+export interface GalleryRecord {
+  filename: string
+  displayName: string
+  path: string
+  url: string
+  createdAt: string
+  type?: 'image' | 'video' | 'audio' | 'document' | 'file'
+  fileType?: string
+  mimeType?: string
+  size?: number
+  contentSnippet?: string
+}
+
 export function listGallery(): GalleryRecord[] {
   const items = readCollection<GalleryRecord>(GALLERY_FILE())
   // Drop records whose file disappeared (user cleaned the folder manually).
@@ -155,10 +168,15 @@ export function listGallery(): GalleryRecord[] {
 export interface SaveGalleryPayload {
   filename?: string
   displayName?: string
-  /** Data URL (base64) from an optic capture, or a remote http(s) URL. */
+  /** Data URL (base64) or http(s) URL or raw data. */
   url?: string
   /** Raw base64 payload without the data URL prefix. */
   data?: string
+  type?: 'image' | 'video' | 'audio' | 'document' | 'file'
+  fileType?: string
+  mimeType?: string
+  size?: number
+  contentSnippet?: string
 }
 
 function writeBase64(target: string, base64: string): string {
@@ -170,12 +188,28 @@ function writeBase64(target: string, base64: string): string {
 export async function saveGalleryItem(payload: SaveGalleryPayload): Promise<GalleryRecord> {
   const galleryDir = getGalleryDir()
   const timestamp = Date.now()
-  const extension = payload.url?.startsWith('data:image/png')
-    ? '.png'
-    : payload.url?.startsWith('data:video')
-      ? '.mp4'
-      : '.jpg'
-  const filename = payload.filename || `optic-capture-${timestamp}${extension}`
+  let extension = ''
+  if (payload.filename && payload.filename.includes('.')) {
+    extension = extname(payload.filename)
+  } else if (payload.url?.startsWith('data:')) {
+    const mimeMatch = payload.url.match(/^data:([^;]+);/)
+    if (mimeMatch) {
+      const mime = mimeMatch[1]
+      if (mime.includes('png')) extension = '.png'
+      else if (mime.includes('gif')) extension = '.gif'
+      else if (mime.includes('webp')) extension = '.webp'
+      else if (mime.includes('mp4')) extension = '.mp4'
+      else if (mime.includes('webm')) extension = '.webm'
+      else if (mime.includes('mp3')) extension = '.mp3'
+      else if (mime.includes('wav')) extension = '.wav'
+      else if (mime.includes('pdf')) extension = '.pdf'
+      else extension = '.bin'
+    }
+  } else {
+    extension = '.jpg'
+  }
+
+  const filename = payload.filename || `iris-file-${timestamp}${extension}`
   const target = join(galleryDir, filename)
 
   const url = payload.url || ''
@@ -189,12 +223,17 @@ export async function saveGalleryItem(payload: SaveGalleryPayload): Promise<Gall
       const buffer = Buffer.from(await response.arrayBuffer())
       writeFileSync(target, buffer)
     } catch (error) {
-      console.warn('[IRIS Store] Remote media download failed:', error)
+      console.warn('[IRIS Store] Remote file download failed:', error)
       const record: GalleryRecord = {
         filename,
-        displayName: payload.displayName || `Optic Capture ${new Date(timestamp).toLocaleString()}`,
+        displayName: payload.displayName || payload.filename || `IRIS File ${new Date(timestamp).toLocaleString()}`,
         path: '',
         url,
+        type: payload.type,
+        fileType: payload.fileType,
+        mimeType: payload.mimeType,
+        size: payload.size,
+        contentSnippet: payload.contentSnippet,
         createdAt: new Date(timestamp).toISOString()
       }
       const items = [record, ...listGallery()]
@@ -202,15 +241,20 @@ export async function saveGalleryItem(payload: SaveGalleryPayload): Promise<Gall
       return record
     }
   } else {
-    throw new Error('No image payload supplied')
+    writeFileSync(target, Buffer.from(''))
   }
 
   const record: GalleryRecord = {
     filename,
-    displayName: payload.displayName || `Optic Capture ${new Date(timestamp).toLocaleTimeString()}`,
+    displayName: payload.displayName || payload.filename || `IRIS File ${new Date(timestamp).toLocaleTimeString()}`,
     path: target,
-    // Custom protocol handler streams local media into the renderer.
+    // Custom protocol handler streams local media/files into the renderer.
     url: `iris-media://gallery/${encodeURIComponent(filename)}`,
+    type: payload.type,
+    fileType: payload.fileType,
+    mimeType: payload.mimeType,
+    size: payload.size,
+    contentSnippet: payload.contentSnippet,
     createdAt: new Date(timestamp).toISOString()
   }
 

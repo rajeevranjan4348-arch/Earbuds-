@@ -189,4 +189,5 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
   )
 }
 
+export { MicrophoneAIController } from '../MicrophoneAIController'
 export default MicrophoneInputButton

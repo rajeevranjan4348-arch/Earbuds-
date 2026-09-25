@@ -29,8 +29,8 @@ export interface AudioManagerCallbacks {
   onSpeechStart: () => void
   onSpeechPause: (durationMs: number) => void
   onSpeechEnd: () => void
-  onInterimTranscript: (text: string) => void
-  onFinalTranscript: (text: string, language?: string) => void
+  onInterimTranscript: (text: string, confidence?: number) => void
+  onFinalTranscript: (text: string, language?: string, confidence?: number) => void
   onAudioLevel: (level: number) => void
   onFrequencyData?: (data: Uint8Array) => void
   onSpeakingStart: () => void
@@ -77,18 +77,18 @@ export class AudioManager implements AudioLifecycleComponent {
     })
 
     this.speechRec = new SpeechRecognitionManager({
-      onInterimTranscript: (text) => {
-        this.callbacks.onInterimTranscript(text)
+      onInterimTranscript: (text, confidence) => {
+        this.callbacks.onInterimTranscript(text, confidence)
         if (this.wakeDetector.getIsEnabled()) {
           this.wakeDetector.checkText(text)
         }
       },
-      onFinalTranscript: (text, lang) => {
+      onFinalTranscript: (text, lang, confidence) => {
         if (this.wakeDetector.getIsEnabled()) {
           const triggered = this.wakeDetector.checkText(text)
           if (triggered) return
         }
-        this.callbacks.onFinalTranscript(text, lang)
+        this.callbacks.onFinalTranscript(text, lang, confidence)
       },
       onError: (err) => {
         this.callbacks.onError(err)

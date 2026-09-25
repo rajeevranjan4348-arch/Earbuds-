@@ -12,7 +12,6 @@ import {
   Zap,
   Globe,
   AlertTriangle,
-  RotateCcw,
   Send,
   RefreshCw,
   History,
@@ -32,9 +31,12 @@ import {
   Terminal
 } from 'lucide-react'
 import VoiceCommandLogSidePanel from '../UI/VoiceCommandLogSidePanel'
+import LatticeLoader from '../UI/LatticeLoader'
+import ConfidenceMeter from '../UI/ConfidenceMeter'
 import {
   voiceSessionManager,
   VoiceSessionState,
+  VoiceState,
   VoicePersonalityId,
   SupportedLanguage,
   VoiceTurnMessage,
@@ -61,9 +63,18 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
 
   // Live Session States
   const [sessionState, setSessionState] = useState<VoiceSessionState>('idle')
+  const [canonicalState, setCanonicalState] = useState<VoiceState>(
+    voiceSessionManager.getVoiceState()
+  )
+  const [thinkingStatus, setThinkingStatus] = useState<string>('Thinking...')
+  const [continuousMode, setContinuousMode] = useState<boolean>(
+    voiceSessionManager.getContinuousMode()
+  )
+  const [isPushToTalkHolding, setIsPushToTalkHolding] = useState<boolean>(false)
   const [micLevel, setMicLevel] = useState<number>(0)
   const [isMuted, setIsMuted] = useState<boolean>(false)
   const [interimText, setInterimText] = useState<string>('')
+  const [transcriptConfidence, setTranscriptConfidence] = useState<number>(88)
   const [history, setHistory] = useState<VoiceTurnMessage[]>([])
   const [activePersonality, setActivePersonality] = useState<VoicePersonalityId>('jarvis')
   const [language, setLanguage] = useState<SupportedLanguage>('auto')
@@ -111,10 +122,23 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
     const unsubscribeSession = voiceSessionManager.subscribe((state, payload) => {
       setSessionState(state)
 
+      if (payload?.voiceState) {
+        setCanonicalState(payload.voiceState)
+      } else {
+        setCanonicalState(voiceSessionManager.getVoiceState())
+      }
+
+      if (payload?.thinkingStatus) {
+        setThinkingStatus(payload.thinkingStatus)
+      }
+
       if (payload?.type === 'audio_level') {
         setMicLevel(payload.level)
       } else if (payload?.type === 'interim_transcript') {
         setInterimText(payload.text)
+        if (payload.confidence) setTranscriptConfidence(payload.confidence)
+      } else if (payload?.confidence) {
+        setTranscriptConfidence(payload.confidence)
       } else if (payload?.type === 'transcript_updated') {
         setHistory([...payload.history])
         setInterimText('')
@@ -129,6 +153,8 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
         setLanguage(payload.language)
       } else if (payload?.type === 'wake_word_change') {
         setWakeWordEnabled(payload.enabled)
+      } else if (payload?.type === 'continuous_mode_change') {
+        setContinuousMode(payload.continuousMode)
       } else if (payload?.type === 'confirmation_required') {
         setPendingConfirmation(payload)
       } else if (payload?.type === 'confirmation_resolved') {
@@ -385,22 +411,52 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
                     {personality.name}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400">
-                  {activeTab === 'live'
-                    ? sessionState === 'listening'
-                      ? isMuted
-                        ? 'Microphone muted — unmute to speak'
-                        : 'Listening... (speak naturally, pause to send)'
-                      : sessionState === 'thinking'
-                        ? 'Processing response...'
-                        : sessionState === 'speaking'
-                          ? 'Speaking (tap stop or interrupt anytime)'
-                          : sessionState === 'interrupted'
-                            ? 'Interrupted — listening...'
-                            : sessionState === 'error'
-                              ? errorMessage || 'Connection error'
-                              : 'Standby'
-                    : `Saved interactions: ${savedSessions.length} sessions stored locally`}
+                <p className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                  {activeTab === 'live' ? (
+                    canonicalState === 'permission_required' ? (
+                      <span className="text-amber-400 font-medium">Microphone permission required</span>
+                    ) : canonicalState === 'requesting_permission' ? (
+                      <span className="text-cyan-400">Requesting microphone access...</span>
+                    ) : canonicalState === 'user_speaking' ? (
+                      <span className="text-emerald-300 font-medium animate-pulse">
+                        Listening to your voice...
+                      </span>
+                    ) : canonicalState === 'listening' ? (
+                      isMuted ? (
+                        'Microphone muted — unmute to speak'
+                      ) : (
+                        'AI is listening... (speak naturally or hold to talk)'
+                      )
+                    ) : canonicalState === 'thinking' || canonicalState === 'tool_execution' || canonicalState === 'generating' ? (
+                      <span className="inline-flex items-center">
+                        <LatticeLoader
+                          status="working"
+                          label={
+                            thinkingStatus ||
+                            (canonicalState === 'tool_execution' ? 'Searching & Executing Tool...' : 'Thinking...')
+                          }
+                          pattern="orbit"
+                          grid={3}
+                          shape="round"
+                          cellSize={4}
+                          gap={2}
+                          fontSize={12}
+                          showTimer
+                          glow
+                          glowColor="rgba(245, 158, 11, 0.4)"
+                          color="#f59e0b"
+                        />
+                      </span>
+                    ) : canonicalState === 'speaking' ? (
+                      <span className="text-emerald-400">Speaking (tap orb or speak to interrupt)</span>
+                    ) : canonicalState === 'error' ? (
+                      <span className="text-red-400">{errorMessage || 'Connection error'}</span>
+                    ) : (
+                      'Standby'
+                    )
+                  ) : (
+                    `Saved interactions: ${savedSessions.length} sessions stored locally`
+                  )}
                 </p>
               </div>
             </div>
@@ -515,6 +571,34 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
                     </select>
                   </div>
 
+                  {/* Continuous Voice Mode Toggle Switch */}
+                  <label
+                    className="flex items-center gap-1.5 cursor-pointer text-[11px] text-zinc-400 hover:text-zinc-200 select-none"
+                    title="Continuous Conversation: AI keeps listening automatically after speaking"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={continuousMode}
+                      onChange={(e) => {
+                        setContinuousMode(e.target.checked)
+                        voiceSessionManager.setContinuousMode(e.target.checked)
+                      }}
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
+                        continuousMode ? 'bg-cyan-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform duration-200 ${
+                          continuousMode ? 'translate-x-3' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                    <span>Continuous</span>
+                  </label>
+
                   {/* Wake Word Toggle Switch */}
                   <label
                     className="flex items-center gap-1.5 cursor-pointer text-[11px] text-zinc-400 hover:text-zinc-200 select-none"
@@ -577,45 +661,119 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
                   />
 
                   {/* Core Orb Center */}
-                  <div
-                    className="relative w-22 h-22 rounded-full flex items-center justify-center transition-all duration-300"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        canonicalState === 'speaking' ||
+                        canonicalState === 'generating' ||
+                        canonicalState === 'thinking' ||
+                        canonicalState === 'tool_execution'
+                      ) {
+                        voiceSessionManager.handleBargeIn()
+                      } else if (canonicalState === 'permission_required') {
+                        voiceSessionManager.startSession()
+                      } else if (canonicalState === 'idle' || canonicalState === 'ready') {
+                        voiceSessionManager.startSession()
+                      } else {
+                        voiceSessionManager.toggleMute()
+                      }
+                    }}
+                    className="relative w-22 h-22 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer focus:outline-none select-none hover:scale-105 active:scale-95"
                     style={{
                       backgroundColor: `${personality.accentColor}18`,
                       borderColor: `${personality.accentColor}50`,
                       borderWidth: '1.5px',
                       boxShadow: `0 0 45px ${personality.accentColor}35`
                     }}
+                    title={
+                      canonicalState === 'speaking' || canonicalState === 'generating'
+                        ? 'Click to interrupt AI and talk'
+                        : canonicalState === 'permission_required'
+                        ? 'Click to grant microphone access'
+                        : isMuted
+                        ? 'Unmute microphone'
+                        : 'Mute microphone / Click to talk'
+                    }
                   >
-                    {sessionState === 'speaking' ? (
+                    {canonicalState === 'speaking' ? (
                       <Volume2
                         className="w-8 h-8 animate-pulse"
                         style={{ color: personality.accentColor }}
                       />
-                    ) : sessionState === 'thinking' ? (
+                    ) : canonicalState === 'thinking' ||
+                      canonicalState === 'tool_execution' ||
+                      canonicalState === 'generating' ? (
                       <Zap className="w-8 h-8 text-amber-400 animate-spin" />
+                    ) : canonicalState === 'permission_required' ? (
+                      <MicOff className="w-8 h-8 text-amber-400" />
                     ) : isMuted ? (
                       <MicOff className="w-8 h-8 text-zinc-500" />
                     ) : (
-                      <Mic className="w-8 h-8" style={{ color: personality.accentColor }} />
+                      <div className="relative flex items-center justify-center">
+                        <Mic className="w-8 h-8" style={{ color: personality.accentColor }} />
+                        {canonicalState === 'user_speaking' && (
+                          <span
+                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full animate-ping"
+                            style={{ backgroundColor: personality.accentColor }}
+                          />
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </button>
                 </div>
+
+                {/* Section 4: Clean Microphone Permission Banner */}
+                {canonicalState === 'permission_required' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 px-5 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 text-xs max-w-md shadow-xl"
+                  >
+                    <div className="flex items-center gap-2.5 text-amber-200">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-white">Microphone access required</div>
+                        <div className="text-[11px] text-amber-300/80 leading-tight">
+                          Microphone access is required for voice chat. Allow access to speak with IRIS.
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => voiceSessionManager.startSession()}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs whitespace-nowrap transition-colors cursor-pointer"
+                    >
+                      Enable Microphone
+                    </button>
+                  </motion.div>
+                )}
 
                 {/* 60-120fps Fluid Harmonic Audio Wave Canvas */}
                 <div className="w-full max-w-lg mt-3 h-20 relative flex items-center justify-center">
                   <canvas ref={canvasRef} className="w-full h-full block" />
                 </div>
 
-                {/* Real-time Streaming Transcription Preview */}
+                {/* Real-time Streaming Transcription Preview & Confidence Meter */}
                 <AnimatePresence>
-                  {interimText && (
+                  {(interimText || canonicalState === 'user_speaking') && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="mt-2 px-5 py-2 rounded-full bg-zinc-900/90 border border-white/10 text-xs text-zinc-100 max-w-md text-center shadow-lg truncate"
+                      className="mt-2 flex flex-col items-center gap-2 max-w-md w-full"
                     >
-                      <span className="text-zinc-500 mr-2">You:</span>"{interimText}"
+                      {interimText && (
+                        <div className="w-full px-5 py-2 rounded-full bg-zinc-900/90 border border-white/10 text-xs text-zinc-100 text-center shadow-lg truncate">
+                          <span className="text-zinc-500 mr-2">You:</span>"{interimText}"
+                        </div>
+                      )}
+
+                      <ConfidenceMeter
+                        confidence={transcriptConfidence}
+                        isTranscribing={canonicalState === 'user_speaking' || Boolean(interimText)}
+                        size="sm"
+                        className="w-full"
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -777,6 +935,35 @@ export const VoiceChatModal: React.FC<VoiceChatModalProps> = ({
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Push-to-Talk Button (Section 33) */}
+                  <button
+                    onMouseDown={() => {
+                      setIsPushToTalkHolding(true)
+                      voiceSessionManager.startPushToTalk()
+                    }}
+                    onMouseUp={() => {
+                      setIsPushToTalkHolding(false)
+                      voiceSessionManager.stopPushToTalk()
+                    }}
+                    onTouchStart={() => {
+                      setIsPushToTalkHolding(true)
+                      voiceSessionManager.startPushToTalk()
+                    }}
+                    onTouchEnd={() => {
+                      setIsPushToTalkHolding(false)
+                      voiceSessionManager.stopPushToTalk()
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold select-none transition-all cursor-pointer ${
+                      isPushToTalkHolding
+                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] scale-95'
+                        : 'bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800'
+                    }`}
+                    title="Press and hold to talk, release to send"
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                    <span>{isPushToTalkHolding ? 'Listening...' : 'Hold to Talk'}</span>
+                  </button>
+
                   {/* Restart / Reconnect Button */}
                   {sessionState === 'idle' && (
                     <button

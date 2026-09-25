@@ -102,8 +102,38 @@ export class IntentResolver {
       .replace(/\s+please$/i, '')
       .trim()
 
-    // 4. Match against apps
-    const candidate = this.findBestApp(targetPhrase, currentTab)
+    // 4. Match against registered apps
+    let candidate = this.findBestApp(targetPhrase, currentTab)
+
+    // Dynamic app generator for ANY requested app
+    if (!candidate && isLaunchVerb && targetPhrase.length >= 2) {
+      const sanitizedId = targetPhrase.toLowerCase().replace(/[^a-z0-9]/g, '-')
+      const formattedName = targetPhrase
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+
+      const dynamicApp: AppItem = {
+        id: `dynamic-${sanitizedId}`,
+        name: formattedName,
+        description: `Open ${formattedName} on device or browser`,
+        category: 'apps',
+        type: 'external',
+        icon: 'RiGlobalLine',
+        target: `https://${sanitizedId}.com`,
+        deepLink: `${sanitizedId}://`,
+        webFallbackUrl: `https://www.google.com/search?q=${encodeURIComponent(targetPhrase)}`,
+        launchMethod: 'deep_link',
+        availability: 'available',
+        keywords: [targetPhrase, sanitizedId, formattedName],
+        aliases: [targetPhrase, formattedName],
+        isFavorite: false,
+        contextScope: ['ALL']
+      }
+
+      appRegistry.registerCustomApp(dynamicApp)
+      candidate = dynamicApp
+    }
 
     if (candidate) {
       return {

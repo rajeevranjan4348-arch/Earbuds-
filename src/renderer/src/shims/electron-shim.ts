@@ -2,6 +2,9 @@ import '../lib/safeJson'
 // IRIS Browser Shim for Electron IPC and Neural Operating Layer Bridge
 import { launch_app, get_installed_apps, resolve_app } from '../services/launcher'
 
+import { agentOrchestrator } from '../../../main/agent/agent-orchestrator'
+import { permissionManager } from '../../../main/agent/permission-manager'
+
 interface SystemStats {
   cpu: string
   memory: {
@@ -34,6 +37,11 @@ interface GalleryItem {
   path: string
   url: string
   createdAt: string
+  type?: 'image' | 'video' | 'audio' | 'document' | 'file'
+  fileType?: string
+  mimeType?: string
+  size?: number
+  contentSnippet?: string
 }
 
 const DEFAULT_NOTES: NoteItem[] = [
@@ -63,6 +71,10 @@ const DEFAULT_GALLERY: GalleryItem[] = [
     displayName: 'Quantum Core Matrix',
     path: '/gallery/quantum-core-matrix.png',
     url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
+    type: 'image',
+    fileType: 'PNG',
+    mimeType: 'image/png',
+    size: 2450000,
     createdAt: new Date(Date.now() - 1800000).toISOString()
   },
   {
@@ -70,13 +82,44 @@ const DEFAULT_GALLERY: GalleryItem[] = [
     displayName: 'Neural Synapse Topology',
     path: '/gallery/neural-topology.png',
     url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+    type: 'image',
+    fileType: 'PNG',
+    mimeType: 'image/png',
+    size: 1820000,
     createdAt: new Date(Date.now() - 5400000).toISOString()
   },
   {
-    filename: 'cyber-hud-telemetry.png',
-    displayName: 'Cyber HUD Optics Capture',
-    path: '/gallery/cyber-hud-telemetry.png',
-    url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80',
+    filename: 'neural-synthesis-stream.mp4',
+    displayName: 'Neural Synthesis Stream',
+    path: '/gallery/neural-synthesis-stream.mp4',
+    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    type: 'video',
+    fileType: 'MP4',
+    mimeType: 'video/mp4',
+    size: 15800000,
+    createdAt: new Date(Date.now() - 7200000).toISOString()
+  },
+  {
+    filename: 'iris-ambient-soundscape.mp3',
+    displayName: 'IRIS Ambient Soundscape',
+    path: '/gallery/iris-ambient-soundscape.mp3',
+    url: 'https://actions.google.com/sounds/v1/ambiences/humming_drone.ogg',
+    type: 'audio',
+    fileType: 'MP3',
+    mimeType: 'audio/mp3',
+    size: 4200000,
+    createdAt: new Date(Date.now() - 9000000).toISOString()
+  },
+  {
+    filename: 'neural-architecture-spec.pdf',
+    displayName: 'IRIS Neural Architecture Spec v1.7.pdf',
+    path: '/gallery/neural-architecture-spec.pdf',
+    url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    type: 'document',
+    fileType: 'PDF',
+    mimeType: 'application/pdf',
+    size: 890000,
+    contentSnippet: 'IRIS Hardware & AI Specifications. Decentralized Local Neural Vault, GPU Acceleration, Multi-Agent Interop, Low-Latency Voice Engine.',
     createdAt: new Date(Date.now() - 10800000).toISOString()
   }
 ]
@@ -338,13 +381,20 @@ const electronShim = {
         case 'save-gallery-image': {
           const payload = args[0] || {}
           const gallery = getStoredGallery()
+          const filename = payload.filename || `iris-vault-${Date.now()}`
           const newItem: GalleryItem = {
-            filename: payload.filename || `optic-capture-${Date.now()}.png`,
-            displayName: payload.displayName || `Optic Snapshot ${new Date().toLocaleTimeString()}`,
-            path: payload.path || `/gallery/optic-capture-${Date.now()}.png`,
+            filename,
+            displayName: payload.displayName || payload.filename || `IRIS Vault File ${new Date().toLocaleTimeString()}`,
+            path: payload.path || `/gallery/${filename}`,
             url:
               payload.url ||
+              payload.data ||
               'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80',
+            type: payload.type,
+            fileType: payload.fileType,
+            mimeType: payload.mimeType,
+            size: payload.size,
+            contentSnippet: payload.contentSnippet,
             createdAt: new Date().toISOString()
           }
           const updated = [newItem, ...gallery]
@@ -728,7 +778,31 @@ if (typeof window !== 'undefined') {
     },
     launch_app: (appName: string) => launch_app(appName),
     get_installed_apps: (forceRefresh?: boolean) => get_installed_apps(forceRefresh),
-    resolve_app: (appName: string) => resolve_app(appName)
+    resolve_app: (appName: string) => resolve_app(appName),
+    executeAgentTask: (prompt: string) => {
+      if (typeof (window as any).electronAPI?.invoke === 'function') {
+        return (window as any).electronAPI.invoke('agent-execute-task', prompt)
+      }
+      return agentOrchestrator.executeTask(prompt)
+    },
+    getAgentTrace: (taskId: string) => {
+      if (typeof (window as any).electronAPI?.invoke === 'function') {
+        return (window as any).electronAPI.invoke('agent-get-trace', taskId)
+      }
+      return agentOrchestrator.getTrace(taskId)
+    },
+    sendPermissionDecision: (payload: { taskId: string; requestId: string; decision: 'APPROVED' | 'DENIED' }) => {
+      if (typeof (window as any).electronAPI?.invoke === 'function') {
+        return (window as any).electronAPI.invoke('agent-permission-decision', payload)
+      }
+      return agentOrchestrator.resumeWithPermissionDecision(payload.taskId, payload.requestId, payload.decision)
+    },
+    cancelAgentTask: (taskId: string) => {
+      if (typeof (window as any).electronAPI?.invoke === 'function') {
+        return (window as any).electronAPI.invoke('agent-cancel-task', taskId)
+      }
+      return agentOrchestrator.cancelTask(taskId)
+    }
   }
 }
 

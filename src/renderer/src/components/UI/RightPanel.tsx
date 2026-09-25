@@ -38,6 +38,7 @@ import MicrophoneInputButton from './MicrophoneInputButton'
 import { VoiceCommandLogSidePanel } from './VoiceCommandLogSidePanel'
 import { IntentResolver, launchManager } from '../../launcher'
 import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
+import { normalizeAIResponse } from '../../services/aiResponseNormalizer'
 
 export type { Message, ChatSession }
 
@@ -117,7 +118,14 @@ const ChatMessageItem = memo(
           : ''
 
     const displayContent =
-      rawContent || (isStreaming ? '...' : isUser ? '' : '⚠️ No response content received.')
+      rawContent ||
+      (isStreaming
+        ? '...'
+        : isUser
+          ? ''
+          : msg.status === 'failed'
+            ? '⚠️ AI request encountered an issue. Please click retry to resend.'
+            : 'I am standing by to assist with your request.')
 
     return (
       <motion.div
@@ -249,26 +257,62 @@ const ChatMessageItem = memo(
   }
 )
 
+import LatticeLoader from './LatticeLoader'
+
 /**
- * Lightweight, GPU-friendly Thinking Capsule
+ * Premium AI Thinking Indicator with dynamic LatticeLoader
  */
-const AIThinkingIndicator = memo(function AIThinkingIndicator() {
+const AIThinkingIndicator = memo(function AIThinkingIndicator({
+  statusText = 'Thinking...'
+}: {
+  statusText?: string
+}) {
+  const [currentStatus, setCurrentStatus] = useState<string>(statusText)
+
+  useEffect(() => {
+    const unsubscribe = voiceSessionManager.subscribe((_state, payload) => {
+      if (payload?.thinkingStatus) {
+        setCurrentStatus(payload.thinkingStatus)
+      } else if (payload?.activeTool) {
+        const toolName = payload.activeTool
+        const formatted =
+          toolName.toLowerCase().includes('search')
+            ? 'Searching...'
+            : toolName.toLowerCase().includes('rag') || toolName.toLowerCase().includes('code')
+            ? 'Processing codebase...'
+            : toolName.toLowerCase().includes('map')
+            ? 'Locating on map...'
+            : `Executing ${toolName}...`
+        setCurrentStatus(formatted)
+      }
+    })
+    return () => unsubscribe()
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -4, scale: 0.98 }}
       transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-      className="flex justify-start"
+      className="flex justify-start my-2"
     >
-      <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-white/5 border border-emerald-500/20 text-xs sm:text-sm text-zinc-300 shadow-[0_0_15px_rgba(16,185,129,0.08)] flex items-center gap-2.5 animate-thinking-shimmer">
-        <Sparkles size={14} className="text-emerald-400 animate-pulse shrink-0" />
-        <span className="font-mono text-xs text-emerald-400/90 font-medium">IRIS is thinking</span>
-        <div className="flex items-center gap-1 ml-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-1" />
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-2" />
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-thinking-dot-3" />
-        </div>
+      <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-zinc-900/90 border border-emerald-500/30 text-xs sm:text-sm text-zinc-200 shadow-[0_0_20px_rgba(16,185,129,0.12)] flex items-center gap-3">
+        <LatticeLoader
+          status="working"
+          label={currentStatus || 'Thinking...'}
+          doneLabel="Done"
+          pattern="orbit"
+          grid={3}
+          shape="round"
+          cellSize={5}
+          gap={2}
+          fontSize={13}
+          showTimer
+          glow
+          glowColor="rgba(34, 197, 94, 0.4)"
+          color="#10b981"
+        />
       </div>
     </motion.div>
   )
@@ -297,8 +341,8 @@ export default function RightPanel({
     'deepseek' | 'deepseek_r1' | 'gemini' | 'nvidia_kimi'
   >(() => {
     const active = coreSettingsService.getSettings().activeProvider
-    if (active === 'gemini') return 'gemini'
-    return 'deepseek'
+    if (active === 'deepseek' || active === 'deepseek_r1' || active === 'nvidia_kimi') return active
+    return 'gemini'
   })
   const [showProviderMenu, setShowProviderMenu] = useState(false)
   const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(() => {
@@ -1412,12 +1456,14 @@ export default function RightPanel({
           })
 
           const data = await response.json().catch(() => null)
-          const returnedText =
-            data?.text ||
-            data?.rawText ||
-            (data?.error
-              ? `I've received your query: "${trimmed}". Local processing active while online services recover.`
-              : 'IRIS response received.')
+          const normalized = normalizeAIResponse(data, {
+            prompt: trimmed,
+            requestId: reqId,
+            conversationId: activeSessionId,
+            provider: 'gemini',
+            model: 'gemini-2.5-flash'
+          })
+          const returnedText = normalized.text
 
           setChatHistory((prev) => {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
@@ -1427,7 +1473,7 @@ export default function RightPanel({
                 ...updated[idx],
                 text: returnedText,
                 content: returnedText,
-                status: 'success'
+                status: normalized.success ? 'success' : 'failed'
               }
               return updated
             }
@@ -1440,6 +1486,7 @@ export default function RightPanel({
             speakAI(returnedText)
           }
         } catch (gemErr: any) {
+          console.warn('[IRIS][AI] Direct fetch error, cascading to voice/chat service:', gemErr)
           if (onSendPrompt) {
             onSendPrompt(trimmed)
           } else {

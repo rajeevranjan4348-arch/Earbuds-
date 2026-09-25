@@ -1,11 +1,33 @@
 /**
- * Production-Ready JARVIS Voice Architecture - Types & Provider Interfaces
+ * Advanced AI Voice Conversation System - Types & Provider Interfaces
+ * Implements deterministic 17-state finite state machine, audio metrics, VAD levels,
+ * command parsing, planning, streaming, and tool routing.
  */
 
 // ==========================================
-// 1. STATE MACHINE & SESSION SNAPSHOT
+// 1. DETERMINISTIC STATE MACHINE
 // ==========================================
 
+export type VoiceState =
+  | 'idle'
+  | 'permission_required'
+  | 'requesting_permission'
+  | 'ready'
+  | 'listening'
+  | 'user_speaking'
+  | 'processing_audio'
+  | 'transcribing'
+  | 'transcript_ready'
+  | 'thinking'
+  | 'tool_execution'
+  | 'generating'
+  | 'speaking'
+  | 'paused'
+  | 'error'
+  | 'cancelled'
+  | 'ended'
+
+// Uppercase legacy aliases for backward compatibility
 export type JarvisVoiceState =
   | 'IDLE'
   | 'LISTENING_FOR_WAKE_WORD'
@@ -15,18 +37,11 @@ export type JarvisVoiceState =
   | 'SPEAKING'
   | 'INTERRUPTED'
 
-// Lowercase aliases for backward compatibility with existing UI
-export type VoiceSessionState =
-  | 'idle'
-  | 'requesting-permission'
-  | 'listening'
-  | 'thinking'
-  | 'speaking'
-  | 'interrupted'
-  | 'error'
-  | JarvisVoiceState
+export type VoiceSessionState = VoiceState | JarvisVoiceState
 
 export interface VoiceSessionStateSnapshot {
+  voiceState: VoiceState
+  state: JarvisVoiceState // legacy bridge
   wakeWordEnabled: boolean
   microphoneActive: boolean
   vadActive: boolean
@@ -36,14 +51,110 @@ export interface VoiceSessionStateSnapshot {
   isInterrupted: boolean
   partialTranscript: string
   finalTranscript: string
+  transcriptConfidence?: number
   currentResponse: string
   voiceMode: VoicePersonalityId | string
-  state: JarvisVoiceState
   permissionStatus: 'prompt' | 'granted' | 'denied' | 'unsupported'
+  thinkingStatus?: ThinkingStatus | string
+  activeTool?: string
+  continuousMode: boolean
+  pushToTalkActive: boolean
 }
 
 // ==========================================
-// 2. LIFECYCLE COMPONENT INTERFACE
+// 2. AUDIO METRICS & VAD
+// ==========================================
+
+export type VADLevel = 'SILENCE' | 'QUIET' | 'SPEECH' | 'LOUD_SPEECH'
+
+export interface AudioMetrics {
+  rms: number
+  peak: number
+  normalizedLevel: number // 0.0 to 1.0
+  isSpeaking: boolean
+  silenceDuration: number // ms
+  speechDuration: number // ms
+  vadLevel: VADLevel
+}
+
+// ==========================================
+// 3. TRANSCRIPTS & LANGUAGE
+// ==========================================
+
+export interface TranscriptData {
+  rawTranscript: string
+  normalizedTranscript: string
+  language: string
+  confidence: number
+  timestamp: number
+  isFinal: boolean
+}
+
+export type SupportedLanguage =
+  | 'auto'
+  | 'en-US'
+  | 'en-IN'
+  | 'hi-IN'
+  | 'bn-IN'
+  | 'te-IN'
+  | 'ta-IN'
+  | 'mr-IN'
+  | 'gu-IN'
+
+// ==========================================
+// 4. INTENTS & COMMAND PARSER
+// ==========================================
+
+export type VoiceIntentType =
+  | 'GENERAL_CHAT'
+  | 'QUESTION'
+  | 'SEARCH'
+  | 'OPEN_APP'
+  | 'CLOSE_APP'
+  | 'NAVIGATE'
+  | 'PLAY_MEDIA'
+  | 'SEND_MESSAGE'
+  | 'MAKE_CALL'
+  | 'CREATE_REMINDER'
+  | 'WEATHER'
+  | 'MAPS'
+  | 'VISION'
+  | 'OCR'
+  | 'CODE'
+  | 'FILE_OPERATION'
+  | 'DEVICE_ACTION'
+  | 'SETTINGS'
+  | 'MEMORY'
+  | 'IMAGE_GENERATION'
+  | 'WEB_SEARCH'
+  | 'UNKNOWN'
+
+export interface ParsedVoiceCommand {
+  intent: VoiceIntentType
+  entities: Record<string, any>
+  parameters: Record<string, any>
+  confidence: number
+  requiresConfirmation: boolean
+  confirmationPrompt?: string
+  chainedActions?: ParsedVoiceCommand[]
+}
+
+// ==========================================
+// 5. THINKING & TOOL EXECUTION STATUS
+// ==========================================
+
+export type ThinkingStatus =
+  | 'Understanding...'
+  | 'Thinking...'
+  | 'Checking context...'
+  | 'Searching...'
+  | 'Planning...'
+  | 'Generating...'
+  | 'Preparing response...'
+  | 'Executing tool...'
+
+// ==========================================
+// 6. LIFECYCLE & PROVIDERS
 // ==========================================
 
 export interface AudioLifecycleComponent {
@@ -54,21 +165,25 @@ export interface AudioLifecycleComponent {
   destroy(): void
 }
 
-// ==========================================
-// 3. PROVIDER INTERFACES
-// ==========================================
-
-export interface SpeechRecognitionProvider extends AudioLifecycleComponent {
+export interface SpeechToTextProvider extends AudioLifecycleComponent {
+  isSupported(): boolean
   setLanguage(lang: SupportedLanguage): void
-  commitInterimNow?(): void
+  abort(): void
+  onPartialResult(callback: (text: string) => void): void
+  onFinalResult(callback: (data: TranscriptData) => void): void
+  onError(callback: (error: Error | string) => void): void
+  onStart(callback: () => void): void
+  onEnd(callback: () => void): void
 }
 
 export interface TextToSpeechProvider extends AudioLifecycleComponent {
+  speak(text: string): Promise<void> | void
+  speakFullResponse(text: string): void
   feedStreamToken(token: string): void
   finishStream(): void
-  speakFullResponse(text: string): void
   interrupt(): boolean
   stopSpeaking(): void
+  isSpeaking(): boolean
   getIsSpeaking(): boolean
 }
 
@@ -80,13 +195,13 @@ export interface WakeWordProvider extends AudioLifecycleComponent {
 }
 
 export interface VoiceActivityDetectorProvider extends AudioLifecycleComponent {
-  feedAudioLevel(level: number): void
+  feedAudioLevel(level: number, rms?: number, peak?: number): void
   reset(): void
   setSilenceTimeout(ms: number): void
 }
 
 // ==========================================
-// 4. PERSONALITY & LANGUAGE
+// 7. PERSONALITY & MESSAGES
 // ==========================================
 
 export type VoicePersonalityId = 'jarvis' | 'assistant' | 'developer' | 'companion' | 'custom'
@@ -103,20 +218,14 @@ export interface VoicePersonality {
   accentColor: string
 }
 
-export type SupportedLanguage = 'auto' | 'en-US' | 'hi-IN' | 'en-IN'
-
-// ==========================================
-// 5. PRIVACY & SETTINGS
-// ==========================================
-
 export interface VoicePrivacySettings {
   wakeWordEnabled: boolean
   wakeWordPhrase: string
-  wakeWordSensitivity: number // 0.1 to 1.0 (default 0.7)
+  wakeWordSensitivity: number
   micPermissionStatus: 'prompt' | 'granted' | 'denied' | 'unsupported'
   vadEnabled: boolean
-  silenceTimeoutMs: number // default 700ms
-  minSpeechDurationMs: number // default 150ms
+  silenceTimeoutMs: number
+  minSpeechDurationMs: number
   noiseSuppression: boolean
   echoCancellation: boolean
   autoGainControl: boolean
@@ -126,16 +235,12 @@ export interface VoicePrivacySettings {
   voiceMode: VoicePersonalityId
   customPrompt?: string
   selectedVoice: string
-  speed: number // 0.5 to 2.0 (default 1.0)
-  pitch: number // 0.5 to 1.5 (default 1.0)
-  volume: number // 0 to 1.0 (default 1.0)
+  speed: number
+  pitch: number
+  volume: number
   language: SupportedLanguage
   responseStyle: 'concise' | 'normal' | 'detailed'
 }
-
-// ==========================================
-// 6. MESSAGES & SAFETY ACTIONS
-// ==========================================
 
 export interface VoiceTurnMessage {
   id: string
@@ -147,10 +252,11 @@ export interface VoiceTurnMessage {
   confidence?: number
   interrupted?: boolean
   metadata?: {
-    inputMode?: 'voice' | 'text'
+    inputMode?: 'voice' | 'text' | 'push_to_talk'
     wakeWord?: string
     voiceMode?: string
-    actionExecuted?: string
+    intent?: VoiceIntentType
+    toolExecuted?: string
     interrupted?: boolean
     [key: string]: any
   }

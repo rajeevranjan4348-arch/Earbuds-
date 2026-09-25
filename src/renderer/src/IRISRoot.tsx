@@ -7,6 +7,7 @@ import { gestureRecognitionService } from './services/gestureRecognitionService'
 import { soundEffects } from './services/soundEffectsService'
 import { LauncherModal, launchManager } from './launcher'
 import { VoiceCommandToastHUD } from './components/UI/VoiceCommandToastHUD'
+import { AgentPermissionDialog } from './components/AgentPermissionDialog'
 import { workspacePersistenceService } from './services/workspacePersistenceService'
 import { Zap } from 'lucide-react'
 
@@ -350,6 +351,9 @@ const IndexRoot = () => {
           currentTab={activeTab}
           onNavigate={(tab) => setActiveTab(tab as ActiveTab)}
         />
+
+        {/* Sensitive Action Human-In-The-Loop Approval Dialog */}
+        <AgentPermissionDialog />
       </main>
     </div>
   )

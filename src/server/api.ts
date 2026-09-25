@@ -60,6 +60,18 @@ import {
 } from './youtube'
 import { centralAgentOrchestrator, brainMemoryManager } from './brain'
 import { taskOrchestrator, longTermMemory, agentRegistry } from './services'
+import { paddleOcrEngine } from './ocr'
+import { realtimeAgent, realtimeDecisionEngine, realTimeToolRegistry } from './realtime'
+import { runRealTimeTestSuite } from './realtime/__tests__/realtime.test'
+import {
+  jarvisOrchestrator,
+  systemDiagnostics,
+  permissionManager,
+  toolRegistry2,
+  backgroundScheduler,
+  screenAwareness
+} from './jarvis'
+import { permissionManager as mainPermissionManager, agentOrchestrator as mainAgentOrchestrator } from '../main/agent'
 
 // In-memory fallback database per user for offline / unauthenticated Mem0 mode
 interface StoredMemory {
@@ -291,9 +303,232 @@ export async function handleApiRequest(
         brainReady: true,
         unifiedMemoryReady: true,
         mcpReady: true,
+        paddleOcrReady: true,
+        jarvisBrainReady: true,
         searxngConfigured: Boolean(process.env.SEARXNG_URL),
         tavilyConfigured: Boolean(process.env.TAVILY_API_KEY)
       })
+    }
+
+    // ============================================================
+    // JARVIS CENTRAL AGENT, DIAGNOSTICS & PERMISSION API LAYER
+    // ============================================================
+
+    // 1. JARVIS Central Task Execution (DAG with Parallel Read-Only Scheduling)
+    if (pathname === '/api/jarvis/execute' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const prompt = body.prompt || body.command || body.goal
+      if (!prompt) {
+        return sendJson(res, 400, { success: false, error: 'Missing prompt/command parameter' })
+      }
+
+      return handleSafeRoute(res, 'jarvis-execute', async () => {
+        const result = await jarvisOrchestrator.execute(prompt, {
+          userId: body.userId || 'default_user',
+          contextMemory: body.contextMemory,
+          deviceHint: body.deviceHint
+        })
+        return {
+          success: true,
+          task: result
+        }
+      })
+    }
+
+    // 2. JARVIS Task Cancellation ("Stop", "Cancel", "Abort")
+    if (pathname === '/api/jarvis/cancel' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const taskId = body.taskId
+      if (!taskId) {
+        return sendJson(res, 400, { success: false, error: 'Missing taskId' })
+      }
+      const cancelled = jarvisOrchestrator.cancel(taskId)
+      return sendJson(res, 200, { success: cancelled, taskId })
+    }
+
+    // 3. JARVIS System Diagnostics
+    if (pathname === '/api/jarvis/diagnostics' && req.method === 'GET') {
+      return handleSafeRoute(res, 'jarvis-diagnostics', async () => {
+        const report = await systemDiagnostics.runFullDiagnostics()
+        return {
+          success: true,
+          report
+        }
+      })
+    }
+
+    // 4. JARVIS Tool Registry 2.0 with Categories & Risk Levels
+    if (pathname === '/api/jarvis/tools' && req.method === 'GET') {
+      const category = parsedUrl.searchParams.get('category')
+      const tools = category
+        ? toolRegistry2.filterToolsByCategory(category as any)
+        : toolRegistry2.getAll()
+      return sendJson(res, 200, {
+        success: true,
+        tools: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          riskLevel: t.riskLevel,
+          requiresConfirmation: t.requiresConfirmation,
+          readOnly: t.readOnly
+        }))
+      })
+    }
+
+    // 5. JARVIS Permissions: Pending Approvals & User Decision
+    if (pathname === '/api/jarvis/permissions/pending' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        success: true,
+        pending: permissionManager.getPendingApprovals()
+      })
+    }
+
+    if (pathname === '/api/jarvis/permissions/resolve' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const { requestId, decision, policy } = body
+      if (!requestId || !decision) {
+        return sendJson(res, 400, { success: false, error: 'Missing requestId or decision' })
+      }
+      const resolved = permissionManager.resolveApproval(requestId, decision, policy)
+      return sendJson(res, 200, { success: resolved })
+    }
+
+    // 6. JARVIS Background Scheduler
+    if (pathname === '/api/jarvis/scheduler/tasks') {
+      if (req.method === 'GET') {
+        return sendJson(res, 200, {
+          success: true,
+          tasks: backgroundScheduler.getTasks()
+        })
+      }
+      if (req.method === 'POST') {
+        const body = await parseBody(req)
+        const { name, command, scheduledTime, type, cronExpression } = body
+        const created = await backgroundScheduler.scheduleTask(
+          name || 'Scheduled Task',
+          command,
+          scheduledTime || Date.now() + 60000,
+          type,
+          cronExpression
+        )
+        return sendJson(res, 200, { success: true, task: created })
+      }
+    }
+
+    // 7. JARVIS Screen Context & Awareness
+    if (pathname === '/api/jarvis/screen/context') {
+      if (req.method === 'POST') {
+        const body = await parseBody(req)
+        const context = await screenAwareness.captureScreenContext({
+          screenshotBase64: body.screenshotBase64,
+          includeOcr: body.includeOcr !== false
+        })
+        return sendJson(res, 200, { success: true, context })
+      }
+      const context = await screenAwareness.captureScreenContext()
+      return sendJson(res, 200, { success: true, context })
+    }
+
+    // ============================================================
+    // PADDLE-OCR & PP-STRUCTURE BACKEND API LAYER
+    // ============================================================
+
+    // 1. PaddleOCR Full Text Detection & Recognition (Images & PDFs)
+    if (pathname === '/api/ocr/scan' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const input = body.image || body.pdf || body.data || body.fileData || body.file
+      if (!input) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Missing image or PDF document data (expected "image", "pdf", or "data")'
+        })
+      }
+
+      const options = {
+        language: body.language || 'en',
+        enableTable: body.enableTable ?? true,
+        enableStructure: body.enableStructure ?? true,
+        dropScore: body.dropScore ?? 0.4,
+        pdfPages: body.pdfPages || 20
+      }
+
+      return handleSafeRoute(res, 'paddle-ocr-scan', async () => {
+        const result = await paddleOcrEngine.ocr(input, options)
+        return {
+          success: true,
+          ...result
+        }
+      })
+    }
+
+    // 2. PaddleOCR PP-Structure Document Parser (KIE & Layout)
+    if (pathname === '/api/ocr/parse-document' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const input = body.document || body.image || body.pdf || body.data
+      if (!input) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Missing document data'
+        })
+      }
+
+      return handleSafeRoute(res, 'paddle-ocr-parse-document', async () => {
+        const result = await paddleOcrEngine.parseDocument(input, {
+          language: body.language || 'en'
+        })
+        return {
+          success: true,
+          ...result
+        }
+      })
+    }
+
+    // 3. PaddleOCR PP-Structure Table Recognition
+    if (pathname === '/api/ocr/tables' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const input = body.tableImage || body.image || body.data
+      if (!input) {
+        return sendJson(res, 400, {
+          success: false,
+          error: 'Missing table image or document data'
+        })
+      }
+
+      return handleSafeRoute(res, 'paddle-ocr-tables', async () => {
+        const tables = await paddleOcrEngine.recognizeTable(input)
+        return {
+          success: true,
+          tables,
+          count: tables.length
+        }
+      })
+    }
+
+    // 4. PaddleOCR Status & Operational Metrics
+    if (pathname === '/api/ocr/status' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        success: true,
+        status: paddleOcrEngine.getStatus()
+      })
+    }
+
+    // 5. PaddleOCR Config Management
+    if (pathname === '/api/ocr/config') {
+      if (req.method === 'GET') {
+        return sendJson(res, 200, {
+          success: true,
+          config: paddleOcrEngine.getStatus()
+        })
+      }
+      if (req.method === 'POST') {
+        const body = await parseBody(req)
+        const updated = paddleOcrEngine.updateConfig(body)
+        return sendJson(res, 200, {
+          success: true,
+          config: updated
+        })
+      }
     }
 
     // Voice & Audio Speech Processing (Integrated AI fallback for Web Speech API)
@@ -2213,6 +2448,66 @@ export async function handleApiRequest(
       return sendJson(res, 200, { success: true, count: memories.length, memories })
     }
 
+    // Main Deterministic Permission Manager Endpoints
+    if (pathname === '/api/agent/permissions/pending' && req.method === 'GET') {
+      const pending = mainPermissionManager.getPendingApprovals()
+      return sendJson(res, 200, { success: true, count: pending.length, pending })
+    }
+
+    if (pathname === '/api/agent/permissions/respond' && req.method === 'POST') {
+      return handleSafeRoute(res, 'agent_permission_respond', async () => {
+        const body = await parseBody(req)
+        const { requestId, decision, rememberChoice } = body
+        if (!requestId || !decision) {
+          return { success: false, error: 'requestId and decision (APPROVED|DENIED) are required' }
+        }
+        const reqItem = mainPermissionManager.getApprovalRequest(requestId)
+        if (!reqItem) {
+          return { success: false, error: 'Approval request not found or expired' }
+        }
+        const resolved = mainPermissionManager.resolveApproval(requestId, decision, { rememberChoice })
+        if (reqItem.taskId) {
+          await mainAgentOrchestrator.resumeWithPermissionDecision(reqItem.taskId, requestId, decision)
+        }
+        return { success: resolved, requestId, decision }
+      })
+    }
+
+    // Main Agent Orchestrator Endpoints
+    if (pathname === '/api/agent/orchestrator/task' && req.method === 'POST') {
+      return handleSafeRoute(res, 'agent_orchestrator_task', async () => {
+        const body = await parseBody(req)
+        const { request } = body
+        if (!request) {
+          return { success: false, error: 'User request prompt is required' }
+        }
+        const trace = await mainAgentOrchestrator.executeTask(request)
+        return { success: true, trace }
+      })
+    }
+
+    if (pathname === '/api/agent/orchestrator/cancel' && req.method === 'POST') {
+      return handleSafeRoute(res, 'agent_orchestrator_cancel', async () => {
+        const body = await parseBody(req)
+        const { taskId } = body
+        if (!taskId) {
+          return { success: false, error: 'taskId is required' }
+        }
+        const cancelled = mainAgentOrchestrator.cancelTask(taskId)
+        return { success: cancelled, taskId }
+      })
+    }
+
+    if (pathname === '/api/agent/orchestrator/trace' && req.method === 'GET') {
+      const parsed = new URL(url, 'http://localhost')
+      const taskId = parsed.searchParams.get('taskId')
+      if (!taskId) {
+        return sendJson(res, 400, { success: false, error: 'taskId query parameter is required' })
+      }
+      const trace = mainAgentOrchestrator.getTrace(taskId)
+      return sendJson(res, 200, { success: Boolean(trace), trace })
+    }
+
     // 13-E. Agent Registry Inspection Endpoint
     if (pathname === '/api/agents/registry' && req.method === 'GET') {
       const agents = agentRegistry.list().map((a) => ({
@@ -2531,6 +2826,34 @@ export async function handleApiRequest(
       }
     }
 
+    // Real-Time Engine Integration Routes
+    if (pathname === '/api/realtime/process' && req.method === 'POST') {
+      try {
+        const body = await parseBody(req)
+        const { prompt, conversationHistory = [], memories = [], forceRealtime = false } = body
+        if (!prompt) return sendJson(res, 400, { error: 'Missing prompt' })
+
+        const result = await realtimeAgent.processQuery(prompt, {
+          conversationHistory,
+          memories,
+          forceRealtime
+        })
+
+        return sendJson(res, 200, result)
+      } catch (err: any) {
+        return sendJson(res, 500, { error: err?.message || 'Realtime agent error' })
+      }
+    }
+
+    if (pathname === '/api/realtime/test' && (req.method === 'GET' || req.method === 'POST')) {
+      try {
+        const testReport = await runRealTimeTestSuite()
+        return sendJson(res, 200, testReport)
+      } catch (err: any) {
+        return sendJson(res, 500, { error: err?.message || 'Test suite error' })
+      }
+    }
+
     // 14. Unified AI Core Engine (Mem0 + Letta + Agency Agents + Web Search + Codebase)
     if (pathname === '/api/ai/chat' && req.method === 'POST') {
       const parsedBody = await parseBody(req)
@@ -2581,6 +2904,36 @@ export async function handleApiRequest(
       const execPlan = multiAgentOrchestrator.prepareExecution(rawPrompt, userId, requestedRole)
       const sanitizedPrompt = execPlan.sanitizedPrompt
 
+      // Image & Logo Generation Intent Interception
+      const imageGenerationPattern =
+        /^(?:generate|generat|create|make|draw|paint|design)\s+(?:a\s+|an\s+)?(?:image|logo|picture|photo|artwork|illustration|graphic|icon|wallpaper|avatar)(?:\s+of|\s+for|\s+about)?\s*(.+)$/i
+      const imageMatch = sanitizedPrompt.match(imageGenerationPattern)
+      if (imageMatch) {
+        try {
+          const imagePrompt = imageMatch[1].trim()
+          console.log('[IRIS][AI] Direct Image Generation Intent Detected:', imagePrompt)
+          const genResult = await fluxImageEngine.generateImage({
+            prompt: imagePrompt,
+            aspectRatio: '1:1'
+          })
+          if (genResult && genResult.imageUrl) {
+            const displayMarkdown = `![${imagePrompt}](${genResult.imageUrl})\n\n**Visual Output:** "${imagePrompt}" (${genResult.model})`
+            agentHarness.completeTrace(execPlan.traceId)
+            return sendJson(res, 200, {
+              text: displayMarkdown,
+              rawText: displayMarkdown,
+              imageUrl: genResult.imageUrl,
+              model: genResult.model,
+              provider: 'flux',
+              agentRole: execPlan.role,
+              agentName: execPlan.agentName
+            })
+          }
+        } catch (imgErr: any) {
+          console.warn('[IRIS][AI] Direct Image Generation fallback notice:', imgErr?.message || imgErr)
+        }
+      }
+
       // 2. Codebase Context Retrieval
       let codebaseContext = Array.isArray(rawCodebaseContext) ? [...rawCodebaseContext] : []
       if (
@@ -2597,12 +2950,14 @@ export async function handleApiRequest(
         } catch (_e) {}
       }
 
-      // 3. Intelligent Web Search Grounding (Agent Search #18 + Browser Use #01)
+      // 3. Intelligent Web Search Grounding (RealTimeDecisionEngine + Search Orchestrator)
       let webSearchResults: any[] = []
       let webCitations: any[] = []
       let webSearchQuery = ''
+      const realTimeDecision = realtimeDecisionEngine.evaluate(sanitizedPrompt)
       const shouldSearch =
-        enableWebSearch ?? searchOrchestrator.shouldTriggerSearch(sanitizedPrompt)
+        enableWebSearch ??
+        (realTimeDecision.requiresRealtimeData || searchOrchestrator.shouldTriggerSearch(sanitizedPrompt))
 
       if (shouldSearch) {
         try {
@@ -2973,6 +3328,32 @@ export async function handleApiRequest(
           searchQuery: webSearchQuery,
           source: 'web_search_direct'
         })
+      }
+
+      // Real-Time Agent Intelligence Grounding
+      try {
+        console.log('[IRIS][AI] Executing RealTimeAgent synthesis pipeline')
+        const rtResult = await realtimeAgent.processQuery(sanitizedPrompt, {
+          conversationHistory: (conversationHistory || []).map((h: any) => ({
+            role: h.role === 'model' || h.role === 'assistant' ? 'assistant' : 'user',
+            content: h.text || h.content || ''
+          }))
+        })
+
+        if (rtResult && rtResult.answer) {
+          agentHarness.completeTrace(execPlan.traceId)
+          return sendJson(res, 200, {
+            text: rtResult.answer,
+            rawText: rtResult.answer,
+            model: 'realtime_agent',
+            provider: 'realtime',
+            agentRole: execPlan.role,
+            agentName: execPlan.agentName,
+            citations: rtResult.sources || []
+          })
+        }
+      } catch (rtErr) {
+        console.warn('[IRIS][AI] RealTimeAgent fallback notice:', rtErr)
       }
 
       agentHarness.completeTrace(execPlan.traceId)

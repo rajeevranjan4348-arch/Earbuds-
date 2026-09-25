@@ -9,6 +9,7 @@
 import crypto from 'crypto'
 import { ExtractedPage } from './types'
 import { GoogleGenAI } from '@google/genai'
+import { paddleOcrEngine } from '../ocr'
 
 let geminiClient: GoogleGenAI | null = null
 function getGemini(): GoogleGenAI | null {
@@ -124,8 +125,29 @@ export class PDFExtractor {
       const avgCharsPerPage = totalExtractedLength / Math.max(1, pages.length || numPages)
       if ((avgCharsPerPage < 35 || pages.length === 0) && buffer.length > 100) {
         console.log(
-          `[PDFExtractor] Low text density (${avgCharsPerPage.toFixed(1)} c/p) in ${filename}. Invoking Gemini OCR...`
+          `[PDFExtractor] Low text density (${avgCharsPerPage.toFixed(1)} c/p) in ${filename}. Invoking PaddleOCR engine...`
         )
+        try {
+          const paddleResult = await paddleOcrEngine.ocr(buffer, { pdfPages: numPages })
+          if (paddleResult && paddleResult.pages.length > 0 && paddleResult.fullText.trim()) {
+            const ocrPages: ExtractedPage[] = paddleResult.pages.map((p) => ({
+              pageNumber: p.pageNumber,
+              text: p.text,
+              section: this.detectSectionHeader(p.text) || 'OCR Scanned Content',
+              isOcr: true
+            }))
+            return {
+              title: this.deriveDocumentTitle(filename, ocrPages),
+              pageCount: ocrPages.length,
+              pages: ocrPages,
+              contentHash,
+              fullText: paddleResult.fullText
+            }
+          }
+        } catch (paddleErr: any) {
+          console.warn('[PDFExtractor] PaddleOCR attempt failed, trying Gemini OCR fallback:', paddleErr?.message)
+        }
+
         const ocrPages = await this.performGeminiOCR(buffer, filename, numPages)
         if (ocrPages && ocrPages.length > 0) {
           return {

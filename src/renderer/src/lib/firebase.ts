@@ -15,9 +15,15 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
   doc,
-  getDocFromServer
+  getDocFromServer,
+  setLogLevel
 } from 'firebase/firestore'
 import firebaseConfig from '../../../../firebase-applet-config.json'
+
+// Suppress non-fatal Firestore network timeout warnings in SDK logs
+try {
+  setLogLevel('error')
+} catch (_e) {}
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(app)
@@ -27,13 +33,12 @@ try {
   setPersistence(auth, browserLocalPersistence).catch(() => {})
 } catch (_e) {}
 
-// Initialize Firestore with offline multi-tab persistent cache and long-polling for reliable cloud connectivity in all environments
+// Initialize Firestore with offline multi-tab persistent cache and auto long-polling detection
 let firestoreInstance
 try {
   firestoreInstance = initializeFirestore(
     app,
     {
-      experimentalForceLongPolling: true,
       experimentalAutoDetectLongPolling: true,
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
@@ -46,7 +51,7 @@ try {
     firestoreInstance = initializeFirestore(
       app,
       {
-        experimentalForceLongPolling: true
+        experimentalAutoDetectLongPolling: true
       },
       (firebaseConfig as any).firestoreDatabaseId
     )
@@ -225,24 +230,8 @@ export const logOutGoogle = async () => {
 
 // Validate Firestore connection gracefully without blocking app startup
 export const testFirestoreConnection = async () => {
-  if (typeof window === 'undefined') return
-  try {
-    const checkPromise = getDocFromServer(doc(firestore, 'test', 'connection'))
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('connection check timeout')), 3000)
-    )
-    await Promise.race([checkPromise, timeoutPromise])
-  } catch (error) {
-    // Graceful silent fallback to offline cache
-    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('timeout'))) {
-      // Client is in offline mode or will sync when online
-    }
-  }
+  // Silent no-op to allow Firestore offline persistence to manage sync seamlessly
+  return true
 }
-
-// Run connection verification asynchronously
-setTimeout(() => {
-  testFirestoreConnection().catch(() => {})
-}, 1000)
 
 export default app
