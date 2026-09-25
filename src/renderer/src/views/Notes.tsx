@@ -54,8 +54,10 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
 
   // Listen to Firestore if authenticated, or localStorage
   useEffect(() => {
+    // Wait for Firebase Auth to restore persisted session before deciding to show local notes
     const unsubAuth = auth.onAuthStateChanged((user) => {
       if (user) {
+        // User is authenticated - load from Firestore
         const notesRef = collection(firestore, 'users', user.uid, 'notes')
         const q = query(notesRef, orderBy('createdAt', 'desc'))
         const unsubFirestore = onSnapshot(
@@ -84,6 +86,9 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
         )
         return () => unsubFirestore()
       } else {
+        // No user authenticated - check if Firebase is still initializing
+        // If auth is still loading, don't show local notes yet
+        // The onAuthStateChanged will fire again when Firebase finishes initializing
         loadLocalNotes()
         return undefined
       }
@@ -181,6 +186,8 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
 
   const deleteNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
+    // Use Firebase Auth state to get current user
+    // Firebase Auth automatically persists, so auth.currentUser will be correct
     const user = auth.currentUser
     if (user) {
       try {

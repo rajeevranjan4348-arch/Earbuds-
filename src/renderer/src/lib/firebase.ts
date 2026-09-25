@@ -7,7 +7,8 @@ import {
   User,
   signOut,
   browserLocalPersistence,
-  setPersistence
+  setPersistence,
+  Auth
 } from 'firebase/auth'
 import {
   initializeFirestore,
@@ -19,13 +20,40 @@ import {
 } from 'firebase/firestore'
 import firebaseConfig from '../../../../firebase-applet-config.json'
 
+// Initialize Firebase app - use existing app if already initialized
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
-export const auth = getAuth(app)
 
-// Enable browser local persistence for Auth
-try {
-  setPersistence(auth, browserLocalPersistence).catch(() => {})
-} catch (_e) {}
+// Initialize Auth with LOCAL persistence BEFORE any auth operations
+// This ensures auth state persists across page refreshes, browser restarts, and hot reloads
+export const auth: Auth = getAuth(app)
+
+// CRITICAL: Set persistence to browserLocalPersistence and WAIT for it to complete
+// This must happen before any signIn/signOut operations
+let persistenceInitialized = false
+let persistencePromise: Promise<void> | null = null
+
+export const ensureAuthPersistence = async (): Promise<void> => {
+  if (persistenceInitialized) return
+  
+  if (!persistencePromise) {
+    persistencePromise = setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        persistenceInitialized = true
+        console.log('[FirebaseAuth] Local persistence initialized successfully')
+      })
+      .catch((error) => {
+        console.error('[FirebaseAuth] Failed to set persistence:', error)
+        // Even if it fails, mark as initialized to prevent retry loops
+        persistenceInitialized = true
+        // In development, this might fail in some environments - continue anyway
+      })
+  }
+  
+  return persistencePromise
+}
+
+// Initialize persistence immediately at module load time
+ensureAuthPersistence().catch(() => {})
 
 // Initialize Firestore with offline multi-tab persistent cache and long-polling for reliable cloud connectivity in all environments
 let firestoreInstance
@@ -180,6 +208,10 @@ export const initAuth = (
 export const signInWithGoogle = async (): Promise<{ user: User; accessToken: string }> => {
   try {
     isSigningIn = true
+    
+    // Ensure persistence is configured before sign-in
+    await ensureAuthPersistence()
+    
     const result = await signInWithPopup(auth, googleAuthProvider)
     const credential = GoogleAuthProvider.credentialFromResult(result)
     if (!credential?.accessToken) {
@@ -217,14 +249,25 @@ export const setCachedAccessToken = (token: string | null) => {
   cachedAccessToken = token
 }
 
-export const logOutGoogle = async () => {
-  await signOut(auth)
+export const logOutGoogle = async (): Promise<void> => {
+  // Clear cached token first
   cachedAccessToken = null
+  
+  // Sign out from Firebase Auth - this clears the persisted session
+  try {
+    await signOut(auth)
+    console.log('[FirebaseAuth] User signed out successfully')
+  } catch (error) {
+    console.error('[FirebaseAuth] Error signing out:', error)
+    // Continue with cleanup even if signOut fails
+  }
 
   // Clear centralized backend session
   try {
     await fetch('/api/workspace/auth/session', { method: 'DELETE' })
-  } catch (_e) {}
+  } catch (_e) {
+    console.warn('[FirebaseAuth] Failed to clear backend session')
+  }
 }
 
 // Validate Firestore connection gracefully without blocking app startup

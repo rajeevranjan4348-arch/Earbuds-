@@ -3,9 +3,12 @@
  * Governs the authenticated user context for Mem0 multi-tenant memory isolation.
  * Strictly guarantees that every memory read, write, search, and deletion is scoped
  * to the authenticated Firebase user UID.
+ * 
+ * IMPORTANT: This service now relies SOLELY on Firebase Auth's built-in persistence.
+ * Do NOT use localStorage for auth state - Firebase handles this automatically with browserLocalPersistence.
  */
 import { auth } from '../lib/firebase'
-import { onAuthStateChanged as onFirebaseAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged as onFirebaseAuthStateChanged, User } from 'firebase/auth'
 
 export interface FirebaseUser {
   uid: string
@@ -41,8 +44,6 @@ export const PRESET_USERS: FirebaseUser[] = [
   }
 ]
 
-const AUTH_STORAGE_KEY = 'iris_firebase_auth_user_v2'
-
 type AuthListener = (user: FirebaseUser) => void
 
 class FirebaseAuthService {
@@ -56,7 +57,11 @@ class FirebaseAuthService {
     this.readyPromise = new Promise((resolve) => {
       this.readyResolve = resolve
     })
-    this.currentUser = this.loadUser()
+    
+    // Initialize with first preset user as fallback
+    // This will be replaced by actual Firebase user if authenticated
+    this.currentUser = PRESET_USERS[0]
+    
     this.initFirebaseSync()
   }
 
@@ -66,9 +71,11 @@ class FirebaseAuthService {
       this.readyResolve(this.currentUser)
       return
     }
+    
     try {
-      onFirebaseAuthStateChanged(auth, (fbUser) => {
+      onFirebaseAuthStateChanged(auth, (fbUser: User | null) => {
         if (fbUser) {
+          // User is authenticated via Firebase - use Firebase user data
           this.currentUser = {
             uid: fbUser.uid,
             email: fbUser.email || `${fbUser.uid}@iris.auth`,
@@ -79,14 +86,22 @@ class FirebaseAuthService {
             isAnonymous: fbUser.isAnonymous,
             role: 'Authenticated Google User'
           }
-          this.saveUser()
+        } else {
+          // No Firebase user - fall back to preset user for development
+          // This maintains existing behavior for dev/guest mode
+          this.currentUser = PRESET_USERS[0]
         }
+        
+        // Notify all listeners of the user change
+        this.notify()
+        
         if (!this.isInitialized) {
           this.isInitialized = true
           this.readyResolve(this.currentUser)
         }
       })
     } catch (_e) {
+      console.error('[FirebaseAuthService] Failed to initialize Firebase auth listener:', _e)
       this.isInitialized = true
       this.readyResolve(this.currentUser)
     }
@@ -100,28 +115,14 @@ class FirebaseAuthService {
     return this.isInitialized
   }
 
-  private loadUser(): FirebaseUser {
-    if (typeof window === 'undefined') return PRESET_USERS[0]
-    try {
-      const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed && parsed.uid) {
-          return parsed
-        }
-      }
-    } catch (_e) {}
-    return PRESET_USERS[0]
-  }
-
-  private saveUser() {
-    if (typeof window === 'undefined') return
-    try {
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(this.currentUser))
-    } catch (_e) {}
-    this.notify()
-  }
-
+  /**
+   * Get the current authenticated user.
+   * This now relies on Firebase Auth's persisted state.
+   */
+  /**
+   * Notify all listeners of user changes.
+   * Firebase Auth already persists state, so we don't need to save to localStorage.
+   */
   private notify() {
     const copy = this.getUser()
     this.listeners.forEach((fn) => {
@@ -139,8 +140,12 @@ class FirebaseAuthService {
     return this.getUser()
   }
 
+  /**
+   * Get the current user's UID.
+   * Returns the Firebase UID if authenticated, or preset user UID for dev mode.
+   */
   public getUserId(): string {
-    return this.currentUser.uid || 'usr_kumarimamta87565'
+    return this.currentUser.uid
   }
 
   public onAuthStateChanged(fn: AuthListener): () => void {
@@ -155,6 +160,10 @@ class FirebaseAuthService {
     return this.onAuthStateChanged(fn)
   }
 
+  /**
+   * Switch to a preset user for development purposes.
+   * This is used for dev/guest mode and does not affect Firebase Auth persistence.
+   */
   public switchUser(target: FirebaseUser | string, name?: string) {
     if (typeof target === 'string') {
       const matched = PRESET_USERS.find((u) => u.uid === target || u.email === target)
@@ -174,7 +183,8 @@ class FirebaseAuthService {
         this.currentUser.displayName = name
       }
     }
-    this.saveUser()
+    // Notify listeners of the change
+    this.notify()
   }
 
   public loginWithPreset(index: number) {

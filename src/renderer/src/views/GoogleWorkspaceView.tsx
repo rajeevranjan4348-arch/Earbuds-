@@ -57,7 +57,8 @@ type WorkspaceTab =
   | 'PICKER'
 
 export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => {
-  const [user, setUser] = useState<User | null>(auth.currentUser)
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [token, setToken] = useState<string | null>(getCachedAccessToken())
   const [activeSubTab, setActiveSubTab] = useState<WorkspaceTab>('HUB')
   const [items, setItems] = useState<WorkspaceItem[]>([])
@@ -74,6 +75,9 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
   // Listen to auth and synchronize with Centralized Session Manager
   useEffect(() => {
+    // Set auth loading state - we need to wait for Firebase to restore persisted session
+    setAuthLoading(true)
+    
     const checkSession = async () => {
       try {
         const res = await fetch('/api/workspace/auth/session')
@@ -93,7 +97,12 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
             }
           }
         }
-      } catch (_e) {}
+      } catch (_e) {
+        console.warn('[GoogleWorkspaceView] Failed to check backend session:', _e)
+      } finally {
+        // Auth initialization complete (Firebase has restored or confirmed no user)
+        setAuthLoading(false)
+      }
     }
 
     checkSession()
@@ -102,6 +111,8 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       setUser(u)
       const currentToken = getCachedAccessToken()
       if (currentToken) setToken(currentToken)
+      // Firebase auth state has been restored - mark loading as complete
+      setAuthLoading(false)
     })
 
     const handleSelectService = (e: any) => {
@@ -167,6 +178,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   }
 
   const handleSignOut = async () => {
+    // Only sign out from Firebase Auth - this will clear persisted session
     await logOutGoogle()
     setUser(null)
     setToken(null)
