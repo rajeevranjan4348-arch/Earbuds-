@@ -3,12 +3,15 @@
  * Provides bidirectional chat history & user context persistence across application sessions.
  * Seamlessly integrates local storage caching, Firestore cloud synchronization,
  * and Mem0 long-term memory for context-aware conversational continuity.
+ * Now integrated with unified conversation service for shared voice/text history.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { chatHistoryService, Message, ChatSession } from '../services/chatHistoryService'
 import { useMem0 } from '../context/Mem0Context'
 import { firebaseAuthService } from '../services/firebaseAuth'
+import { unifiedConversationService, UnifiedMessage, MessageMode, MessageState } from '../services/unifiedConversationService'
+import { extractUrls, normalizeUrl } from '../services/linkNormalizationService'
 
 export interface UsePersistentChatHistoryOptions {
   autoExtractMem0?: boolean
@@ -110,6 +113,7 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
   /**
    * Appends or updates a message in the active session and automatically
    * records context into Mem0 when an interaction turn finishes.
+   * Now also saves to unified conversation service for shared voice/text history.
    */
   const appendMessage = useCallback(
     async (
@@ -118,7 +122,10 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
     ): Promise<Message> => {
       const msg: Message = {
         id: msgData.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        messageId: msgData.messageId || msgData.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        conversationId: msgData.conversationId || activeSessionId || `session_${Date.now()}`,
         timestamp: msgData.timestamp || Date.now(),
+        mode: msgData.mode || msgData.inputType,
         ...msgData
       }
 
@@ -134,7 +141,22 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
         return [updated, ...prev]
       })
 
-      // 2. Automatically record interaction context to Mem0 for conversational continuity
+      // 2. Also save to unified conversation service
+      try {
+        const mode: MessageMode = msg.mode === 'voice' ? 'voice' : 'text'
+        const state: MessageState = msg.status === 'failed' ? 'error' : 'completed'
+        await unifiedConversationService.addMessage({
+          mode,
+          text: msg.text,
+          role: msg.role as 'user' | 'model' | 'assistant' | 'system',
+          state,
+          links: extractUrls(msg.text)
+        })
+      } catch (unifiedErr: any) {
+        console.warn('[usePersistentChatHistory] Failed to save to unified conversation:', unifiedErr)
+      }
+
+      // 3. Automatically record interaction context to Mem0 for conversational continuity
       const shouldExtract = options?.persistToMem0 ?? autoExtractMem0
       if (shouldExtract && msg.role === 'model' && msg.text && msg.text.trim()) {
         const lastUserMsg = updated.messages.filter((m) => m.role === 'user').slice(-1)[0]
@@ -149,11 +171,12 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
 
       return msg
     },
-    [activeUserId, autoExtractMem0, mem0]
+    [activeUserId, activeSessionId, autoExtractMem0, mem0]
   )
 
   /**
    * Updates an existing message in the active session (e.g. streaming chunks or retry state)
+   * Also updates unified conversation service
    */
   const updateMessage = useCallback(
     (messageId: string, updates: Partial<Message>): boolean => {
@@ -172,6 +195,23 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
           }
           return prev
         })
+        
+        // Also update unified conversation
+        try {
+          const msgToUpdate = updated.messages.find(m => m.id === messageId || m.messageId === messageId)
+          if (msgToUpdate) {
+            const mode: MessageMode = msgToUpdate.mode === 'voice' ? 'voice' : 'text'
+            const state: MessageState = msgToUpdate.status === 'failed' ? 'error' : 'completed'
+            unifiedConversationService.updateMessage(messageId, {
+              text: msgToUpdate.text,
+              state,
+              links: extractUrls(msgToUpdate.text)
+            }).catch(() => {})
+          }
+        } catch (unifiedErr: any) {
+          console.warn('[usePersistentChatHistory] Failed to update unified conversation:', unifiedErr)
+        }
+        
         return true
       }
       return false
@@ -269,6 +309,7 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
   /**
    * Synthesizes both Mem0 persistent memories and recent conversation turns
    * to enrich LLM prompts with complete conversational continuity.
+   * Now includes unified conversation context.
    */
   const buildEnrichedPrompt = useCallback(
     async (
@@ -282,12 +323,32 @@ export function usePersistentChatHistory(options: UsePersistentChatHistoryOption
       // 1. Get recent session turns
       const turns = getContextHistory(maxContextTurns)
 
-      // 2. Retrieve Mem0 context & user preferences
+      // 2. Also get unified conversation context
+      let unifiedTurns: Array<{ role: 'user' | 'model'; text: string }> = []
+      try {
+        const activeConv = await unifiedConversationService.getActiveConversation()
+        if (activeConv) {
+          unifiedTurns = activeConv.messages
+            .filter(m => m.role === 'user' || m.role === 'model' || m.role === 'assistant')
+            .map(m => ({
+              role: (m.role === 'assistant' ? 'model' : m.role) as 'user' | 'model',
+              text: m.text
+            }))
+            .slice(-maxContextTurns)
+        }
+      } catch (unifiedErr: any) {
+        console.warn('[usePersistentChatHistory] Failed to get unified conversation context:', unifiedErr)
+      }
+
+      // 3. Retrieve Mem0 context & user preferences
       const mem0Result = await mem0.enrichPrompt(userPrompt, baseSystemInstruction)
+
+      // Combine turns from both sources
+      const allTurns = [...turns, ...unifiedTurns]
 
       return {
         systemInstruction: mem0Result.systemInstruction,
-        conversationTurns: turns,
+        conversationTurns: allTurns,
         memoriesUsed: mem0Result.memoryCount
       }
     },
