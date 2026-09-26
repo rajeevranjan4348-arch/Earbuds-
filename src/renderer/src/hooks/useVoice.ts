@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { voiceService } from '../services/voiceService'
+import { unifiedConversationService, MessageMode, ConversationMode } from '../services/unifiedConversationService'
+import { voiceChatIntegration } from '../services/voiceChatIntegration'
 
 export interface VoiceCommandEvent {
   raw: string
@@ -42,12 +44,15 @@ export interface UseVoiceReturn {
   micPermission: 'prompt' | 'granted' | 'denied' | 'unknown'
   error: string | null
   isSupported: boolean
+  conversationMode: ConversationMode
   startListening: () => Promise<boolean>
   stopListening: () => void
   toggleListening: () => Promise<void>
   clearTranscript: () => void
   submitPrompt: (promptText: string, inputType?: 'voice' | 'text') => void
   simulateCommand: (commandString: string) => void
+  switchToVoiceMode: () => void
+  switchToTextMode: () => void
 }
 
 // Built-in system command rules
@@ -210,6 +215,7 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     'unknown'
   )
   const [error, setError] = useState<string | null>(null)
+  const [conversationMode, setConversationMode] = useState<ConversationMode>('text')
 
   const recognitionRef = useRef<any>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -652,6 +658,19 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     setAiResponse('')
   }, [])
 
+  // Switch conversation modes
+  const switchToVoiceMode = useCallback(() => {
+    setConversationMode('voice')
+    unifiedConversationService.switchToVoiceMode()
+    voiceChatIntegration.startVoiceConversation().catch(() => {})
+  }, [])
+
+  const switchToTextMode = useCallback(() => {
+    setConversationMode('text')
+    unifiedConversationService.switchToTextMode()
+    voiceChatIntegration.endVoiceConversation().catch(() => {})
+  }, [])
+
   // Manual simulation helper for programmatic or UI testing
   const simulateCommand = useCallback(
     (commandString: string) => {
@@ -691,12 +710,15 @@ export function useVoice(options: UseVoiceOptions = {}): UseVoiceReturn {
     micPermission,
     error,
     isSupported,
+    conversationMode,
     startListening,
     stopListening,
     toggleListening,
     clearTranscript,
     submitPrompt,
-    simulateCommand
+    simulateCommand,
+    switchToVoiceMode,
+    switchToTextMode
   }
 }
 
