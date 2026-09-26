@@ -5,9 +5,14 @@
  * Web Speech Synthesis (TTS) with sentence chunking & Chrome freeze protection,
  * and seamless conversational turn-taking loop:
  * Idle -> Listening -> Processing -> Speaking -> Listening again.
+ * 
+ * Integrated with Unified Conversation Service for shared voice/text history
  */
 
 import { voiceCommandProcessor } from './voiceCommandProcessor'
+import { unifiedConversationService } from './unifiedConversationService'
+import { voiceChatIntegration } from './voiceChatIntegration'
+import { extractUrls, normalizeUrl } from './linkNormalizationService'
 
 export type VoiceStatus =
   | 'idle'
@@ -1075,6 +1080,23 @@ class VoiceService {
     this.isProcessing = true
     const userMsgId = `msg_user_${requestId}`
 
+    // Extract URLs from user input for proper formatting
+    const urls = extractUrls(text)
+
+    // 1. Save user message to unified conversation service
+    try {
+      await unifiedConversationService.addMessage({
+        mode: inputType,
+        text,
+        role: 'user',
+        state: 'completed',
+        links: urls
+      })
+      console.log('[UNIFIED_CONVERSATION] User message saved to shared history')
+    } catch (saveErr: any) {
+      console.warn('[UNIFIED_CONVERSATION] Failed to save user message:', saveErr)
+    }
+
     // 1. Post to Conversation UI
     if (typeof window !== 'undefined' && (window as any).iris?.emitTranscript) {
       ;(window as any).iris.emitTranscript({
@@ -1086,6 +1108,7 @@ class VoiceService {
         content: text,
         timestamp: Date.now(),
         inputType,
+        mode: inputType,
         isFinal: true
       })
       if ((window as any).iris?.addHistory) {
@@ -1097,7 +1120,8 @@ class VoiceService {
           text,
           content: text,
           timestamp: Date.now(),
-          inputType
+          inputType,
+          mode: inputType
         })
       }
       console.log('[AI_STATE_UPDATED]', { requestId, role: 'user', messageId: userMsgId })
@@ -1177,10 +1201,24 @@ class VoiceService {
           content: errorMsg,
           timestamp: Date.now(),
           inputType,
-          status: 'success'
+          mode: inputType,
+          status: 'failed'
         })
         console.log('[AI_STATE_UPDATED]', { requestId, role: 'model', status: 'handled' })
       }
+      
+      // Save error response to unified conversation
+      try {
+        await unifiedConversationService.addMessage({
+          mode: inputType,
+          text: errorMsg,
+          role: 'assistant',
+          state: 'error'
+        })
+      } catch (saveErr: any) {
+        console.warn('[UNIFIED_CONVERSATION] Failed to save error response:', saveErr)
+      }
+      
       this.isProcessing = false
       this.setStatus('idle', 'Ready')
       this.speak(
@@ -1245,6 +1283,7 @@ class VoiceService {
           content: displayText,
           timestamp: Date.now(),
           inputType,
+          mode: inputType,
           status: finalStatus
         })
         iris?.addHistory?.({
@@ -1256,8 +1295,24 @@ class VoiceService {
           content: displayText,
           timestamp: Date.now(),
           inputType,
+          mode: inputType,
           status: finalStatus
         })
+        
+        // Save assistant response to unified conversation
+        try {
+          const responseUrls = extractUrls(displayText)
+          await unifiedConversationService.addMessage({
+            mode: inputType,
+            text: displayText,
+            role: 'assistant',
+            state: finalStatus === 'failed' ? 'error' : 'completed',
+            links: responseUrls
+          })
+          console.log('[UNIFIED_CONVERSATION] Assistant response saved to shared history')
+        } catch (saveErr: any) {
+          console.warn('[UNIFIED_CONVERSATION] Failed to save assistant response:', saveErr)
+        }
         console.log('[AI_STATE_UPDATED]', {
           requestId,
           role: 'model',

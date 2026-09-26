@@ -5,14 +5,15 @@ import { irisIndexedDBCache } from './irisIndexedDBCache'
 
 export interface Message {
   id: string
-  messageId?: string
-  conversationId?: string
+  messageId: string
+  conversationId: string
   requestId?: string
   role: 'user' | 'model' | 'assistant' | 'system'
   text: string
   content?: string
   timestamp?: number
   inputType?: 'voice' | 'text'
+  mode?: 'voice' | 'text'
   status?: 'success' | 'failed' | 'streaming'
   provider?: string
   audioMetadata?: {
@@ -247,14 +248,28 @@ class ChatHistoryService {
 
     if (existingIdx >= 0) {
       const current = sessions[existingIdx]
-      const msgIdx = current.messages.findIndex((m) => m.id === message.id)
+      const msgIdx = current.messages.findIndex((m) => m.id === message.id || m.messageId === message.id)
       let nextMsgs: Message[]
 
       if (msgIdx >= 0) {
         nextMsgs = [...current.messages]
-        nextMsgs[msgIdx] = { ...nextMsgs[msgIdx], ...message }
+        nextMsgs[msgIdx] = { 
+          ...nextMsgs[msgIdx], 
+          ...message,
+          messageId: message.messageId || message.id,
+          conversationId: message.conversationId || current.id,
+          mode: message.mode || message.inputType
+        }
       } else {
-        nextMsgs = [...current.messages, message].slice(-60)
+        nextMsgs = [
+          ...current.messages, 
+          {
+            ...message,
+            messageId: message.messageId || message.id,
+            conversationId: message.conversationId || current.id,
+            mode: message.mode || message.inputType
+          }
+        ].slice(-60)
       }
 
       const userFirstMsg = nextMsgs.find((m) => m.role === 'user')
@@ -279,7 +294,12 @@ class ChatHistoryService {
         createdAt: now,
         updatedAt: now,
         lastActive: now,
-        messages: [message]
+        messages: [{
+          ...message,
+          messageId: message.messageId || message.id,
+          conversationId: message.conversationId || activeId,
+          mode: message.mode || message.inputType
+        }]
       }
       sessions.unshift(updatedSession)
     }
@@ -311,11 +331,17 @@ class ChatHistoryService {
     if (existingIdx < 0) return null
 
     const current = sessions[existingIdx]
-    const msgIdx = current.messages.findIndex((m) => m.id === messageId)
+    const msgIdx = current.messages.findIndex((m) => m.id === messageId || m.messageId === messageId)
     if (msgIdx < 0) return null
 
     const nextMsgs = [...current.messages]
-    nextMsgs[msgIdx] = { ...nextMsgs[msgIdx], ...updates }
+    nextMsgs[msgIdx] = { 
+      ...nextMsgs[msgIdx], 
+      ...updates,
+      messageId: updates.messageId || nextMsgs[msgIdx].messageId || nextMsgs[msgIdx].id,
+      conversationId: updates.conversationId || nextMsgs[msgIdx].conversationId || current.id,
+      mode: updates.mode || nextMsgs[msgIdx].mode || nextMsgs[msgIdx].inputType
+    }
 
     const updatedSession: ChatSession = {
       ...current,
@@ -413,6 +439,21 @@ class ChatHistoryService {
   public createNewSession(userId?: string): string {
     const newId = `session_${Date.now()}`
     this.setActiveSessionId(newId, userId)
+    
+    // Initialize with proper conversationId
+    const uid = userId || this.activeUserId || firebaseAuthService.getUserId()
+    const sessions = this.getSessions(uid)
+    const newSession: ChatSession = {
+      id: newId,
+      title: 'New Conversation',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [],
+      lastActive: Date.now()
+    }
+    sessions.unshift(newSession)
+    this.saveSessions(sessions, uid)
+    
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('iris:new-chat', { detail: newId }))
     }, 0)
@@ -472,7 +513,14 @@ class ChatHistoryService {
         for (const msg of session.messages || []) {
           if (msg && msg.id && !msgSeen.has(msg.id)) {
             msgSeen.add(msg.id)
-            cleanMessages.push(msg)
+            // Ensure messageId and conversationId are set
+            const normalizedMsg: Message = {
+              ...msg,
+              messageId: msg.messageId || msg.id,
+              conversationId: msg.conversationId || session.id,
+              mode: msg.mode || msg.inputType
+            }
+            cleanMessages.push(normalizedMsg)
           }
         }
         result.push({
@@ -497,7 +545,13 @@ class ChatHistoryService {
             title: session.title || 'Conversation',
             createdAt: session.createdAt || Date.now(),
             updatedAt: session.updatedAt || Date.now(),
-            messages: session.messages || []
+            conversationId: session.id,
+            messages: session.messages.map(msg => ({
+              ...msg,
+              messageId: msg.messageId || msg.id,
+              conversationId: msg.conversationId || session.id,
+              mode: msg.mode || msg.inputType
+            }))
           },
           { merge: true }
         )
@@ -520,12 +574,19 @@ class ChatHistoryService {
         querySnapshot.forEach((d) => {
           const data = d.data()
           if (data && data.id && Array.isArray(data.messages)) {
+            // Normalize messages to ensure messageId, conversationId, and mode
+            const normalizedMessages = data.messages.map((msg: any) => ({
+              ...msg,
+              messageId: msg.messageId || msg.id,
+              conversationId: msg.conversationId || data.id,
+              mode: msg.mode || msg.inputType
+            }))
             firestoreSessions.push({
               id: data.id,
               title: data.title || 'Conversation',
               createdAt: data.createdAt || Date.now(),
               updatedAt: data.updatedAt || Date.now(),
-              messages: data.messages
+              messages: normalizedMessages
             })
           }
         })
