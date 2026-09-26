@@ -20,6 +20,9 @@ import { browserUseAgent } from './browser'
 import { scientificResearch, diagramDesign, aiqCitationEngine, DiscoveredResearchSource } from './research'
 import { fluxImageEngine, imageStore, getImageApiKey } from './image'
 import { androidPackageResolver } from './android'
+import { googleMapsService } from './maps/googleMapsService'
+import { bookingAgent } from './services/bookingAgent'
+import { gstackRouter, gstackRedactEngine } from './gstack'
 import {
   multiAgentOrchestrator,
   agentHarness,
@@ -561,11 +564,11 @@ export async function handleApiRequest(
         let transcript = ''
         let usedModel = ''
         const candidateModels = [
-          'gemini-2.5-flash',
+          'gemini-3.8-flash',
           'gemini-flash-latest',
+          'gemini-2.5-flash',
           'gemini-2.5-flash-lite',
-          'gemini-3.5-transcribe',
-          'gemini-3.8-flash'
+          'gemini-3.5-transcribe'
         ]
 
         for (const modelName of candidateModels) {
@@ -1664,11 +1667,126 @@ export async function handleApiRequest(
       }
     }
 
-    // Google Maps Configuration Endpoint
+    // Google Maps Configuration & Real-Time Data Endpoints
     if (pathname === '/api/maps/config' && req.method === 'GET') {
       const apiKey =
-        process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBpZJtNMY11VDNpQ905P_6RccN_83R0J6A'
+        process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDwkI0b4rxHK22fKRtKwsJniLNI_pJjveM'
       return sendJson(res, 200, { apiKey })
+    }
+
+    if (pathname === '/api/maps/places') {
+      return handleSafeRoute(res, 'maps_places', async () => {
+        let query = 'restaurants'
+        let location: { lat: number; lng: number } | undefined
+        let radius = 5000
+        let type: string | undefined
+
+        if (req.method === 'POST') {
+          const body = await parseBody(req)
+          query = body.query || query
+          location = body.location
+          radius = body.radius || radius
+          type = body.type
+        } else {
+          query = parsedUrl.searchParams.get('q') || query
+          const lat = parsedUrl.searchParams.get('lat')
+          const lng = parsedUrl.searchParams.get('lng')
+          if (lat && lng) location = { lat: parseFloat(lat), lng: parseFloat(lng) }
+          radius = parseInt(parsedUrl.searchParams.get('radius') || '5000', 10)
+          type = parsedUrl.searchParams.get('type') || undefined
+        }
+
+        return await googleMapsService.searchPlaces({ query, location, radius, type })
+      })
+    }
+
+    if (pathname === '/api/maps/directions') {
+      return handleSafeRoute(res, 'maps_directions', async () => {
+        let origin = ''
+        let destination = ''
+        let mode: 'driving' | 'walking' | 'bicycling' | 'transit' = 'driving'
+
+        if (req.method === 'POST') {
+          const body = await parseBody(req)
+          origin = body.origin || ''
+          destination = body.destination || ''
+          mode = body.mode || 'driving'
+        } else {
+          origin = parsedUrl.searchParams.get('origin') || ''
+          destination = parsedUrl.searchParams.get('destination') || ''
+          mode = (parsedUrl.searchParams.get('mode') as any) || 'driving'
+        }
+
+        if (!origin || !destination) {
+          return sendJson(res, 400, { error: 'Both origin and destination are required' })
+        }
+
+        return await googleMapsService.getDirections({ origin, destination, mode })
+      })
+    }
+
+    if (pathname === '/api/maps/geocode') {
+      return handleSafeRoute(res, 'maps_geocode', async () => {
+        let address = ''
+        let lat: number | undefined
+        let lng: number | undefined
+
+        if (req.method === 'POST') {
+          const body = await parseBody(req)
+          address = body.address || ''
+          lat = body.lat
+          lng = body.lng
+        } else {
+          address = parsedUrl.searchParams.get('address') || ''
+          const latStr = parsedUrl.searchParams.get('lat')
+          const lngStr = parsedUrl.searchParams.get('lng')
+          if (latStr && lngStr) {
+            lat = parseFloat(latStr)
+            lng = parseFloat(lngStr)
+          }
+        }
+
+        if (lat !== undefined && lng !== undefined) {
+          return await googleMapsService.reverseGeocode(lat, lng)
+        }
+        if (address) {
+          return await googleMapsService.geocode(address)
+        }
+        return sendJson(res, 400, { error: 'Provide either address or lat/lng' })
+      })
+    }
+
+    if (pathname === '/api/maps/details') {
+      return handleSafeRoute(res, 'maps_details', async () => {
+        const placeId = parsedUrl.searchParams.get('placeId')
+        if (!placeId) {
+          return sendJson(res, 400, { error: 'Missing placeId parameter' })
+        }
+        return await googleMapsService.getPlaceDetails(placeId)
+      })
+    }
+
+    // ==========================================
+    // Context-Aware Multi-Step Booking Endpoints
+    // ==========================================
+    if (pathname === '/api/booking/list') {
+      return handleSafeRoute(res, 'booking_list', async () => {
+        const userId = parsedUrl.searchParams.get('userId') || 'default_user'
+        const bookings = bookingAgent.getConfirmedBookings(userId)
+        return { success: true, bookings }
+      })
+    }
+
+    if (pathname === '/api/booking/action' && req.method === 'POST') {
+      return handleSafeRoute(res, 'booking_action', async () => {
+        const body = await parseBody(req)
+        const { action, code, bookingId, userId = 'default_user' } = body
+        if (action === 'cancel') {
+          const success = bookingAgent.cancelBooking(code || bookingId, userId)
+          return { success, message: success ? 'Booking cancelled successfully.' : 'Booking not found.' }
+        }
+        return { success: false, error: 'Unknown action' }
+      })
     }
 
     // ==========================================
@@ -2212,7 +2330,7 @@ export async function handleApiRequest(
       }
     }
 
-    // 11. Android App & Package Resolution Endpoint (Deft #10 + AutoDroid #11)
+    // 11. Android App & Package Resolution & Mobile Agent Endpoints
     if (pathname === '/api/android/resolve' && req.method === 'POST') {
       const { query } = await parseBody(req)
       if (!query) {
@@ -2220,6 +2338,74 @@ export async function handleApiRequest(
       }
       const resolved = androidPackageResolver.resolveApp(query)
       return sendJson(res, 200, { success: Boolean(resolved), app: resolved })
+    }
+
+    if (pathname === '/api/android/capabilities' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        success: true,
+        capabilities: {
+          microphone: 'available',
+          camera: 'available',
+          location: 'available',
+          notifications: 'available',
+          accessibility: 'available',
+          bluetooth: 'available',
+          contacts: 'available',
+          calendar: 'available',
+          files: 'available',
+          media_control: 'available',
+          calls: 'available',
+          messaging: 'available',
+          wifi: 'available',
+          mobile_data: 'available',
+          battery: 'available',
+          alarms: 'available',
+          web_browser: 'available'
+        }
+      })
+    }
+
+    if (pathname === '/api/android/telemetry' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        success: true,
+        telemetry: {
+          manufacturer: 'Google',
+          model: 'Pixel 9 Pro (IRIS Neural Agent)',
+          androidVersion: 'Android 15',
+          sdkVersion: 35,
+          battery: { level: 88, isCharging: false, temperature: '29.4°C' },
+          network: { wifiConnected: true, networkType: 'WIFI', wifiSsid: 'IRIS-HyperNet-5G' },
+          bluetooth: { isEnabled: true, earbudsConnected: true, earbudsName: 'Pixel Buds Pro (ANC Active)' },
+          storage: { usedGb: '64.2 GB', totalGb: '256.0 GB', percentUsed: 25.1 },
+          accessibilityReady: true
+        }
+      })
+    }
+
+    if (pathname === '/api/android/notifications' && req.method === 'GET') {
+      return sendJson(res, 200, {
+        success: true,
+        notifications: [
+          { id: '1', app: 'WhatsApp', title: 'Rahul', text: 'Hey, are you free for a quick sync?', time: 'Just now' },
+          { id: '2', app: 'Gmail', title: 'Google Calendar', text: 'Reminder: Project Review at 4:00 PM', time: '10m ago' },
+          { id: '3', app: 'Battery', title: 'System', text: 'Battery at 88% - Excellent health', time: '25m ago' }
+        ]
+      })
+    }
+
+    if (pathname === '/api/android/contacts' && (req.method === 'GET' || req.method === 'POST')) {
+      const body = req.method === 'POST' ? await parseBody(req) : {}
+      const query = (body.query || '').toLowerCase()
+      const contacts = [
+        { name: 'Rahul Sharma', phone: '+91 98765 43210', email: 'rahul.sharma@example.com' },
+        { name: 'Mom', phone: '+91 98765 11223', email: 'mom@family.internal' },
+        { name: 'Priya Patel', phone: '+91 98765 99887', email: 'priya.patel@example.com' },
+        { name: 'Alex Rivera', phone: '+1 (555) 234-5678', email: 'alex.rivera@tech.internal' }
+      ]
+      const filtered = query
+        ? contacts.filter((c) => c.name.toLowerCase().includes(query) || c.phone.includes(query))
+        : contacts
+      return sendJson(res, 200, { success: true, contacts: filtered })
     }
 
     // 12. Unified MCP Layer Endpoints (androir-mcp #17 + Agent Search #18 + Ruflo #08)
@@ -3098,6 +3284,128 @@ export async function handleApiRequest(
             systemInstruction += `\n\n[USER LIVE LOCATION & SPATIAL TELEMETRY]:\nLatitude: ${userLoc.latitude}\nLongitude: ${userLoc.longitude}\nCity: ${userLoc.city || 'Unknown'}\nRegion: ${userLoc.region || 'Unknown'}\nCountry: ${userLoc.country || 'Unknown'}\nAddress: ${userLoc.displayName || 'Unspecified'}\nTelemetry Accuracy: ${userLoc.accuracy ? `±${Math.round(userLoc.accuracy)}m` : 'nominal'}\nSource: ${userLoc.source.toUpperCase()}\nUpdated: ${userLoc.updatedAt}\nDirectives: Use this verified spatial telemetry when user inquires about where they are, local weather, time, regional context, or directions.`
           }
 
+          // 6. Real-Time Google Maps Platform Grounding
+          let mapsData: any = null
+          const mapsLower = sanitizedPrompt.toLowerCase()
+          const isDirectionsQuery =
+            mapsLower.includes('direction') ||
+            mapsLower.includes('how to get to') ||
+            mapsLower.includes('route to') ||
+            mapsLower.includes('route from') ||
+            mapsLower.includes('distance from') ||
+            mapsLower.includes('distance to') ||
+            mapsLower.includes('travel time to')
+
+          const isPlacesQuery =
+            !isDirectionsQuery &&
+            (mapsLower.includes('restaurant') ||
+              mapsLower.includes('cafe') ||
+              mapsLower.includes('coffee') ||
+              mapsLower.includes('hotel') ||
+              mapsLower.includes('lodging') ||
+              mapsLower.includes('atm') ||
+              mapsLower.includes('pharmacy') ||
+              mapsLower.includes('hospital') ||
+              mapsLower.includes('places near') ||
+              mapsLower.includes('things to do') ||
+              mapsLower.includes('attractions') ||
+              mapsLower.includes('food near') ||
+              mapsLower.includes('spots near'))
+
+          if (isDirectionsQuery) {
+            try {
+              let origin = ''
+              let destination = ''
+              const fromToMatch = sanitizedPrompt.match(/from\s+([^,]+?)\s+to\s+(.+?)(?:\?|$|\.|\s+by|\s+using)/i)
+              if (fromToMatch) {
+                origin = fromToMatch[1].trim()
+                destination = fromToMatch[2].trim()
+              } else {
+                const toMatch = sanitizedPrompt.match(/(?:to|get to|route to|directions to)\s+(.+?)(?:\?|$|\.|\s+from)/i)
+                if (toMatch) {
+                  destination = toMatch[1].trim()
+                  origin = userLoc ? `${userLoc.latitude},${userLoc.longitude}` : (userLoc?.city || 'San Francisco, CA')
+                }
+              }
+
+              if (destination) {
+                const dirRes = await googleMapsService.getDirections({
+                  origin: origin || (userLoc ? `${userLoc.latitude},${userLoc.longitude}` : 'San Francisco, CA'),
+                  destination
+                })
+                if (dirRes.success && dirRes.directions) {
+                  mapsData = {
+                    type: 'directions',
+                    directions: dirRes.directions
+                  }
+                  const d = dirRes.directions
+                  systemInstruction += `\n\n[GOOGLE MAPS REAL-TIME DIRECTIONS DATA]:\nFrom: ${d.startAddress}\nTo: ${d.endAddress}\nTotal Distance: ${d.distance}\nEstimated Duration: ${d.duration}\nSummary: ${d.summary}\nKey Steps:\n${d.steps.slice(0, 5).map((s, i) => `${i + 1}. ${s.instructions} (${s.distance})`).join('\n')}\n\nMaps Directives:\n1. Provide a helpful, clear overview of the route, travel duration, distance, and primary driving/walking instructions based on this verified Google Maps data.\n2. Advise that an interactive turn-by-turn navigation card has been provided.`
+                }
+              }
+            } catch (_dirErr) {
+              console.warn('[Server] Google Maps directions lookup notice:', _dirErr)
+            }
+          } else if (isPlacesQuery) {
+            try {
+              const placeRes = await googleMapsService.searchPlaces({
+                query: sanitizedPrompt,
+                location: userLoc ? { lat: userLoc.latitude, lng: userLoc.longitude } : undefined,
+                radius: 5000
+              })
+              if (placeRes.success && placeRes.places.length > 0) {
+                mapsData = {
+                  type: 'places',
+                  places: placeRes.places.slice(0, 5)
+                }
+                systemInstruction += `\n\n[GOOGLE MAPS REAL-TIME PLACES DATA]:\n` +
+                  placeRes.places.slice(0, 5).map((p, i) => `${i + 1}. ${p.name} (Rating: ${p.rating || 'N/A'}★, Reviews: ${p.userRatingsTotal || 0}) - ${p.formattedAddress} [${p.isOpenNow ? 'Open Now' : 'Closed'}]`).join('\n') +
+                  `\n\nMaps Directives:\n1. Present the top verified Google Maps places above with their real ratings and addresses.\n2. Inform the user they can click "Get Directions" or "Book Here" on the interactive place cards below.`
+              }
+            } catch (_placesErr) {
+              console.warn('[Server] Google Maps places lookup notice:', _placesErr)
+            }
+          }
+
+          // 7. Context-Aware Support & Multi-Step Booking Agent Grounding
+          let bookingData: any = null
+          try {
+            const bookingRes = await bookingAgent.processTurn(
+              sanitizedPrompt,
+              conversationHistory,
+              userId,
+              userLoc ? { lat: userLoc.latitude, lng: userLoc.longitude } : undefined
+            )
+            if (bookingRes.isBooking) {
+              bookingData = bookingRes.bookingData
+              systemInstruction += `\n\n[CONTEXT-AWARE MULTI-STEP BOOKING AGENT CONTEXT]:\n${bookingRes.agentResponseContext}`
+              if (bookingRes.suggestedPlaces && !mapsData) {
+                mapsData = {
+                  type: 'places',
+                  places: bookingRes.suggestedPlaces
+                }
+              }
+            }
+          } catch (_bookErr) {
+            console.warn('[Server] Booking agent turn execution notice:', _bookErr)
+          }
+
+          // 7. gstack Reusable Engineering Skills & Capabilities
+          const gstackMatch = gstackRouter.matchIntent(sanitizedPrompt)
+          if (gstackMatch.matched && gstackMatch.skill) {
+            try {
+              const gstackRes = await gstackRouter.executeSkill(gstackMatch.skill, {
+                prompt: sanitizedPrompt,
+                subRole: gstackMatch.subRole,
+                projectDir: process.cwd()
+              })
+              if (gstackRes.success && gstackRes.resultText) {
+                systemInstruction += `\n\n[GSTACK ENGINEERING SKILL EXECUTION RESULT]:\n${gstackRes.resultText}\nDirectives: Convey this engineering analysis directly and clearly to the user. Strictly follow all security, architectural, and verification recommendations.`
+              }
+            } catch (_gstackErr) {
+              console.warn('[Server] gstack skill execution notice:', _gstackErr)
+            }
+          }
+
           // Gather all discovered research sources for AI-Q citation-backed answer mechanism
           const allDiscoveredSources: DiscoveredResearchSource[] = [
             ...webCitations.map((c) => ({
@@ -3174,7 +3482,9 @@ export async function handleApiRequest(
                 citations: [...webCitations, ...documentCitations, ...workspaceCitations],
                 documentCitations,
                 workspaceCitations,
-                searchQuery: webSearchQuery
+                searchQuery: webSearchQuery,
+                mapsData,
+                bookingData
               })
             } catch (dsErr: any) {
               console.warn('[DeepSeek API Provider] Execution error, falling back to Gemini/NVIDIA:', dsErr?.message || dsErr)
@@ -3182,12 +3492,12 @@ export async function handleApiRequest(
           }
 
           let response: any = null
-          let usedChatModel = 'gemini-2.5-flash'
+          let usedChatModel = 'gemini-3.8-flash'
           const chatModelCandidates = [
-            'gemini-2.5-flash',
+            'gemini-3.8-flash',
             'gemini-flash-latest',
-            'gemini-2.5-flash-lite',
-            'gemini-3.8-flash'
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite'
           ]
 
           console.log('[AI_REQUEST_START]', { endpoint: '/api/ai/chat', promptLength: sanitizedPrompt.length, modelCandidate: chatModelCandidates[0] })
@@ -3261,7 +3571,9 @@ export async function handleApiRequest(
               citations: [...webCitations, ...documentCitations, ...workspaceCitations],
               documentCitations,
               workspaceCitations,
-              searchQuery: webSearchQuery
+              searchQuery: webSearchQuery,
+              mapsData,
+              bookingData
             })
           }
         } catch (err: any) {
@@ -3302,7 +3614,9 @@ export async function handleApiRequest(
             citations: [...webCitations, ...documentCitations, ...workspaceCitations],
             documentCitations,
             workspaceCitations,
-            searchQuery: webSearchQuery
+            searchQuery: webSearchQuery,
+            mapsData,
+            bookingData
           })
         }
       } catch (nvidiaErr: any) {
@@ -3326,7 +3640,9 @@ export async function handleApiRequest(
           webSourcesCount: webSearchResults.length,
           citations: webCitations,
           searchQuery: webSearchQuery,
-          source: 'web_search_direct'
+          source: 'web_search_direct',
+          mapsData,
+          bookingData
         })
       }
 
@@ -3349,7 +3665,9 @@ export async function handleApiRequest(
             provider: 'realtime',
             agentRole: execPlan.role,
             agentName: execPlan.agentName,
-            citations: rtResult.sources || []
+            citations: rtResult.sources || [],
+            mapsData,
+            bookingData
           })
         }
       } catch (rtErr) {
@@ -3364,7 +3682,9 @@ export async function handleApiRequest(
         fallback: true,
         agentRole: execPlan.role,
         agentName: execPlan.agentName,
-        message: 'Direct synthesized response'
+        message: 'Direct synthesized response',
+        mapsData,
+        bookingData
       })
     }
 

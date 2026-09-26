@@ -9,17 +9,29 @@ export interface Message {
   conversationId?: string
   requestId?: string
   role: 'user' | 'model' | 'assistant' | 'system'
+  mode?: 'text' | 'voice'
   text: string
+  transcript?: string
   content?: string
   timestamp?: number
   inputType?: 'voice' | 'text'
-  status?: 'success' | 'failed' | 'streaming'
+  status?: 'success' | 'failed' | 'streaming' | 'interrupted'
   provider?: string
+  audioUrl?: string
+  duration?: number
   audioMetadata?: {
     duration?: number
     sampleRate?: number
     confidence?: number
   }
+  audioState?: 'none' | 'transcribed' | 'speaking' | 'interrupted'
+  attachments?: any[]
+  links?: string[]
+  toolCalls?: any[]
+  mapsData?: any
+  bookingData?: any
+  isFinal?: boolean
+  chunkIndex?: number
 }
 
 export interface ChatSession {
@@ -27,9 +39,61 @@ export interface ChatSession {
   title: string
   createdAt: number
   updatedAt: number
+  lastMode?: 'text' | 'voice'
+  userId?: string
   messages: Message[]
   lastActive?: number
   draft?: string
+}
+
+/**
+ * Extracts and normalizes URLs from text into clickable links and array
+ */
+export function extractAndNormalizeUrls(text: string): { normalizedText: string; urls: string[] } {
+  if (!text || typeof text !== 'string') return { normalizedText: text || '', urls: [] }
+
+  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s]|www\.[^\s<]+[^<.,:;"')\]\s])/gi
+  const urls: string[] = []
+
+  let match: RegExpExecArray | null
+  while ((match = urlRegex.exec(text)) !== null) {
+    let url = match[0]
+    if (url.toLowerCase().startsWith('www.')) {
+      url = 'https://' + url
+    }
+    if (!urls.includes(url)) {
+      urls.push(url)
+    }
+  }
+
+  // Normalize bare www.example.com into [www.example.com](https://www.example.com) if not already markdown linked
+  const normalizedText = text.replace(
+    /(?<!\]\()(?<!https?:\/\/)\b(www\.[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:\/[^\s)]*)?)/gi,
+    (m) => `[${m}](https://${m})`
+  )
+
+  return { normalizedText, urls }
+}
+
+/**
+ * Generates natural conversation titles from first user prompt
+ */
+export function generateCleanTitle(text: string): string {
+  if (!text || typeof text !== 'string') return 'New Conversation'
+  let clean = text
+    .replace(
+      /^(hey iris|iris|ok iris|can you please|could you please|would you please|please tell me|tell me|explain to me|explain|help me with|how to|what is|what are|where is|find me)\s+/i,
+      ''
+    )
+    .trim()
+  if (!clean) clean = text.trim()
+  clean = clean.charAt(0).toUpperCase() + clean.slice(1)
+  if (clean.length > 38) {
+    const cut = clean.slice(0, 38)
+    const lastSpace = cut.lastIndexOf(' ')
+    return (lastSpace > 18 ? cut.slice(0, lastSpace) : cut) + '...'
+  }
+  return clean
 }
 
 const BASE_SESSIONS_STORAGE_KEY = 'iris_chat_sessions_v3_'
@@ -237,6 +301,27 @@ class ChatHistoryService {
 
     const uid = userId || this.activeUserId || firebaseAuthService.getUserId()
     const activeId = targetSessionId || this.getActiveSessionId(uid)
+
+    // Normalize message properties for Unified Voice + Text architecture
+    const mode = message.mode || (message.inputType === 'voice' ? 'voice' : 'text')
+    const textContent = message.text || message.content || ''
+    const { normalizedText, urls } = extractAndNormalizeUrls(textContent)
+
+    const normalizedMsg: Message = {
+      ...message,
+      id: message.id || `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      messageId: message.messageId || message.id || `msg_${Date.now()}`,
+      conversationId: activeId,
+      mode,
+      inputType: message.inputType || (mode === 'voice' ? 'voice' : 'text'),
+      text: normalizedText,
+      transcript: message.transcript || normalizedText,
+      content: normalizedText,
+      timestamp: message.timestamp || Date.now(),
+      status: message.status || 'success',
+      links: message.links && message.links.length > 0 ? message.links : urls.length > 0 ? urls : undefined
+    }
+
     const sessions = this.getSessions(uid)
     const existingIdx = sessions.findIndex((s) => s.id === activeId)
 
@@ -245,39 +330,48 @@ class ChatHistoryService {
 
     if (existingIdx >= 0) {
       const current = sessions[existingIdx]
-      const msgIdx = current.messages.findIndex((m) => m.id === message.id)
+      // Idempotent message matching: check messageId, id, or requestId+role
+      const msgIdx = current.messages.findIndex(
+        (m) =>
+          (m.messageId && m.messageId === normalizedMsg.messageId) ||
+          m.id === normalizedMsg.id ||
+          (normalizedMsg.requestId && m.requestId === normalizedMsg.requestId && m.role === normalizedMsg.role)
+      )
       let nextMsgs: Message[]
 
       if (msgIdx >= 0) {
         nextMsgs = [...current.messages]
-        nextMsgs[msgIdx] = { ...nextMsgs[msgIdx], ...message }
+        nextMsgs[msgIdx] = { ...nextMsgs[msgIdx], ...normalizedMsg }
       } else {
-        nextMsgs = [...current.messages, message].slice(-60)
+        nextMsgs = [...current.messages, normalizedMsg].slice(-80)
       }
 
       const userFirstMsg = nextMsgs.find((m) => m.role === 'user')
       const derivedTitle =
         current.title === 'New Conversation' && userFirstMsg
-          ? userFirstMsg.text.slice(0, 36)
+          ? generateCleanTitle(userFirstMsg.text)
           : current.title
 
       updatedSession = {
         ...current,
         title: derivedTitle,
+        lastMode: mode,
         updatedAt: now,
         lastActive: now,
         messages: nextMsgs
       }
       sessions[existingIdx] = updatedSession
     } else {
-      const userFirstMsg = message.role === 'user' ? message.text.slice(0, 36) : 'New Conversation'
+      const userFirstMsg =
+        normalizedMsg.role === 'user' ? generateCleanTitle(normalizedMsg.text) : 'New Conversation'
       updatedSession = {
         id: activeId,
         title: userFirstMsg,
         createdAt: now,
         updatedAt: now,
+        lastMode: mode,
         lastActive: now,
-        messages: [message]
+        messages: [normalizedMsg]
       }
       sessions.unshift(updatedSession)
     }

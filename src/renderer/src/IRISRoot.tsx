@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import IRIS from './UI/IRIS'
 import { useIrisVoice } from './hooks/useIrisVoice'
+import { useAuth } from './hooks/useAuth'
 import { shortcutService, ShortcutTriggerToast } from './services/shortcutService'
 import { gestureRecognitionService } from './services/gestureRecognitionService'
 import { soundEffects } from './services/soundEffectsService'
@@ -9,6 +10,7 @@ import { LauncherModal, launchManager } from './launcher'
 import { VoiceCommandToastHUD } from './components/UI/VoiceCommandToastHUD'
 import { AgentPermissionDialog } from './components/AgentPermissionDialog'
 import { workspacePersistenceService } from './services/workspacePersistenceService'
+import { ModuleViewSkeleton } from './components/UI/SkeletonLoader'
 import { Zap } from 'lucide-react'
 
 export type VisionMode = 'off' | 'camera' | 'screen'
@@ -39,6 +41,8 @@ const TAB_ORDER: ActiveTab[] = [
 ]
 
 const IndexRoot = () => {
+  const { authLoading } = useAuth()
+
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
     const saved = workspacePersistenceService.getConfig()
     return (saved?.activeTab as ActiveTab) || 'DASHBOARD'
@@ -291,6 +295,22 @@ const IndexRoot = () => {
       unregGestDocs()
     }
   }, [isConnected, isSpeaking, toggleConnection, toggleMute, stopSpeaking])
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen w-screen bg-black items-center justify-center p-6 select-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-md"
+        >
+          <ModuleViewSkeleton title="Restoring Neural Session" />
+        </motion.div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen w-screen bg-black overflow-hidden relative select-none">

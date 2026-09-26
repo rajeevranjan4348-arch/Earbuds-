@@ -23,9 +23,19 @@ import {
   Terminal,
   Database,
   Wifi,
-  WifiOff
+  WifiOff,
+  MapPin,
+  Navigation,
+  CalendarDays,
+  ChevronDown,
+  Check,
+  ExternalLink
 } from 'lucide-react'
 import { RiFlashlightFill } from 'react-icons/ri'
+import GoogleMapsPlaceCard from '../Chat/GoogleMapsPlaceCard'
+import GoogleMapsDirectionsCard from '../Chat/GoogleMapsDirectionsCard'
+import BookingCard from '../Chat/BookingCard'
+import GeminiLiveVoiceBar from '../Chat/GeminiLiveVoiceBar'
 import { chatHistoryService, Message, ChatSession } from '../../services/chatHistoryService'
 import { shortcutService } from '../../services/shortcutService'
 import { voiceService } from '../../services/voiceService'
@@ -99,10 +109,11 @@ interface ChatMessageItemProps {
   msg: Message
   isStreaming: boolean
   onRetry: (msg: Message) => void
+  onSendPrompt?: (text: string) => void
 }
 
 const ChatMessageItem = memo(
-  function ChatMessageItem({ msg, isStreaming, onRetry }: ChatMessageItemProps) {
+  function ChatMessageItem({ msg, isStreaming, onRetry, onSendPrompt }: ChatMessageItemProps) {
     const isUser = msg.role === 'user'
     const isFallbackOrError =
       !isUser &&
@@ -145,7 +156,14 @@ const ChatMessageItem = memo(
           }`}
         >
           {isUser ? (
-            <span>{displayContent}</span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1">
+                {(msg.mode === 'voice' || msg.inputType === 'voice') && (
+                  <Mic size={11} className="text-emerald-400 shrink-0 inline mr-0.5" title="Voice transcript" />
+                )}
+                <span>{displayContent}</span>
+              </div>
+            </div>
           ) : (
             <div className="text-xs sm:text-sm leading-relaxed space-y-2">
               {isFallbackOrError && (
@@ -201,6 +219,53 @@ const ChatMessageItem = memo(
               >
                 {displayContent}
               </ReactMarkdown>
+
+              {/* Real-time Google Maps Places Card */}
+              {msg.mapsData?.type === 'places' &&
+                Array.isArray(msg.mapsData.places) &&
+                msg.mapsData.places.length > 0 && (
+                  <GoogleMapsPlaceCard
+                    places={msg.mapsData.places}
+                    onSelectDirections={(place) =>
+                      onSendPrompt?.(`directions to ${place.name}, ${place.formattedAddress}`)
+                    }
+                    onSelectBooking={(place) =>
+                      onSendPrompt?.(`book a table at ${place.name}`)
+                    }
+                  />
+                )}
+
+              {/* Real-time Google Maps Route & Turn-by-Turn Directions Card */}
+              {msg.mapsData?.type === 'directions' && msg.mapsData.directions && (
+                <GoogleMapsDirectionsCard directions={msg.mapsData.directions} />
+              )}
+
+              {/* Context-Aware Multi-Step Booking Card */}
+              {msg.bookingData && (
+                <BookingCard
+                  data={msg.bookingData}
+                  onAction={(actionText) => onSendPrompt?.(actionText)}
+                />
+              )}
+
+              {/* Normalized Clickable Links Bar */}
+              {Array.isArray(msg.links) && msg.links.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1.5 mt-1 border-t border-white/5">
+                  <span className="text-[10px] text-zinc-500 font-mono">Links:</span>
+                  {msg.links.map((link, lIdx) => (
+                    <a
+                      key={lIdx}
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono transition-colors break-all"
+                    >
+                      <ExternalLink size={10} className="shrink-0" />
+                      <span className="max-w-[200px] truncate">{link.replace(/^https?:\/\//i, '')}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {!isUser && !isStreaming && rawContent && (
                 <div className="pt-2 mt-1 border-t border-white/5 flex items-center justify-between gap-2">
@@ -338,13 +403,15 @@ export default function RightPanel({
   const [inputVal, setInputVal] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [chatProvider, setChatProvider] = useState<
-    'deepseek' | 'deepseek_r1' | 'gemini' | 'nvidia_kimi'
+    'gemini' | 'gemini_live' | 'google_maps' | 'deepseek' | 'deepseek_r1' | 'nvidia_kimi'
   >(() => {
     const active = coreSettingsService.getSettings().activeProvider
     if (active === 'deepseek' || active === 'deepseek_r1' || active === 'nvidia_kimi') return active
     return 'gemini'
   })
   const [showProviderMenu, setShowProviderMenu] = useState(false)
+  const [isGeminiLiveBarOpen, setIsGeminiLiveBarOpen] = useState(false)
+  const [activeActionCategory, setActiveActionCategory] = useState<'places' | 'directions' | 'bookings' | null>(null)
   const [selectedVoice, setSelectedVoice] = useState<VoiceOption>(() => {
     return geminiLiveVoiceClient.getVoice() || 'Kore'
   })
@@ -950,17 +1017,42 @@ export default function RightPanel({
     const handleExtSessionsUpdated = (e: any) => {
       if (e.detail && Array.isArray(e.detail)) {
         const updated = e.detail as ChatSession[]
-        setSessions((prev) => {
-          if (prev.length === updated.length && prev[0]?.updatedAt === updated[0]?.updatedAt) {
+        setSessions(updated)
+
+        // Real-time voice to text chat synchronization:
+        // If current active session received new turns, update chatHistory immediately
+        const currentActive = updated.find((s) => s.id === activeSessionId)
+        if (currentActive && Array.isArray(currentActive.messages) && currentActive.messages.length > 0) {
+          setChatHistory((prev) => {
+            const hasNewMessages =
+              currentActive.messages.length !== prev.length ||
+              currentActive.messages[currentActive.messages.length - 1]?.id !== prev[prev.length - 1]?.id
+            if (hasNewMessages) {
+              for (const m of currentActive.messages) {
+                seenMessageIdsRef.current.add(m.id)
+              }
+              return currentActive.messages
+            }
             return prev
-          }
-          return updated
-        })
+          })
+        }
       }
     }
     const handleExtActiveSessionChanged = (e: any) => {
       if (e.detail && typeof e.detail === 'string') {
-        setActiveSessionId(e.detail)
+        const targetId = e.detail
+        setActiveSessionId(targetId)
+        const all = chatHistoryService.getSessions()
+        const target = all.find((s) => s.id === targetId)
+        if (target && Array.isArray(target.messages)) {
+          setChatHistory(target.messages)
+          seenMessageIdsRef.current.clear()
+          for (const m of target.messages) {
+            seenMessageIdsRef.current.add(m.id)
+          }
+        } else {
+          setChatHistory([])
+        }
       }
     }
 
@@ -1088,21 +1180,30 @@ export default function RightPanel({
     chatHistoryService.clearDraft(activeSessionId)
     setInputVal('')
 
-    // Immediately push user message to chat state
+    // Immediately push user message to chat state and persist to unified chatHistoryService
     seenMessageIdsRef.current.add(userMsgId)
+    const userMsg: Message = {
+      id: userMsgId,
+      messageId: userMsgId,
+      conversationId: activeSessionId,
+      requestId: reqId,
+      role: 'user',
+      mode: isVoiceInput ? 'voice' : 'text',
+      text: trimmed,
+      transcript: trimmed,
+      content: trimmed,
+      timestamp: now,
+      inputType: isVoiceInput ? 'voice' : 'text'
+    }
+
+    try {
+      chatHistoryService.addMessage(activeSessionId, userMsg)
+    } catch (_storeErr) {
+      console.warn('[RightPanel] Error saving user message:', _storeErr)
+    }
+
     setChatHistory((prev) => {
       if (prev.some((m) => m.id === userMsgId)) return prev
-      const userMsg: Message = {
-        id: userMsgId,
-        messageId: userMsgId,
-        conversationId: activeSessionId,
-        requestId: reqId,
-        role: 'user',
-        text: trimmed,
-        content: trimmed,
-        timestamp: now,
-        inputType: isVoiceInput ? 'voice' : 'text'
-      }
       return [...prev, userMsg].slice(-50)
     })
 
@@ -1420,8 +1521,8 @@ export default function RightPanel({
       return
     }
 
-    // 3. Multimodal Chat with Gemini (AI-Q Citation Grounded)
-    if (chatProvider === 'gemini') {
+    // 3. Multimodal Chat with Gemini (Context-Aware Booking, Maps Grounding & Support Agent)
+    if (chatProvider === 'gemini' || chatProvider === 'google_maps') {
       ;(async () => {
         try {
           setActiveStreamingId(assistantMsgId)
@@ -1437,7 +1538,7 @@ export default function RightPanel({
             content: '',
             timestamp: Date.now(),
             inputType: 'text',
-            provider: 'gemini'
+            provider: chatProvider === 'google_maps' ? 'google_maps' : 'gemini'
           }
           setChatHistory((prev) => [...prev, placeholderMsg].slice(-50))
 
@@ -1447,7 +1548,8 @@ export default function RightPanel({
             body: JSON.stringify({
               prompt: trimmed,
               provider: 'gemini',
-              model: 'gemini-2.5-flash',
+              model: 'gemini-3.8-flash',
+              agentRole: chatProvider === 'google_maps' ? 'maps' : undefined,
               conversationHistory: chatHistory.slice(-8).map((m) => ({
                 role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
                 text: m.text || m.content || ''
@@ -1461,7 +1563,7 @@ export default function RightPanel({
             requestId: reqId,
             conversationId: activeSessionId,
             provider: 'gemini',
-            model: 'gemini-2.5-flash'
+            model: 'gemini-3.8-flash'
           })
           const returnedText = normalized.text
 
@@ -1473,8 +1575,13 @@ export default function RightPanel({
                 ...updated[idx],
                 text: returnedText,
                 content: returnedText,
-                status: normalized.success ? 'success' : 'failed'
+                status: normalized.success ? 'success' : 'failed',
+                mapsData: data?.mapsData,
+                bookingData: data?.bookingData
               }
+              try {
+                chatHistoryService.addMessage(activeSessionId, updated[idx])
+              } catch (_e) {}
               return updated
             }
             return prev
@@ -1567,8 +1674,166 @@ export default function RightPanel({
           )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Action buttons & Provider Selector */}
+        <div className="flex items-center gap-1.5 shrink-0 relative">
+          {/* Provider / Agent Mode Selector Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowProviderMenu(!showProviderMenu)}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono text-zinc-300 border border-white/10 cursor-pointer"
+              title="Select AI Agent & Chat Option"
+            >
+              {chatProvider === 'gemini' && <Sparkles size={12} className="text-emerald-400" />}
+              {chatProvider === 'gemini_live' && <Radio size={12} className="text-emerald-400 animate-pulse" />}
+              {chatProvider === 'google_maps' && <MapPin size={12} className="text-amber-400" />}
+              {chatProvider === 'deepseek' && <Cpu size={12} className="text-cyan-400" />}
+              {chatProvider === 'deepseek_r1' && <Terminal size={12} className="text-purple-400" />}
+              {chatProvider === 'nvidia_kimi' && <Sparkles size={12} className="text-green-400" />}
+              <span className="hidden sm:inline font-semibold">
+                {chatProvider === 'gemini'
+                  ? 'Gemini Agent'
+                  : chatProvider === 'gemini_live'
+                    ? 'Gemini Live'
+                    : chatProvider === 'google_maps'
+                      ? 'Google Maps'
+                      : chatProvider === 'deepseek_r1'
+                        ? 'DeepSeek R1'
+                        : chatProvider === 'deepseek'
+                          ? 'DeepSeek'
+                          : 'NVIDIA Kimi'}
+              </span>
+              <ChevronDown size={11} className="text-zinc-500" />
+            </button>
+
+            {showProviderMenu && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 backdrop-blur-xl">
+                <div className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-zinc-500 font-bold border-b border-white/5">
+                  AI Chat & Agent Option
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatProvider('gemini')
+                    setShowProviderMenu(false)
+                  }}
+                  className={`flex items-start gap-2 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    chatProvider === 'gemini'
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      : 'hover:bg-white/5 text-zinc-300'
+                  }`}
+                >
+                  <Sparkles size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold font-mono">Gemini Support Agent</span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      Context-aware assistant for multi-step bookings & Google Maps
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatProvider('gemini_live')
+                    setIsGeminiLiveBarOpen(true)
+                    setShowProviderMenu(false)
+                  }}
+                  className={`flex items-start gap-2 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    chatProvider === 'gemini_live' || isGeminiLiveBarOpen
+                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                      : 'hover:bg-white/5 text-zinc-300'
+                  }`}
+                >
+                  <Radio size={14} className="text-emerald-400 mt-0.5 shrink-0 animate-pulse" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold font-mono">Gemini Live Voice</span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      Real-time bidirectional speech conversation (Gemini Live API)
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatProvider('google_maps')
+                    setShowProviderMenu(false)
+                  }}
+                  className={`flex items-start gap-2 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    chatProvider === 'google_maps'
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                      : 'hover:bg-white/5 text-zinc-300'
+                  }`}
+                >
+                  <MapPin size={14} className="text-amber-400 mt-0.5 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold font-mono">Google Maps Agent</span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      Real-time places discovery, directions & turn-by-turn routes
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatProvider('deepseek_r1')
+                    setShowProviderMenu(false)
+                  }}
+                  className={`flex items-start gap-2 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    chatProvider === 'deepseek_r1'
+                      ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                      : 'hover:bg-white/5 text-zinc-300'
+                  }`}
+                >
+                  <Terminal size={14} className="text-purple-400 mt-0.5 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold font-mono">DeepSeek Reasoner R1</span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      In-depth chain-of-thought mathematical & logical reasoning
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChatProvider('nvidia_kimi')
+                    setShowProviderMenu(false)
+                  }}
+                  className={`flex items-start gap-2 p-2 rounded-xl text-left transition-colors cursor-pointer ${
+                    chatProvider === 'nvidia_kimi'
+                      ? 'bg-green-500/15 text-green-300 border border-green-500/30'
+                      : 'hover:bg-white/5 text-zinc-300'
+                  }`}
+                >
+                  <Cpu size={14} className="text-green-400 mt-0.5 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold font-mono">NVIDIA Moonshot Kimi</span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      High-speed neural completion
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Gemini Live Voice Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsGeminiLiveBarOpen(!isGeminiLiveBarOpen)}
+            title={isGeminiLiveBarOpen ? 'Hide Gemini Live Voice' : 'Start Gemini Live Voice Conversation'}
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg border transition-all cursor-pointer ${
+              isGeminiLiveBarOpen
+                ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-pulse'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+            }`}
+          >
+            <Radio size={12} className={isGeminiLiveBarOpen ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Live Voice</span>
+          </button>
           {/* Outage / Offline Indicator */}
           {!isOnline && (
             <div
@@ -1794,19 +2059,20 @@ export default function RightPanel({
               <div className="flex flex-col gap-1.5 w-full max-w-xs pt-1.5">
                 {[
                   'What is IRIS and what can you do?',
+                  '🗺️ Find top restaurants nearby',
+                  '🛎️ Reserve a dinner table for 2 tomorrow at 7pm',
+                  '🚗 Directions from here to Times Square',
+                  '🏨 Book a hotel room for 2 guests',
                   'Search uploaded PDF documents for key insights',
-                  'Search the web for latest AI breakthroughs',
-                  'Generate an image of cybernetic neural core',
-                  'Create architecture diagram of microservices',
-                  'Scientific research on quantum entanglement',
-                  'Search codebase for AICoreSphere'
+                  'Search the web for latest AI breakthroughs'
                 ].map((prompt, idx) => (
                   <motion.button
                     key={idx}
                     whileHover={{ x: 2, scale: 1.005 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      setInputVal(prompt)
+                      const cleanPrompt = prompt.replace(/^[^\w\s]+\s*/, '')
+                      setInputVal(cleanPrompt)
                     }}
                     className="w-full text-left px-2.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"
                   >
@@ -1824,6 +2090,7 @@ export default function RightPanel({
                 msg={msg}
                 isStreaming={msg.id === activeStreamingId}
                 onRetry={handleRetry}
+                onSendPrompt={(p) => handleSendPrompt(p)}
               />
             ))}
 
@@ -1885,6 +2152,62 @@ export default function RightPanel({
 
       {/* Bottom Composer */}
       <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] relative">
+        {/* Inline Gemini Live Voice Stream Bar */}
+        <AnimatePresence>
+          {isGeminiLiveBarOpen && (
+            <div className="mb-1">
+              <GeminiLiveVoiceBar
+                onClose={() => setIsGeminiLiveBarOpen(false)}
+                onTranscriptReceived={(role, text) => {
+                  if (role === 'user' && text && text.trim()) {
+                    handleSendPrompt(text)
+                  }
+                }}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick Agent Actions Bar (Maps, Booking, Live Voice) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 text-[10px] font-mono">
+          <span className="text-zinc-500 font-bold shrink-0">Actions:</span>
+
+          <button
+            type="button"
+            onClick={() => setInputVal('Directions from my location to ')}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
+          >
+            <Navigation size={10} className="text-cyan-400" />
+            <span>Get Directions</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInputVal('Reserve a table for 2 at an Italian restaurant tomorrow at 7:30pm')}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
+          >
+            <CalendarDays size={10} className="text-amber-400" />
+            <span>Book Table</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInputVal('Book a luxury hotel room for 2 guests this weekend')}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
+          >
+            <Sparkles size={10} className="text-purple-400" />
+            <span>Book Hotel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSendPrompt('Show my active bookings')}
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
+          >
+            <span>My Bookings</span>
+          </button>
+        </div>
+
         {/* Microphone Permission / Status Warning Banner */}
         {micError && (
           <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs shadow-md">

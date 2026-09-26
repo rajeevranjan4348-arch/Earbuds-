@@ -69,19 +69,6 @@ export default function Dashboard({
     setShowVisionMenu(false)
   }
 
-  const quickVoicePrompts = [
-    { label: 'YouTube Trends', prompt: "Find today's trending topics for YouTube." },
-    { label: 'Produce Video', prompt: 'Create a 60-second Short on autonomous AI agents' },
-    { label: 'PDF Docs', prompt: 'Search my uploaded PDF documents for summary and key data' },
-    { label: 'My Location', prompt: 'Where am I right now? Live location telemetry' },
-    { label: 'System Stats', prompt: 'System telemetry status' },
-    { label: 'Search Web', prompt: 'Search the web for latest AI breakthroughs' },
-    { label: 'FLUX Image', prompt: 'Generate an image of cybernetic neural city' },
-    { label: 'Diagram', prompt: 'Create architecture diagram of microservices' },
-    { label: 'Research', prompt: 'Scientific research on quantum entanglement' },
-    { label: 'Take Note', prompt: 'Take note: Review system telemetry today' }
-  ]
-
   return (
     <div className="h-full w-full bg-transparent flex flex-col relative selection:bg-[#00ff41]/30 min-h-0 flex-1 overflow-hidden">
       <div className="absolute top-[10%] left-[-5%] w-[40vw] h-[40vw] bg-[#00ff41] rounded-full mix-blend-screen blur-[180px] opacity-[0.03] pointer-events-none z-0"></div>
@@ -194,32 +181,6 @@ export default function Dashboard({
               onStopSpeaking={stopSpeaking}
               onSubmitPrompt={submitVoicePrompt}
             />
-
-            {/* Quick Voice Command Chips */}
-            {isConnected && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="flex items-center gap-1.5 flex-wrap justify-center max-w-lg mt-0.5"
-              >
-                {quickVoicePrompts.map((item, idx) => (
-                  <motion.button
-                    key={item.label}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.03, duration: 0.18 }}
-                    whileHover={{ scale: 1.05, y: -1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => submitVoicePrompt?.(item.prompt)}
-                    className="cursor-pointer px-2.5 py-1 rounded-full bg-zinc-900/70 hover:bg-[#00ff41]/10 border border-white/10 hover:border-[#00ff41]/40 text-zinc-400 hover:text-[#00ff41] text-[10px] font-mono transition-all duration-200"
-                    title={`Speak or trigger: "${item.prompt}"`}
-                  >
-                    🎤 {item.label}
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
           </div>
 
           {/* Control Capsule */}

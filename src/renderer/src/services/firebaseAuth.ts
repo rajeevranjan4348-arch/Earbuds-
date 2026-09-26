@@ -4,7 +4,15 @@
  * Strictly guarantees that every memory read, write, search, and deletion is scoped
  * to the authenticated Firebase user UID.
  */
-import { auth } from '../lib/firebase'
+import {
+  auth,
+  browserLocalPersistence,
+  setPersistence,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  ensureLocalPersistence
+} from '../lib/firebase'
 import { onAuthStateChanged as onFirebaseAuthStateChanged } from 'firebase/auth'
 
 export interface FirebaseUser {
@@ -181,6 +189,74 @@ class FirebaseAuthService {
     if (PRESET_USERS[index]) {
       this.switchUser(PRESET_USERS[index])
     }
+  }
+
+  /**
+   * Sign in with Email and Password ensuring local persistence
+   */
+  public async signInWithEmail(email: string, pass: string): Promise<FirebaseUser> {
+    await ensureLocalPersistence()
+    await setPersistence(auth, browserLocalPersistence)
+    const cred = await signInWithEmailAndPassword(auth, email, pass)
+    const user: FirebaseUser = {
+      uid: cred.user.uid,
+      email: cred.user.email || email,
+      displayName: cred.user.displayName || email.split('@')[0],
+      isAnonymous: false,
+      role: 'Authenticated User'
+    }
+    this.currentUser = user
+    this.saveUser()
+    return user
+  }
+
+  /**
+   * Create account with Email and Password ensuring local persistence
+   */
+  public async signUpWithEmail(email: string, pass: string): Promise<FirebaseUser> {
+    await ensureLocalPersistence()
+    await setPersistence(auth, browserLocalPersistence)
+    const cred = await createUserWithEmailAndPassword(auth, email, pass)
+    const user: FirebaseUser = {
+      uid: cred.user.uid,
+      email: cred.user.email || email,
+      displayName: cred.user.displayName || email.split('@')[0],
+      isAnonymous: false,
+      role: 'Authenticated User'
+    }
+    this.currentUser = user
+    this.saveUser()
+    return user
+  }
+
+  /**
+   * Sign in with Google ensuring local persistence
+   */
+  public async signInWithGoogle(): Promise<FirebaseUser> {
+    await ensureLocalPersistence()
+    await setPersistence(auth, browserLocalPersistence)
+    const res = await firebaseSignInWithGoogle()
+    const user: FirebaseUser = {
+      uid: res.user.uid,
+      email: res.user.email || '',
+      displayName: res.user.displayName || 'Google User',
+      isAnonymous: false,
+      role: 'Authenticated Google User'
+    }
+    this.currentUser = user
+    this.saveUser()
+    return user
+  }
+  /**
+   * Explicit sign out
+   */
+  public async logout(): Promise<void> {
+    try {
+      await auth.signOut()
+    } catch (_e) {}
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    this.currentUser = PRESET_USERS[0]
+    this.saveUser()
   }
 }
 

@@ -25,10 +25,13 @@ import {
 } from 'react-icons/ri'
 import {
   auth,
+  browserLocalPersistence,
+  setPersistence,
   signInWithGoogle,
   logOutGoogle,
   getCachedAccessToken,
-  setCachedAccessToken
+  setCachedAccessToken,
+  useAuth
 } from '../lib/firebase'
 import { GoogleWorkspaceService, WorkspaceItem } from '../services/workspace'
 import { User } from 'firebase/auth'
@@ -57,7 +60,8 @@ type WorkspaceTab =
   | 'PICKER'
 
 export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => {
-  const [user, setUser] = useState<User | null>(auth.currentUser)
+  const { authLoading, user: authUser } = useAuth()
+  const [user, setUser] = useState<User | null>(() => auth.currentUser)
   const [token, setToken] = useState<string | null>(getCachedAccessToken())
   const [activeSubTab, setActiveSubTab] = useState<WorkspaceTab>('HUB')
   const [items, setItems] = useState<WorkspaceItem[]>([])
@@ -122,6 +126,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   const handleSignIn = async () => {
     try {
       setStatusMessage('Authenticating with Google Workspace...')
+      await setPersistence(auth, browserLocalPersistence)
       const res = await signInWithGoogle()
       setUser(res.user)
       setToken(res.accessToken)
@@ -140,9 +145,13 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
         })
       }).catch(() => {})
     } catch (err: any) {
-      console.error('Google Sign In failed:', err)
-      setStatusMessage(`Sign in failed: ${err.message || 'Access popup closed'}`)
-      setTimeout(() => setStatusMessage(null), 4000)
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        setStatusMessage('Sign-in cancelled.')
+      } else {
+        console.error('Google Sign In failed:', err)
+        setStatusMessage(`Sign in failed: ${err.message || 'Access popup closed'}`)
+      }
+      setTimeout(() => setStatusMessage(null), 3000)
     }
   }
 
@@ -443,7 +452,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   ]
 
   return (
-    <div className="flex flex-col h-full w-full gap-3 overflow-hidden text-zinc-100 font-mono">
+    <div className="flex-1 min-h-0 flex flex-col h-full w-full gap-3 overflow-hidden text-zinc-100 font-mono">
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-950/80 border border-white/10 rounded-xl backdrop-blur-md shrink-0">
         <div className="flex items-center gap-2.5">
@@ -555,7 +564,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
       {/* Main Content Area */}
       {activeSubTab === 'HUB' ? (
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <WorkspaceHub onSelectServiceTab={(tabId) => setActiveSubTab(tabId as WorkspaceTab)} />
         </div>
       ) : activeSubTab === 'TELEMETRY' ? (
@@ -563,7 +572,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
           <WorkspaceTelemetryAnalytics />
         </div>
       ) : activeSubTab === 'DIAGNOSTICS' ? (
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <AuthFailureView
             onReauthenticate={handleSignIn}
             onNavigateService={(tabId) => setActiveSubTab(tabId as WorkspaceTab)}
@@ -571,7 +580,11 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
         </div>
       ) : (
         <div className="flex-1 min-h-0 bg-zinc-950/80 border border-white/10 rounded-xl p-4 flex flex-col overflow-hidden shadow-2xl">
-          {!token ? (
+          {authLoading ? (
+            <div className="h-full w-full flex items-center justify-center">
+              <WorkspaceSkeleton />
+            </div>
+          ) : !token ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
                 <RiGoogleFill size={26} />
@@ -592,7 +605,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
               </button>
             </div>
           ) : (
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex flex-col h-full min-h-0 overflow-hidden">
             {/* Context Header for Sub-Tab */}
             <div className="flex items-center justify-between pb-3 border-b border-white/5 shrink-0">
               <div className="flex items-center gap-2 text-xs text-zinc-300">

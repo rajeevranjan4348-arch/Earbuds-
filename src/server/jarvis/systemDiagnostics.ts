@@ -81,7 +81,7 @@ export class SystemDiagnostics {
       const { GoogleGenAI } = await import('@google/genai')
       const ai = new GoogleGenAI({ apiKey: key })
       await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents: [{ text: 'ping' }]
       })
 
@@ -89,7 +89,7 @@ export class SystemDiagnostics {
         name: 'AI Provider (Gemini)',
         category: 'ai',
         status: 'OK',
-        message: 'Gemini 2.5 Flash operational and responsive.',
+        message: 'Gemini 3.8 Flash operational and responsive.',
         latencyMs: Date.now() - start
       }
     } catch (err: any) {

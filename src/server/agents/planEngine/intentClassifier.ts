@@ -332,6 +332,160 @@ export class IntentClassifier {
       }
     }
 
+    // Single step: Repository & Codebase Analysis (gstack)
+    if (
+      lower.includes('analyze repo') ||
+      lower.includes('analyze this repo') ||
+      lower.includes('analyze repository') ||
+      lower.includes('inspect project structure') ||
+      lower.includes('scan codebase')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Analyze project structure and repository dependencies with gstack code intelligence',
+        entities: { target: 'current_workspace' },
+        suggestedTools: ['gstack_analyze_repo'],
+        confidence: 0.98,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Autoplan & Multi-perspective Review (gstack)
+    if (
+      lower.includes('autoplan') ||
+      lower.includes('run all reviews') ||
+      lower.includes('automatic review pipeline') ||
+      lower.includes('review this plan automatically')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Run gstack Autoplan gauntlet across CEO, Eng, Design, and DevEx reviews',
+        entities: { plan: text },
+        suggestedTools: ['gstack_autoplan'],
+        confidence: 0.97,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Specialist Plan Review (gstack CEO, Eng, Design, DevEx)
+    if (
+      lower.includes('ceo review') ||
+      lower.includes('eng review') ||
+      lower.includes('architecture review') ||
+      lower.includes('design review') ||
+      lower.includes('devex review')
+    ) {
+      const subRole = lower.includes('ceo') ? 'ceo' : lower.includes('design') ? 'design' : lower.includes('devex') ? 'devex' : 'eng'
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: `Execute gstack ${subRole.toUpperCase()} specialist review`,
+        entities: { subRole, plan: text },
+        suggestedTools: ['gstack_specialist_review'],
+        confidence: 0.96,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Investigation & Build Debugging (gstack)
+    if (
+      lower.includes('investigate') ||
+      lower.includes('build problem') ||
+      lower.includes('why the build is failing') ||
+      lower.includes('diagnose error') ||
+      lower.includes('debug this failure')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Diagnose failure layer and formulate verified repair hypothesis using gstack investigate',
+        entities: { query: text },
+        suggestedTools: ['gstack_investigate_debug'],
+        confidence: 0.97,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Verification Gate (gstack)
+    if (
+      lower.includes('run the tests') ||
+      lower.includes('run verification') ||
+      lower.includes('verify gate') ||
+      lower.includes('run build checks')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Execute gstack verification gate across declared test, lint, and typecheck scripts',
+        entities: {},
+        suggestedTools: ['gstack_verify_gate'],
+        confidence: 0.98,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: CSO Security Audit & Redaction (gstack)
+    if (
+      lower.includes('cso') ||
+      lower.includes('scan for secrets') ||
+      lower.includes('credential leak') ||
+      lower.includes('security audit')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Audit source code and diffs for leaked secrets and high-tier credentials using gstack CSO',
+        entities: { text },
+        suggestedTools: ['gstack_cso_security_audit'],
+        confidence: 0.96,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Ship & Release Readiness (gstack)
+    if (
+      lower.includes('ready to ship') ||
+      lower.includes('prepare commit') ||
+      lower.includes('ship checklist')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Evaluate git cleanliness, verification gates, and secret leaks for release readiness',
+        entities: {},
+        suggestedTools: ['gstack_ship_check'],
+        confidence: 0.96,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
+    // Single step: Decision Ledger (gstack)
+    if (
+      lower.includes('record decision') ||
+      lower.includes('active decisions') ||
+      lower.includes('what did we decide')
+    ) {
+      return {
+        cleanedInput: text,
+        category: 'single_step',
+        primaryGoal: 'Access or record institutional architecture decisions using gstack decision ledger',
+        entities: { text },
+        suggestedTools: ['gstack_decision_log'],
+        confidence: 0.95,
+        isAmbiguous: false,
+        contextReferences
+      }
+    }
+
     // Generic multi-step detection based on conjunctions
     if (hasMultipleActions) {
       return {
@@ -389,10 +543,10 @@ export class IntentClassifier {
       try {
         const toolsList = toolRegistry.getToolDefinitions().map((t) => `${t.name}: ${t.description}`).join('\n')
         const candidateModels = [
-          'gemini-2.5-flash',
+          'gemini-3.8-flash',
           'gemini-flash-latest',
-          'gemini-2.5-flash-lite',
-          'gemini-3.8-flash'
+          'gemini-2.5-flash',
+          'gemini-2.5-flash-lite'
         ]
 
         let responseText = ''

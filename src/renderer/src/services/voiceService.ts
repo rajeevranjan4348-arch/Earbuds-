@@ -8,7 +8,7 @@
  */
 
 import { voiceCommandProcessor } from './voiceCommandProcessor'
-import { chatHistoryService } from './chatHistoryService'
+import { chatHistoryService, extractAndNormalizeUrls } from './chatHistoryService'
 import { normalizeAIResponse } from './aiResponseNormalizer'
 
 export type VoiceStatus =
@@ -1085,10 +1085,13 @@ class VoiceService {
       conversationId: activeSessionId,
       requestId,
       role: 'user' as const,
+      mode: 'voice' as const,
       text: text,
+      transcript: text,
       content: text,
       timestamp: Date.now(),
       inputType,
+      status: 'success' as const,
       audioState: (inputType === 'voice' ? 'transcribed' : 'none') as any,
       isFinal: true
     }
@@ -1205,6 +1208,34 @@ class VoiceService {
 
     const iris = (window as any).iris
     const assistantMsgId = `msg_model_${requestId}`
+    const activeSessionId = chatHistoryService.getActiveSessionId()
+    const { normalizedText, urls } = extractAndNormalizeUrls(displayText)
+
+    // Immediate persistence: Save assistant message BEFORE audio playback starts
+    // Ensures conversation history survives even if TTS fails, audio is interrupted, or user navigates
+    const initialAssistantMsg = {
+      id: assistantMsgId,
+      messageId: assistantMsgId,
+      conversationId: activeSessionId,
+      requestId,
+      role: 'assistant' as const,
+      mode: 'voice' as const,
+      text: normalizedText,
+      transcript: normalizedText,
+      content: normalizedText,
+      timestamp: Date.now(),
+      inputType,
+      status: finalStatus,
+      audioState: (inputType === 'voice' ? 'speaking' : 'none') as any,
+      links: urls
+    }
+
+    try {
+      chatHistoryService.addMessage(activeSessionId, initialAssistantMsg)
+      console.log('[IRIS][CHAT] Assistant message persisted immediately:', assistantMsgId, 'in session:', activeSessionId)
+    } catch (dbErr) {
+      console.warn('[IRIS][DB] Error persisting assistant message:', dbErr)
+    }
 
     if (this.activeStreamInterval) {
       clearInterval(this.activeStreamInterval)
@@ -1212,7 +1243,7 @@ class VoiceService {
     }
 
     // Stream text in responsive word chunks
-    const words = displayText.split(' ')
+    const words = normalizedText.split(' ')
     let i = 0
 
     this.activeStreamInterval = setInterval(() => {
@@ -1221,6 +1252,7 @@ class VoiceService {
         iris?.emitTranscript?.({
           id: assistantMsgId,
           messageId: assistantMsgId,
+          conversationId: activeSessionId,
           requestId,
           role: 'model',
           text: chunk,
@@ -1235,26 +1267,27 @@ class VoiceService {
           clearInterval(this.activeStreamInterval)
           this.activeStreamInterval = null
         }
-        const activeSessionId = chatHistoryService.getActiveSessionId()
         const assistantMsg = {
           id: assistantMsgId,
           messageId: assistantMsgId,
           conversationId: activeSessionId,
           requestId,
           role: 'assistant' as const,
-          text: displayText,
-          content: displayText,
+          mode: 'voice' as const,
+          text: normalizedText,
+          transcript: normalizedText,
+          content: normalizedText,
           timestamp: Date.now(),
           inputType,
           status: finalStatus,
-          audioState: (inputType === 'voice' ? 'speaking' : 'none') as any
+          audioState: (inputType === 'voice' ? 'speaking' : 'none') as any,
+          links: urls
         }
 
         try {
           chatHistoryService.addMessage(activeSessionId, assistantMsg)
-          console.log('[IRIS][CHAT] Assistant message persisted:', assistantMsgId, 'in session:', activeSessionId)
         } catch (dbErr) {
-          console.warn('[IRIS][DB] Error persisting assistant message:', dbErr)
+          console.warn('[IRIS][DB] Error updating assistant message:', dbErr)
         }
 
         iris?.emitTranscriptComplete?.(assistantMsg)

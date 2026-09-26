@@ -37,6 +37,7 @@ import { VoiceCommandRouter } from './VoiceCommandRouter'
 import { voiceSettings } from './VoiceSettings'
 import { agentClientService } from '../agentClientService'
 import { voiceTranscriptStorage } from './VoiceTranscriptStorage'
+import { chatHistoryService } from '../chatHistoryService'
 import { aiInputPipeline } from './AIInputPipeline'
 import { responseStreamManager } from './ResponseStreamManager'
 
@@ -463,11 +464,26 @@ export class VoiceSessionManager {
     }
 
     if (!this.activeStorageSessionId) {
-      const storageSession = voiceTranscriptStorage.startNewSession({
-        personality: this.config.personality,
-        language: this.config.language
-      })
-      this.activeStorageSessionId = storageSession.id
+      this.activeStorageSessionId = chatHistoryService.getActiveSessionId()
+    }
+
+    // Hydrate conversationHistory from active unified chat session to maintain complete continuity between text & voice
+    if (this.conversationHistory.length === 0 && this.activeStorageSessionId) {
+      const activeSession = chatHistoryService.getActiveSession(this.activeStorageSessionId)
+      if (activeSession && Array.isArray(activeSession.messages) && activeSession.messages.length > 0) {
+        this.conversationHistory = activeSession.messages.map((m) => ({
+          id: m.id,
+          role: m.role === 'model' || m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+          text: m.text || m.content || m.transcript || '',
+          timestamp: m.timestamp || Date.now(),
+          language: 'auto',
+          metadata: {
+            inputMode: m.mode || (m.inputType === 'voice' ? 'voice' : 'text'),
+            timestamp: new Date(m.timestamp || Date.now()).toISOString()
+          }
+        }))
+        this.notify('transcript_updated', { history: this.conversationHistory })
+      }
     }
 
     // Check permission state first
@@ -824,6 +840,10 @@ export class VoiceSessionManager {
       }
 
       this.conversationHistory.push(fallbackMsg)
+      voiceTranscriptStorage.recordTurn(this.activeStorageSessionId, fallbackMsg, {
+        personality: this.config.personality,
+        language: this.config.language
+      })
       this.notify('transcript_updated', { message: fallbackMsg, history: this.conversationHistory })
 
       this.transitionToCanonical('speaking')
@@ -882,6 +902,9 @@ export class VoiceSessionManager {
   public loadHistoricalSession(messages: VoiceTurnMessage[], sessionId?: string): void {
     this.conversationHistory = [...messages]
     this.activeStorageSessionId = sessionId || null
+    if (sessionId) {
+      chatHistoryService.setActiveSessionId(sessionId)
+    }
     this.notify('transcript_updated', { history: this.conversationHistory })
   }
 

@@ -398,7 +398,7 @@ Output strictly valid JSON with this format:
 }`
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -633,7 +633,7 @@ Provide:
 Keep it natural, accurate, and ready for display and voice speech.`
 
         const resp = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: prompt
         })
 

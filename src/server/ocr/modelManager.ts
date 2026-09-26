@@ -187,7 +187,7 @@ Return ONLY valid, parseable JSON matching this EXACT structure:
 Do NOT wrap the JSON in Markdown backticks or commentary.`
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: [
             {
               role: 'user',

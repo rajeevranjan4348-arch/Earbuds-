@@ -501,7 +501,7 @@ export class GeminiLiveService {
     let spokenText = ''
     try {
       const textRes = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.8-flash',
         contents: fullPrompt
       })
       spokenText = textRes.text?.trim() || ''
@@ -587,7 +587,7 @@ export class GeminiLiveService {
     if (ai && chunkToProcess) {
       try {
         const audioResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: [
             {
               parts: [

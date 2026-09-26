@@ -1,6 +1,7 @@
 import { VoiceTurnMessage, VoicePersonalityId, SupportedLanguage } from './VoiceTypes'
 import { getPersonality } from './personalities'
 import { safeJsonStringify } from '../../lib/safeJson'
+import { chatHistoryService, Message as UnifiedMessage, ChatSession as UnifiedChatSession } from '../chatHistoryService'
 
 export interface VoiceInteractionSession {
   id: string
@@ -17,42 +18,119 @@ export interface VoiceInteractionSession {
   createdAt: string
 }
 
-const STORAGE_KEY = 'iris_voice_transcript_history_v1'
-const MAX_SESSIONS_STORED = 100
+const LEGACY_STORAGE_KEY = 'iris_voice_transcript_history_v1'
 
 export class VoiceTranscriptStorageService {
   private activeSessionId: string | null = null
   private listeners: Set<(sessions: VoiceInteractionSession[]) => void> = new Set()
 
   constructor() {
-    // Attempt auto-migration or cleanup on initialization
-    this.ensureStorageInit()
+    this.initSyncAndMigration()
   }
 
-  private ensureStorageInit(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return
+  /**
+   * Initializes listeners to unified chat history updates and migrates legacy voice storage
+   */
+  private initSyncAndMigration(): void {
+    if (typeof window === 'undefined') return
+
+    // Auto-migrate legacy isolated voice transcripts into unified chatHistoryService
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
+      const rawLegacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (rawLegacy) {
+        const legacySessions = JSON.parse(rawLegacy)
+        if (Array.isArray(legacySessions) && legacySessions.length > 0) {
+          const currentUnified = chatHistoryService.getSessions()
+          for (const leg of legacySessions) {
+            if (leg && leg.id && !currentUnified.some((s) => s.id === leg.id)) {
+              const mappedMessages: UnifiedMessage[] = (leg.messages || []).map((m: any) => ({
+                id: m.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                conversationId: leg.id,
+                role: m.role === 'assistant' ? 'assistant' : 'user',
+                mode: 'voice' as const,
+                inputType: 'voice' as const,
+                text: m.text || '',
+                transcript: m.text || '',
+                content: m.text || '',
+                timestamp: m.timestamp || leg.startTime || Date.now(),
+                status: 'success' as const
+              }))
+
+              const newSession: UnifiedChatSession = {
+                id: leg.id,
+                title: leg.title || 'Voice Conversation',
+                createdAt: leg.startTime || Date.now(),
+                updatedAt: leg.endTime || leg.startTime || Date.now(),
+                lastMode: 'voice',
+                messages: mappedMessages
+              }
+              currentUnified.push(newSession)
+            }
+          }
+          chatHistoryService.saveSessions(currentUnified)
+          // Clean legacy key once migrated
+          localStorage.removeItem(LEGACY_STORAGE_KEY)
+        }
       }
     } catch (e) {
-      console.warn('[VoiceTranscriptStorage] Storage init warning:', e)
+      console.warn('[VoiceTranscriptStorage] Legacy migration notice:', e)
     }
+
+    // Listen to unified session update broadcasts across app
+    window.addEventListener('iris:sessions-updated', () => {
+      this.notifyListeners(this.getAllSessions())
+    })
+
+    window.addEventListener('iris:active-session-changed', (e: any) => {
+      if (e?.detail) {
+        this.activeSessionId = e.detail
+      }
+    })
   }
 
+  /**
+   * Returns all unified sessions as VoiceInteractionSessions, preserving unified history
+   */
   public getAllSessions(): VoiceInteractionSession[] {
-    if (typeof window === 'undefined' || !window.localStorage) return []
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return []
-      const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed)) {
-        return parsed.sort((a, b) => (b.startTime || 0) - (a.startTime || 0))
-      }
-      return []
+      const unifiedSessions = chatHistoryService.getSessions()
+      const personality = getPersonality('jarvis')
+
+      return unifiedSessions.map((cs) => {
+        const voiceMessages: VoiceTurnMessage[] = (cs.messages || []).map((m) => ({
+          id: m.id,
+          role: m.role === 'model' || m.role === 'assistant' ? 'assistant' : 'user',
+          text: m.text || m.content || m.transcript || '',
+          timestamp: m.timestamp || cs.createdAt,
+          language: 'auto',
+          metadata: {
+            inputMode: m.mode || (m.inputType === 'voice' ? 'voice' : 'text'),
+            wakeWord: 'Hey JARVIS',
+            voiceMode: 'jarvis',
+            timestamp: new Date(m.timestamp || cs.createdAt).toISOString()
+          }
+        }))
+
+        const lastMsg = cs.messages && cs.messages.length > 0 ? cs.messages[cs.messages.length - 1] : null
+        const preview = lastMsg ? (lastMsg.text || lastMsg.transcript || '').slice(0, 100) : 'Conversation started'
+
+        return {
+          id: cs.id,
+          startTime: cs.createdAt,
+          endTime: cs.updatedAt,
+          personality: 'jarvis',
+          personalityName: personality.name,
+          personalityColor: personality.accentColor || '#10b981',
+          language: 'auto',
+          title: cs.title || 'Conversation',
+          previewText: preview,
+          messages: voiceMessages,
+          totalTurns: voiceMessages.length,
+          createdAt: new Date(cs.createdAt).toISOString()
+        }
+      })
     } catch (err) {
-      console.error('[VoiceTranscriptStorage] Failed to parse sessions:', err)
+      console.error('[VoiceTranscriptStorage] Failed to read unified sessions:', err)
       return []
     }
   }
@@ -63,145 +141,106 @@ export class VoiceTranscriptStorageService {
   }
 
   public getActiveSessionId(): string | null {
-    return this.activeSessionId
+    return this.activeSessionId || chatHistoryService.getActiveSessionId()
   }
 
   public setActiveSessionId(id: string | null): void {
     this.activeSessionId = id
+    if (id) {
+      chatHistoryService.setActiveSessionId(id)
+    }
   }
 
-  public startNewSession(config: {
-    personality: VoicePersonalityId
-    language: SupportedLanguage
+  public startNewSession(config?: {
+    personality?: VoicePersonalityId
+    language?: SupportedLanguage
   }): VoiceInteractionSession {
-    const personality = getPersonality(config.personality)
-    const newId = `vts_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
-    const now = Date.now()
+    const personality = getPersonality(config?.personality || 'jarvis')
+    const newSessionId = chatHistoryService.createNewSession()
+    this.activeSessionId = newSessionId
 
-    const session: VoiceInteractionSession = {
-      id: newId,
-      startTime: now,
-      personality: config.personality,
+    const newSession: VoiceInteractionSession = {
+      id: newSessionId,
+      startTime: Date.now(),
+      personality: config?.personality || 'jarvis',
       personalityName: personality.name,
       personalityColor: personality.accentColor || '#10b981',
-      language: config.language,
+      language: config?.language || 'auto',
       title: `Voice Session with ${personality.name}`,
       previewText: 'Started voice interaction session',
       messages: [],
       totalTurns: 0,
-      createdAt: new Date(now).toISOString()
+      createdAt: new Date().toISOString()
     }
 
-    this.activeSessionId = newId
-    this.saveSession(session)
-    return session
+    this.notifyListeners(this.getAllSessions())
+    return newSession
   }
 
   public recordTurn(
     sessionId: string | null,
     message: VoiceTurnMessage,
-    config?: {
+    _config?: {
       personality?: VoicePersonalityId
       language?: SupportedLanguage
     }
   ): VoiceInteractionSession {
-    let session: VoiceInteractionSession | null = null
-    const all = this.getAllSessions()
+    const targetSessionId = sessionId || this.activeSessionId || chatHistoryService.getActiveSessionId()
 
-    if (sessionId) {
-      session = all.find((s) => s.id === sessionId) || null
+    // Persist to unified chat history
+    const unifiedMsg: UnifiedMessage = {
+      id: message.id,
+      messageId: message.id,
+      conversationId: targetSessionId,
+      role: message.role === 'user' ? 'user' : 'assistant',
+      mode: 'voice',
+      inputType: 'voice',
+      text: message.text,
+      transcript: message.text,
+      content: message.text,
+      timestamp: message.timestamp || Date.now(),
+      status: 'success',
+      audioState: message.role === 'user' ? 'transcribed' : 'none'
     }
 
-    if (!session) {
-      // Create new session if no active session found
-      const personalityId = config?.personality || 'jarvis'
-      const personality = getPersonality(personalityId)
-      const now = Date.now()
-      const newId = sessionId || `vts_${now}_${Math.random().toString(36).substring(2, 7)}`
+    chatHistoryService.addMessage(targetSessionId, unifiedMsg)
+    const updated = this.getSession(targetSessionId)
+    this.notifyListeners(this.getAllSessions())
 
-      session = {
-        id: newId,
-        startTime: now,
-        personality: personalityId,
-        personalityName: personality.name,
-        personalityColor: personality.accentColor || '#10b981',
-        language: config?.language || 'auto',
-        title: message.role === 'user' ? this.generateTitle(message.text) : `Voice Session with ${personality.name}`,
-        previewText: message.text.substring(0, 100),
-        messages: [],
-        totalTurns: 0,
-        createdAt: new Date(now).toISOString()
-      }
-      this.activeSessionId = newId
+    if (updated) return updated
+
+    return {
+      id: targetSessionId,
+      startTime: Date.now(),
+      personality: 'jarvis',
+      personalityName: 'JARVIS',
+      personalityColor: '#10b981',
+      language: 'auto',
+      title: this.generateTitle(message.text),
+      previewText: message.text.slice(0, 100),
+      messages: [message],
+      totalTurns: 1,
+      createdAt: new Date().toISOString()
     }
-
-    // Append or deduplicate message
-    const existingIndex = session.messages.findIndex((m) => m.id === message.id)
-    if (existingIndex >= 0) {
-      session.messages[existingIndex] = message
-    } else {
-      session.messages.push(message)
-    }
-
-    session.endTime = Date.now()
-    session.totalTurns = session.messages.length
-
-    // Update title based on first user question if still default
-    if (message.role === 'user' && (!session.title || session.title.startsWith('Voice Session with'))) {
-      session.title = this.generateTitle(message.text)
-    }
-
-    // Update preview with the latest message text
-    session.previewText = message.text.slice(0, 120).replace(/\n+/g, ' ')
-
-    this.saveSession(session)
-    return session
   }
 
-  public saveSession(session: VoiceInteractionSession): void {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    try {
-      const all = this.getAllSessions()
-      const index = all.findIndex((s) => s.id === session.id)
-
-      if (index >= 0) {
-        all[index] = session
-      } else {
-        all.unshift(session)
-      }
-
-      // Limit storage array to max stored sessions to prevent localStorage overflow
-      const trimmed = all.slice(0, MAX_SESSIONS_STORED)
-      localStorage.setItem(STORAGE_KEY, safeJsonStringify(trimmed))
-      this.notifyListeners(trimmed)
-    } catch (err) {
-      console.error('[VoiceTranscriptStorage] Failed to save session:', err)
-    }
+  public saveSession(_session: VoiceInteractionSession): void {
+    // Already unified via chatHistoryService
+    this.notifyListeners(this.getAllSessions())
   }
 
   public deleteSession(id: string): void {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    try {
-      const all = this.getAllSessions().filter((s) => s.id !== id)
-      localStorage.setItem(STORAGE_KEY, safeJsonStringify(all))
-      if (this.activeSessionId === id) {
-        this.activeSessionId = null
-      }
-      this.notifyListeners(all)
-    } catch (err) {
-      console.error('[VoiceTranscriptStorage] Failed to delete session:', err)
+    chatHistoryService.deleteSession(id)
+    if (this.activeSessionId === id) {
+      this.activeSessionId = chatHistoryService.getActiveSessionId()
     }
+    this.notifyListeners(this.getAllSessions())
   }
 
   public clearAll(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
-      this.activeSessionId = null
-      this.notifyListeners([])
-    } catch (err) {
-      console.error('[VoiceTranscriptStorage] Failed to clear sessions:', err)
-    }
+    chatHistoryService.clearAllSessions()
+    this.activeSessionId = chatHistoryService.getActiveSessionId()
+    this.notifyListeners(this.getAllSessions())
   }
 
   public searchSessions(query: string): VoiceInteractionSession[] {
@@ -230,11 +269,19 @@ export class VoiceTranscriptStorageService {
       `==================================================\n`
     ].join('\n')
 
-    const turns = session.messages.map((m) => {
-      const timeStr = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
-      const speaker = m.role === 'user' ? 'USER' : session.personalityName.toUpperCase()
-      return `[${timeStr}] ${speaker}:\n${m.text}\n`
-    }).join('\n')
+    const turns = session.messages
+      .map((m) => {
+        const timeStr = m.timestamp
+          ? new Date(m.timestamp).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })
+          : ''
+        const speaker = m.role === 'user' ? 'USER' : session.personalityName.toUpperCase()
+        return `[${timeStr}] ${speaker}:\n${m.text}\n`
+      })
+      .join('\n')
 
     return `${header}\n${turns}`
   }
@@ -245,7 +292,6 @@ export class VoiceTranscriptStorageService {
 
   public subscribe(listener: (sessions: VoiceInteractionSession[]) => void): () => void {
     this.listeners.add(listener)
-    // Immediately invoke with current state
     listener(this.getAllSessions())
     return () => {
       this.listeners.delete(listener)

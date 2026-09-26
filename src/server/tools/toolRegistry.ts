@@ -26,6 +26,7 @@ import {
   channelMemoryStore
 } from '../youtube'
 import { paddleOcrEngine } from '../ocr'
+import { gstackRouter } from '../gstack'
 
 export interface UnifiedTool {
   name: string
@@ -780,6 +781,135 @@ export class ToolRegistry {
       execute: async (args) => {
         return paddleOcrEngine.recognizeTable(args.tableImageData)
       }
+    })
+
+    // 31. gstack: Repository Analysis
+    this.tools.set('gstack_analyze_repo', {
+      name: 'gstack_analyze_repo',
+      description: 'Analyzes repository structure, dependencies, package manager, source file count, key directories, and declared scripts.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          projectDir: { type: 'STRING', description: 'Root directory of the project (defaults to current workspace).' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 15000,
+      execute: async (args) => gstackRouter.executeSkill('repo_analysis', args)
+    })
+
+    // 32. gstack: Autoplan Gauntlet
+    this.tools.set('gstack_autoplan', {
+      name: 'gstack_autoplan',
+      description: 'Executes the multi-perspective software planning gauntlet chaining CEO, Eng, Design, and DevEx reviews with confidence scoring.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          plan: { type: 'STRING', description: 'Feature proposal, plan text, or prompt description to evaluate.' },
+          projectName: { type: 'STRING', description: 'Name of the project or target module.' }
+        },
+        required: ['plan']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 25000,
+      execute: async (args) => gstackRouter.executeSkill('autoplan', args)
+    })
+
+    // 33. gstack: Specialist Review (CEO, Eng, Design, DevEx)
+    this.tools.set('gstack_specialist_review', {
+      name: 'gstack_specialist_review',
+      description: 'Runs a specialist review mode (ceo, eng, design, devex) on architecture, user experience, product ambition, or developer velocity.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          subRole: { type: 'STRING', enum: ['ceo', 'eng', 'design', 'devex'], description: 'Specialist role perspective.' },
+          plan: { type: 'STRING', description: 'The proposal, architecture, or code snippet to review.' }
+        },
+        required: ['subRole', 'plan']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 20000,
+      execute: async (args) => gstackRouter.executeSkill('specialist_review', args)
+    })
+
+    // 34. gstack: Investigation & Root Cause Debugger
+    this.tools.set('gstack_investigate_debug', {
+      name: 'gstack_investigate_debug',
+      description: 'Systematically investigates build, compile, runtime, or dependency failures and diagnoses root causes with repair hypotheses.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          errorMessage: { type: 'STRING', description: 'Optional error message or stack trace to analyze.' },
+          filePath: { type: 'STRING', description: 'Optional file path associated with the failure.' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 30000,
+      execute: async (args) => gstackRouter.executeSkill('investigate', args)
+    })
+
+    // 35. gstack: Verification Gate
+    this.tools.set('gstack_verify_gate', {
+      name: 'gstack_verify_gate',
+      description: 'Executes declared verification checks (typecheck, lint, test, build) and returns structured pass/fail results with line-level diagnostics.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          projectDir: { type: 'STRING', description: 'Project directory to verify.' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 60000,
+      execute: async (args) => gstackRouter.executeSkill('verify_gate', args)
+    })
+
+    // 36. gstack: CSO Security Audit & Redaction
+    this.tools.set('gstack_cso_security_audit', {
+      name: 'gstack_cso_security_audit',
+      description: 'Scans text, configs, or repository diffs for credential leaks, tokens, API keys, private keys, and PII using linear-time redaction rules.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          text: { type: 'STRING', description: 'Content, code, or diff text to audit.' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 15000,
+      execute: async (args) => gstackRouter.executeSkill('cso_security', args)
+    })
+
+    // 37. gstack: Shipping & Release Safety Gate
+    this.tools.set('gstack_ship_check', {
+      name: 'gstack_ship_check',
+      description: 'Verifies release readiness, git working tree cleanliness, verification gate pass, diff secret check, and conventional commit recommendation.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          projectDir: { type: 'STRING', description: 'Project root directory.' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 45000,
+      execute: async (args) => gstackRouter.executeSkill('ship_workflow', args)
+    })
+
+    // 38. gstack: Decision Ledger
+    this.tools.set('gstack_decision_log', {
+      name: 'gstack_decision_log',
+      description: 'Records or queries architectural decisions (ADRs) with rationale, alternatives considered, and secret interception.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          action: { type: 'STRING', enum: ['record', 'list'], description: 'Whether to record a new decision or list active decisions.' },
+          title: { type: 'STRING', description: 'Title of the architectural decision.' },
+          decision: { type: 'STRING', description: 'The decision made.' },
+          rationale: { type: 'STRING', description: 'Why this decision was chosen.' },
+          alternativesConsidered: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Rejected alternatives.' }
+        }
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 10000,
+      execute: async (args) => gstackRouter.executeSkill('decision_ledger', args)
     })
   }
 

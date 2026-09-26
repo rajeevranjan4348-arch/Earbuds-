@@ -7,6 +7,8 @@
  * PCM audio playback, and supports immediate interruption (barge-in) and VAD.
  */
 
+import { chatHistoryService } from './chatHistoryService'
+
 export type LiveVoiceState =
   'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'interrupted' | 'error'
 
@@ -190,17 +192,43 @@ class GeminiLiveVoiceClient {
       if (msg.type === 'transcript') {
         const role = msg.role === 'user' ? 'user' : 'assistant'
         const existing = this.conversationHistory[this.conversationHistory.length - 1]
+        let turnMsgId: string
+        let turnText: string
 
         if (existing && existing.role === role && Date.now() - existing.timestamp < 3000) {
           existing.text += ` ${msg.text}`
+          turnMsgId = existing.id
+          turnText = existing.text
         } else {
+          turnMsgId = `live_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`
+          turnText = msg.text
           this.conversationHistory.push({
-            id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            id: turnMsgId,
             role,
-            text: msg.text,
+            text: turnText,
             timestamp: Date.now()
           })
         }
+
+        try {
+          const activeSessionId = chatHistoryService.getActiveSessionId()
+          chatHistoryService.addMessage(activeSessionId, {
+            id: turnMsgId,
+            messageId: turnMsgId,
+            conversationId: activeSessionId,
+            role: role === 'user' ? 'user' : 'assistant',
+            mode: 'voice',
+            text: turnText,
+            transcript: turnText,
+            content: turnText,
+            timestamp: Date.now(),
+            inputType: 'voice',
+            status: 'success'
+          })
+        } catch (_err) {
+          // Ignored
+        }
+
         this.notify(this.state, { history: this.conversationHistory })
         return
       }

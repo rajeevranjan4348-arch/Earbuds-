@@ -68,7 +68,7 @@ export class MultiAgentOrchestrator {
       return 'architecture'
     }
 
-    // 4. Codebase & Software Engineering
+    // 4. Codebase, Software Engineering & gstack Workflows
     if (
       p.includes('function') ||
       p.includes('refactor') ||
@@ -76,7 +76,23 @@ export class MultiAgentOrchestrator {
       p.includes('codebase') ||
       p.includes('typescript') ||
       p.includes('syntax error') ||
-      p.includes('unit test')
+      p.includes('unit test') ||
+      p.includes('analyze repo') ||
+      p.includes('analyze this repo') ||
+      p.includes('analyze repository') ||
+      p.includes('inspect project structure') ||
+      p.includes('autoplan') ||
+      p.includes('ceo review') ||
+      p.includes('eng review') ||
+      p.includes('design review') ||
+      p.includes('devex review') ||
+      p.includes('investigate') ||
+      p.includes('build problem') ||
+      p.includes('verify gate') ||
+      p.includes('run verification') ||
+      p.includes('run the tests') ||
+      p.includes('ship') ||
+      p.includes('decision')
     ) {
       return 'coding'
     }

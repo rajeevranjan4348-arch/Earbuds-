@@ -26,7 +26,7 @@ const DEFAULT_CENTER = { lat: 1.3521, lng: 103.8198 } // Default: Singapore / So
 
 export const GoogleMapsView = ({ glassPanel }: { glassPanel?: string }) => {
   const [apiKey, setApiKey] = useState<string>(
-    import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBpZJtNMY11VDNpQ905P_6RccN_83R0J6A'
+    import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDwkI0b4rxHK22fKRtKwsJniLNI_pJjveM'
   )
   const [center, setCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER)
   const [zoom, setZoom] = useState<number>(13)

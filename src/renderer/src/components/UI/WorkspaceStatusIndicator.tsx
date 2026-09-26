@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { RiGoogleFill, RiRefreshLine, RiShieldCheckLine, RiAlertLine, RiCloseCircleLine, RiExternalLinkLine } from 'react-icons/ri'
-import { getCachedAccessToken, setCachedAccessToken, signInWithGoogle } from '../../lib/firebase'
+import {
+  auth,
+  browserLocalPersistence,
+  setPersistence,
+  getCachedAccessToken,
+  setCachedAccessToken,
+  signInWithGoogle
+} from '../../lib/firebase'
 
 interface SessionInfo {
   isConnected: boolean
@@ -108,6 +115,7 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
     e?.stopPropagation()
     setIsLoading(true)
     try {
+      await setPersistence(auth, browserLocalPersistence)
       const res = await signInWithGoogle()
       setCachedAccessToken(res.accessToken)
       await fetch('/api/workspace/auth/session', {
@@ -199,7 +207,7 @@ export const WorkspaceStatusIndicator: React.FC<WorkspaceStatusIndicatorProps> =
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 w-80 p-3.5 rounded-2xl bg-zinc-950/95 border border-white/10 shadow-2xl backdrop-blur-2xl z-50 text-zinc-200 font-mono text-xs"
+            className="absolute right-0 top-full mt-2 w-80 max-h-[85vh] overflow-y-auto p-3.5 rounded-2xl bg-zinc-950/95 border border-white/10 shadow-2xl backdrop-blur-2xl z-50 text-zinc-200 font-mono text-xs custom-scrollbar"
           >
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">

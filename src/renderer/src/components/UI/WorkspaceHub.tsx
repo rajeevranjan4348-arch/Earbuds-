@@ -29,7 +29,15 @@ import {
   RiFileCopyLine,
   RiTerminalBoxLine
 } from 'react-icons/ri'
-import { signInWithGoogle, logOutGoogle, getCachedAccessToken, setCachedAccessToken } from '../../lib/firebase'
+import {
+  auth,
+  browserLocalPersistence,
+  setPersistence,
+  signInWithGoogle,
+  logOutGoogle,
+  getCachedAccessToken,
+  setCachedAccessToken
+} from '../../lib/firebase'
 import AuthFailureView from './AuthFailureView'
 import WorkspaceTelemetryAnalytics from './WorkspaceTelemetryAnalytics'
 import { RiPulseLine } from 'react-icons/ri'
@@ -324,6 +332,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
     setIsLoading(true)
     setActionMessage('Opening Google Authentication...')
     try {
+      await setPersistence(auth, browserLocalPersistence)
       const result = await signInWithGoogle()
       setCachedAccessToken(result.accessToken)
       await fetch('/api/workspace/auth/session', {
@@ -439,9 +448,9 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   const isExpired = session?.isExpired ?? false
 
   return (
-    <div className={`flex flex-col h-full w-full max-w-full overflow-hidden text-zinc-100 font-mono ${glassPanel}`}>
+    <div className={`flex flex-col h-full w-full max-w-full min-h-0 overflow-y-auto overflow-x-hidden text-zinc-100 font-mono custom-scrollbar ${glassPanel}`}>
       {/* Top Hub Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-zinc-950/80 border-b border-white/10 shrink-0">
+      <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 p-4 bg-zinc-950/95 backdrop-blur-md border-b border-white/10 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
             <RiGoogleFill size={22} />
@@ -608,10 +617,10 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-2 px-4 pt-3 border-b border-white/10 shrink-0 bg-zinc-950/20">
+      <div className="sticky top-[73px] z-10 flex items-center gap-2 px-4 pt-2.5 pb-1 border-b border-white/10 shrink-0 bg-zinc-950/95 backdrop-blur-md overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('SERVICES')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer shrink-0 ${
             activeTab === 'SERVICES'
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -623,7 +632,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
 
         <button
           onClick={() => setActiveTab('SCOPES')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer shrink-0 ${
             activeTab === 'SCOPES'
               ? 'border-blue-500 text-blue-400'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -635,7 +644,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
 
         <button
           onClick={() => setActiveTab('TROUBLESHOOT')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer shrink-0 ${
             activeTab === 'TROUBLESHOOT'
               ? 'border-amber-500 text-amber-400'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -652,7 +661,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
 
         <button
           onClick={() => setActiveTab('TELEMETRY')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer shrink-0 ${
             activeTab === 'TELEMETRY'
               ? 'border-[#00ff41] text-[#00ff41]'
               : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -665,7 +674,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+      <div className="flex-1 p-4">
         {/* TAB 1: CONNECTED SERVICES GRID */}
         {activeTab === 'SERVICES' && (
           <div className="space-y-4">

@@ -2,6 +2,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import {
   getAuth,
   signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
@@ -18,6 +20,7 @@ import {
   getDocFromServer,
   setLogLevel
 } from 'firebase/firestore'
+import { useState, useEffect } from 'react'
 import firebaseConfig from '../../../../firebase-applet-config.json'
 
 // Suppress non-fatal Firestore network timeout warnings in SDK logs
@@ -28,7 +31,18 @@ try {
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 
-// Enable browser local persistence for Auth
+/**
+ * Ensures browserLocalPersistence is active on the centralized auth instance
+ */
+export const ensureLocalPersistence = async (): Promise<void> => {
+  try {
+    await setPersistence(auth, browserLocalPersistence)
+  } catch (err) {
+    console.warn('[FirebaseAuth] Persistence setup error:', err)
+  }
+}
+
+// Enable browser local persistence immediately upon initialization
 try {
   setPersistence(auth, browserLocalPersistence).catch(() => {})
 } catch (_e) {}
@@ -169,7 +183,7 @@ export const initAuth = (
             }
           } catch (_e) {}
         }
-        if (onAuthFailure) onAuthFailure()
+        if (onAuthSuccess) onAuthSuccess(user, '')
       }
     } else {
       cachedAccessToken = null
@@ -178,9 +192,31 @@ export const initAuth = (
   })
 }
 
+/**
+ * Sign in with Email and Password using persistent browser storage
+ */
+export const signInWithEmail = async (email: string, pass: string): Promise<User> => {
+  await ensureLocalPersistence()
+  const cred = await signInWithEmailAndPassword(auth, email, pass)
+  return cred.user
+}
+
+/**
+ * Create user with Email and Password using persistent browser storage
+ */
+export const signUpWithEmail = async (email: string, pass: string): Promise<User> => {
+  await ensureLocalPersistence()
+  const cred = await createUserWithEmailAndPassword(auth, email, pass)
+  return cred.user
+}
+
+/**
+ * Sign in with Google Popup using persistent browser storage
+ */
 export const signInWithGoogle = async (): Promise<{ user: User; accessToken: string }> => {
   try {
     isSigningIn = true
+    await ensureLocalPersistence()
     const result = await signInWithPopup(auth, googleAuthProvider)
     const credential = GoogleAuthProvider.credentialFromResult(result)
     if (!credential?.accessToken) {
@@ -197,8 +233,12 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     })
 
     return { user: result.user, accessToken: cachedAccessToken }
-  } catch (error) {
-    console.error('Sign in error:', error)
+  } catch (error: any) {
+    if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request') {
+      console.info('[FirebaseAuth] Sign-in popup closed or cancelled by user.')
+    } else {
+      console.error('Sign in error:', error)
+    }
     throw error
   } finally {
     isSigningIn = false
@@ -232,6 +272,54 @@ export const logOutGoogle = async () => {
 export const testFirestoreConnection = async () => {
   // Silent no-op to allow Firestore offline persistence to manage sync seamlessly
   return true
+}
+
+/**
+ * Custom useAuth hook managing authLoading, loading, and user state across page reloads
+ */
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(auth.currentUser)
+  const [authLoading, setAuthLoading] = useState<boolean>(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    // Check initial cached user if available
+    if (auth.currentUser) {
+      setUser(auth.currentUser)
+      setAuthLoading(false)
+    }
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        setUser(firebaseUser)
+        setAuthLoading(false)
+        setError(null)
+      },
+      (err) => {
+        console.error('[useAuth] Auth state error:', err)
+        setError(err)
+        setAuthLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [])
+
+  return {
+    user,
+    authLoading,
+    loading: authLoading,
+    error,
+    isAuthenticated: !!user
+  }
+}
+
+export {
+  browserLocalPersistence,
+  setPersistence,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
 }
 
 export default app
