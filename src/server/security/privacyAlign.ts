@@ -20,23 +20,27 @@ export interface PrivacyEvaluation {
 }
 
 export class PrivacyAlignEngine {
-  // Common PII and Secret patterns
   private patterns = {
-    email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
-    phone: /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
-    creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
-    ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
-    ipv4: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
+    email: /\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b/g,
+    phone: /\\b(?:\\+?\\d{1,3}[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}\\b/g,
+    creditCard: /\\b(?:\\d{4}[-\\s]?){3}\\d{4}\\b/g,
+    ssn: /\\b\\d{3}-\\d{2}-\\d{4}\\b/g,
+    ipv4: /\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b/g,
     apiKey:
-      /\b(?:sk-[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35}|ghp_[a-zA-Z0-9]{36}|xox[baprs]-[0-9a-zA-Z]{10,})\b/g,
-    jwtToken: /\beyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/g,
+      /\\b(?:sk-[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35}|ghp_[a-zA-Z0-9]{36}|xox[baprs]-[0-9a-zA-Z]{10,})\\b/g,
+    jwtToken: /\\beyJ[a-zA-Z0-9_-]+\\.eyJ[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\b/g,
     passwordField:
-      /(?:password|passwd|pwd|secret|auth_token|bearer)\s*[:=]\s*["']?([^"'\s,;]+)["']?/gi
+      /(?:password|passwd|pwd|secret|auth_token|bearer)\\s*[:=]\\s*["']?([^"'\\s,;]+)["']?/gi
   }
 
-  /**
-   * Scans text and redacts PII / sensitive data
-   */
+  private matches(pattern: RegExp, text: string): boolean {
+    pattern.lastIndex = 0
+    const result = pattern.test(text)
+    pattern.lastIndex = 0
+    return result
+  }
+
+  /** Scans text and redacts PII / sensitive data. */
   public sanitize(text: string, preserveContext = true): PIIDetectionResult {
     if (!text || typeof text !== 'string') {
       return { hasPII: false, redactedText: '', detectedTypes: [], itemCount: 0 }
@@ -46,8 +50,7 @@ export class PrivacyAlignEngine {
     const detected: string[] = []
     let totalItems = 0
 
-    // 1. API Keys & Secrets (High Priority)
-    if (this.patterns.apiKey.test(redacted)) {
+    if (this.matches(this.patterns.apiKey, redacted)) {
       detected.push('API_KEY')
       redacted = redacted.replace(this.patterns.apiKey, (match) => {
         totalItems++
@@ -55,8 +58,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 2. Passwords and credentials in key-value format
-    if (this.patterns.passwordField.test(redacted)) {
+    if (this.matches(this.patterns.passwordField, redacted)) {
       detected.push('CREDENTIAL')
       redacted = redacted.replace(this.patterns.passwordField, (full, val) => {
         totalItems++
@@ -64,8 +66,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 3. JWT Tokens
-    if (this.patterns.jwtToken.test(redacted)) {
+    if (this.matches(this.patterns.jwtToken, redacted)) {
       detected.push('AUTH_TOKEN')
       redacted = redacted.replace(this.patterns.jwtToken, () => {
         totalItems++
@@ -73,8 +74,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 4. Credit Cards
-    if (this.patterns.creditCard.test(redacted)) {
+    if (this.matches(this.patterns.creditCard, redacted)) {
       detected.push('CREDIT_CARD')
       redacted = redacted.replace(this.patterns.creditCard, () => {
         totalItems++
@@ -82,8 +82,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 5. Social Security Numbers
-    if (this.patterns.ssn.test(redacted)) {
+    if (this.matches(this.patterns.ssn, redacted)) {
       detected.push('SSN')
       redacted = redacted.replace(this.patterns.ssn, () => {
         totalItems++
@@ -91,8 +90,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 6. Emails
-    if (this.patterns.email.test(redacted)) {
+    if (this.matches(this.patterns.email, redacted)) {
       detected.push('EMAIL')
       redacted = redacted.replace(this.patterns.email, (email) => {
         totalItems++
@@ -103,8 +101,7 @@ export class PrivacyAlignEngine {
       })
     }
 
-    // 7. Phone Numbers
-    if (this.patterns.phone.test(redacted)) {
+    if (this.matches(this.patterns.phone, redacted)) {
       detected.push('PHONE')
       redacted = redacted.replace(this.patterns.phone, () => {
         totalItems++
@@ -120,9 +117,6 @@ export class PrivacyAlignEngine {
     }
   }
 
-  /**
-   * Evaluates if data can be safely dispatched to an external API/model
-   */
   public evaluatePrivacy(
     content: string,
     target: 'external_llm' | 'web_search' | 'external_tool' | 'persistent_memory'
