@@ -32,7 +32,7 @@ export class IrisCommandParser {
       }
     }
 
-    // 2. PHONE CALL INTENT ("Call Rahul", "Make a call to Mom", "Dial 9876543210")
+    // 1B. Explicit Maps app launch intent. Keep this ahead of location/web-search fallbacks.\n    if (/^(?:open|launch|start|show|go to)\\s+(?:google\\s+)?maps$/.test(lower) || /^(?:maps|google\\s+maps)\\s+(?:khol|kholna|kholo|open|launch)$/.test(lower)) {\n      return {\n        rawPrompt: raw,\n        intent: 'app_launch',\n        category: 'app_control',\n        target: 'Google Maps',\n        parameters: { appName: 'Google Maps', packageName: 'com.google.android.apps.maps' },\n        required_permissions: [],\n        risk_level: 'low',\n        requires_confirmation: false,\n        tool: 'android_apps',\n        verification_required: true,\n        confidence: 0.99\n      }\n    }\n\n    // 2. PHONE CALL INTENT ("Call Rahul", "Make a call to Mom", "Dial 9876543210")
     if (lower.startsWith('call ') || lower.startsWith('dial ') || lower.startsWith('phone call to ') || lower.includes('make a call to')) {
       const contactOrNumber = raw.replace(/^(?:call|dial|make a phone call to|phone call to|make a call to)\s+/i, '').trim()
       return {
