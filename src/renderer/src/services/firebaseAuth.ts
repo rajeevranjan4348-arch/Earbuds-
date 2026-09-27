@@ -119,7 +119,13 @@ class FirebaseAuthService {
         }
       }
     } catch (_e) {}
-    return PRESET_USERS[0]
+    return {
+      uid: 'local_guest',
+      email: '',
+      displayName: 'Guest',
+      isAnonymous: true,
+      role: 'Guest'
+    }
   }
 
   private saveUser() {
@@ -255,7 +261,7 @@ class FirebaseAuthService {
       await auth.signOut()
     } catch (_e) {}
     localStorage.removeItem(AUTH_STORAGE_KEY)
-    this.currentUser = PRESET_USERS[0]
+    this.currentUser = { uid: 'local_guest', email: '', displayName: 'Guest', isAnonymous: true, role: 'Guest' }
     this.saveUser()
   }
 }
