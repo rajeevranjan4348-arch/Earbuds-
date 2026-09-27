@@ -594,19 +594,15 @@ export class ToolRegistry {
         const issue = args.targetIssue || 'General codebase health check & bug resolution'
         return {
           pipeline: 'Understand → Plan → Select Tools → Execute → Verify → Recover → Respond',
-          status: 'success',
+          status: 'not_executed',
           repository: repo,
           target: issue,
           findings: {
-            errorsFound: 0,
-            diagnostics: 'Static analysis and test suite evaluated. All dependencies, imports, and syntax trees verified clean.',
-            appliedPatches: [
-              'Gemini Multimodal Live API WebSocket bridge initialized',
-              'Raw 16kHz PCM audio streaming pipeline connected',
-              'Continuous event handler and interruptibility enabled'
-            ],
-            verification: 'Tests passing. Build verified with zero fatal errors.',
-            summary: `JARVIS inspected project "${repo}". All identified issues resolved and verified.`
+            errorsFound: null,
+            diagnostics: 'This registry entry is an orchestration contract only; no local repository checkout, test runner, or build process was executed by this tool call.',
+            appliedPatches: [],
+            verification: 'not_run',
+            summary: `Developer workflow prepared for "${repo}". A real workspace/CI runner must execute diagnosis, patches, and verification.`
           }
         }
       }
@@ -642,7 +638,7 @@ export class ToolRegistry {
           category: args.category,
           action: args.action,
           target: args.target || 'device',
-          result: `Android command executed: ${args.action} on ${args.target || 'companion device'}`,
+          result: `Android command dispatched: ${args.action} on ${args.target || 'companion device'}; execution requires a connected Android bridge.`,
           timestamp: new Date().toISOString()
         }
       }
@@ -704,7 +700,7 @@ export class ToolRegistry {
           reason: args.reason || 'User initiated emergency halt',
           stoppedTasksCount: 0,
           timestamp: new Date().toISOString(),
-          message: 'All autonomous workflows halted. Sandboxes locked.'
+          message: 'Runtime kill-switch signal emitted. Connected workers must honor the cancellation signal.'
         }
       }
     })
