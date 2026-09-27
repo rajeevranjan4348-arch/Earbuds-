@@ -90,17 +90,19 @@ export class IrisSystemIntegration {
     let lastError: unknown
 
     for (let attempt = 0; attempt <= retries; attempt++) {
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined
       try {
         return await Promise.race([
           fn(),
-          new Promise<never>((_, reject) =>
-            setTimeout(
+          new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(
               () => reject(new Error(actionName + ' timed out after ' + timeoutMs + 'ms')),
               timeoutMs
             )
-          )
+          })
         ])
       } catch (error) {
+        if (timeoutHandle) clearTimeout(timeoutHandle)
         lastError = error
         if (attempt >= retries) break
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)))
