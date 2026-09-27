@@ -5,6 +5,19 @@
 
 export const androidMcpToolDefinitions = [
   {
+    name: 'android_share_text_to_whatsapp',
+    description:
+      'Opens WhatsApp with a message prefilled in the native share composer. The user chooses the recipient and explicitly taps Send.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        message: { type: 'STRING', description: 'Message text to share.' },
+        confirmed: { type: 'BOOLEAN', description: 'Whether the user explicitly asked Iris to share this message now.' }
+      },
+      required: ['message', 'confirmed']
+    }
+  },
+  {
     name: 'android_launch_app',
     description:
       'Launches an installed Android application by name or package identifier with verification.',
