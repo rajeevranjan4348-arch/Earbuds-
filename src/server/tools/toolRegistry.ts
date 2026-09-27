@@ -27,6 +27,7 @@ import {
 } from '../youtube'
 import { paddleOcrEngine } from '../ocr'
 import { gstackRouter } from '../gstack'
+import { irisSystemIntegration } from '../system/IrisSystemIntegration'
 
 export interface UnifiedTool {
   name: string
@@ -927,7 +928,14 @@ export class ToolRegistry {
     if (!tool) {
       throw new Error(`Tool "${name}" not found in Unified Tool Registry.`)
     }
-    return tool.execute(args)
+
+    const safeArgs = irisSystemIntegration.prepareToolArguments(name, args || {})
+    return irisSystemIntegration.executeWithRecovery(
+      `tool:${name}`,
+      () => tool.execute(safeArgs),
+      tool.timeoutMs,
+      2
+    )
   }
 
   public async executeTool(name: string, args: Record<string, any>): Promise<any> {
