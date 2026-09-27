@@ -11,7 +11,8 @@ export class IrisCommandParser {
    */
   public parse(prompt: string): ParsedCommandIntent {
     const raw = prompt.trim()
-    const lower = raw.toLowerCase()
+    const normalized = raw.replace(/[!?.,;:]+$/g, '').trim()
+    const lower = normalized.toLowerCase()
 
     // 1. APP LAUNCH INTENT (Open/Launch/Start/Show an installed app)
     const appMatch = lower.match(/^(?:open|launch|start|switch to|go to|show)\s+([a-z0-9\s._-]+)$/i)
