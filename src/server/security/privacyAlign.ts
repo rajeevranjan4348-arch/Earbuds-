@@ -21,16 +21,16 @@ export interface PrivacyEvaluation {
 
 export class PrivacyAlignEngine {
   private patterns = {
-    email: /\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b/g,
-    phone: /\\b(?:\\+?\\d{1,3}[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}\\b/g,
-    creditCard: /\\b(?:\\d{4}[-\\s]?){3}\\d{4}\\b/g,
-    ssn: /\\b\\d{3}-\\d{2}-\\d{4}\\b/g,
-    ipv4: /\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b/g,
+    email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+    phone: /\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g,
+    creditCard: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
+    ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
+    ipv4: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
     apiKey:
-      /\\b(?:sk-[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35}|ghp_[a-zA-Z0-9]{36}|xox[baprs]-[0-9a-zA-Z]{10,})\\b/g,
-    jwtToken: /\\beyJ[a-zA-Z0-9_-]+\\.eyJ[a-zA-Z0-9_-]+\\.[a-zA-Z0-9_-]+\\b/g,
+      /\b(?:sk-[a-zA-Z0-9]{20,}|AIza[0-9A-Za-z-_]{35}|ghp_[a-zA-Z0-9]{36}|xox[baprs]-[0-9a-zA-Z]{10,})\b/g,
+    jwtToken: /\beyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/g,
     passwordField:
-      /(?:password|passwd|pwd|secret|auth_token|bearer)\\s*[:=]\\s*["']?([^"'\\s,;]+)["']?/gi
+      /(?:password|passwd|pwd|secret|auth_token|bearer)\s*[:=]\s*["']?([^"'\s,;]+)["']?/gi
   }
 
   private matches(pattern: RegExp, text: string): boolean {

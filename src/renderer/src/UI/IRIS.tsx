@@ -118,7 +118,8 @@ const IRIS = ({
     propSetIsCoreUiMinimal !== undefined ? propSetIsCoreUiMinimal : setInternalMinimal
 
   const [coreUiShortcutDisplay, setCoreUiShortcutDisplay] = useState('Ctrl+\\')
-  const [isVoiceLogOpen, setIsVoiceLogOpen] = useState(false)\n  const reduceMotion = useReducedMotion()
+  const [isVoiceLogOpen, setIsVoiceLogOpen] = useState(false)
+  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     const handleOpenLog = () => setIsVoiceLogOpen(true)

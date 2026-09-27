@@ -27,9 +27,8 @@ import {
 } from '../youtube'
 import { paddleOcrEngine } from '../ocr'
 import { gstackRouter } from '../gstack'
-import { irisSystemIntegration } from '../system/IrisSystemIntegration'\nimport { irisAgentRuntime } from '../agents/IrisAgentRuntime'
-import { irisBackgroundSessionManager } from '../agents/IrisBackgroundSessionManager'
-import { irisAdvancedFeatureRuntime } from '../agents/IrisAdvancedFeatureRuntime'
+import { irisSystemIntegration } from '../system/IrisSystemIntegration'
+import { irisAgentRuntime } from '../agents/IrisAgentRuntime'
 
 export interface UnifiedTool {
   name: string
@@ -896,73 +895,59 @@ export class ToolRegistry {
       execute: async (args) => gstackRouter.executeSkill('ship_workflow', args)
     })
 
-    // 39. Unified Iris Agent Runtime: task planning / timeline\n    this.tools.set('iris_agent_task', {\n      name: 'iris_agent_task',\n      description: 'Creates or plans a unified Iris task and exposes its execution timeline without changing the UI.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          action: { type: 'STRING', enum: ['create', 'plan', 'status', 'list', 'cancel'], description: 'Task lifecycle action.' },\n          taskId: { type: 'STRING', description: 'Existing Iris task ID.' },\n          input: { type: 'STRING', description: 'Natural-language task to plan.' }\n        },\n        required: ['action']\n      },\n      permissionLevel: 'standard',\n      timeoutMs: 5000,\n      execute: async (args) => {\n        if (args.action === 'create') return irisAgentRuntime.createTask(args.input || '')\n        if (args.action === 'plan') return irisAgentRuntime.planTask(args.taskId)\n        if (args.action === 'status') return irisAgentRuntime.getTask(args.taskId) || { status: 'not_found' }\n        if (args.action === 'list') return irisAgentRuntime.getTasks()\n        irisAgentRuntime.cancel(args.taskId)\n        return { status: 'cancelled', taskId: args.taskId }\n      }\n    })\n\n    // 40. Global Iris Kill Switch / Resume\n    this.tools.set('iris_runtime_control', {\n      name: 'iris_runtime_control',\n      description: 'Globally stops or resumes active Iris autonomous workflows and exposes active task state.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          action: { type: 'STRING', enum: ['stop_all', 'resume', 'active_tasks'], description: 'Runtime control action.' },\n          reason: { type: 'STRING', description: 'Reason for stopping active tasks.' }\n        },\n        required: ['action']\n      },\n      permissionLevel: 'public',\n      timeoutMs: 3000,\n      execute: async (args) => {\n        if (args.action === 'stop_all') {\n          irisAgentRuntime.emergencyStop(args.reason || 'User initiated emergency halt')\n          return { status: 'stopped', activeTasks: 0 }\n        }\n        if (args.action === 'resume') {\n          irisAgentRuntime.resume()\n          return { status: 'resumed' }\n        }\n        return { status: 'active', tasks: irisAgentRuntime.getActiveTasks() }\n      }\n    })\n\n    // 41. Background Agent Sessions: browser/server/android
-    this.tools.set('iris_background_session', {
-      name: 'iris_background_session',
-      description: 'Runs an approved Iris agent session independently of the foreground UI for browser, server, or Android companion work.',
+    // 39. Unified Iris Agent Runtime: task planning / timeline
+    this.tools.set('iris_agent_task', {
+      name: 'iris_agent_task',
+      description: 'Creates or plans a unified Iris task and exposes its execution timeline without changing the UI.',
       parameters: {
         type: 'OBJECT',
         properties: {
-          action: { type: 'STRING', enum: ['start', 'heartbeat', 'stop', 'list', 'stop_all'], description: 'Background session lifecycle action.' },
-          target: { type: 'STRING', enum: ['browser', 'server', 'android'], description: 'Background execution target.' },
-          sessionId: { type: 'STRING', description: 'Existing background session ID.' }
+          action: { type: 'STRING', enum: ['create', 'plan', 'status', 'list', 'cancel'], description: 'Task lifecycle action.' },
+          taskId: { type: 'STRING', description: 'Existing Iris task ID.' },
+          input: { type: 'STRING', description: 'Natural-language task to plan.' }
         },
         required: ['action']
       },
       permissionLevel: 'standard',
       timeoutMs: 5000,
       execute: async (args) => {
-        if (args.action === 'start') return irisBackgroundSessionManager.start(args.target || 'server')
-        if (args.action === 'heartbeat') return irisBackgroundSessionManager.heartbeat(args.sessionId)
-        if (args.action === 'stop') return { stopped: irisBackgroundSessionManager.stop(args.sessionId), sessionId: args.sessionId }
-        if (args.action === 'stop_all') return { active: irisBackgroundSessionManager.stopAll() }
-        return { active: irisBackgroundSessionManager.getActive(), sessions: irisBackgroundSessionManager.getAll() }
+        if (args.action === 'create') return irisAgentRuntime.createTask(args.input || '')
+        if (args.action === 'plan') return irisAgentRuntime.planTask(args.taskId)
+        if (args.action === 'status') return irisAgentRuntime.getTask(args.taskId) || { status: 'not_found' }
+        if (args.action === 'list') return irisAgentRuntime.getTasks()
+        irisAgentRuntime.cancel(args.taskId)
+        return { status: 'cancelled', taskId: args.taskId }
       }
     })
 
-    // 42. Advanced 20-feature Iris runtime
-    this.tools.set('iris_advanced_features', {
-      name: 'iris_advanced_features',
-      description: 'Unified control plane for Iris background execution, persistent queues, diagnostics, scheduling hooks, permissions, vision/voice adapters, project memory, rollback, research and developer workflows.',
+    // 40. Global Iris Kill Switch / Resume
+    this.tools.set('iris_runtime_control', {
+      name: 'iris_runtime_control',
+      description: 'Globally stops or resumes active Iris autonomous workflows and exposes active task state.',
       parameters: {
         type: 'OBJECT',
         properties: {
-          action: { type: 'STRING', enum: ['features', 'enqueue', 'update', 'retry', 'recover', 'cancel', 'list', 'diagnose', 'parse_command', 'permission', 'health', 'checkpoint', 'rollback'], description: 'Advanced Iris runtime operation.' },
-          taskId: { type: 'STRING', description: 'Queued task ID.' },
-          command: { type: 'STRING', description: 'Natural-language command.' },
-          target: { type: 'STRING', enum: ['browser', 'server', 'android'], description: 'Execution target.' },
-          capability: { type: 'STRING', description: 'Permission capability name.' },
-          allowed: { type: 'BOOLEAN', description: 'Permission decision.' },
-          tool: { type: 'STRING', description: 'Tool health key.' },
-          ok: { type: 'BOOLEAN', description: 'Whether the tool health check succeeded.' },
-          latencyMs: { type: 'NUMBER', description: 'Measured tool latency.' },
-          value: { description: 'Checkpoint or update payload.' }
+          action: { type: 'STRING', enum: ['stop_all', 'resume', 'active_tasks'], description: 'Runtime control action.' },
+          reason: { type: 'STRING', description: 'Reason for stopping active tasks.' }
         },
         required: ['action']
       },
-      permissionLevel: 'standard',
-      timeoutMs: 8000,
+      permissionLevel: 'public',
+      timeoutMs: 3000,
       execute: async (args) => {
-        switch (args.action) {
-          case 'features': return irisAdvancedFeatureRuntime.getEnabledFeatures()
-          case 'enqueue': return irisAdvancedFeatureRuntime.enqueue(args.command || '', { target: args.target })
-          case 'update': return irisAdvancedFeatureRuntime.updateTask(args.taskId, args.value || {})
-          case 'retry': return irisAdvancedFeatureRuntime.retry(args.taskId)
-          case 'recover': return irisAdvancedFeatureRuntime.recover(args.taskId)
-          case 'cancel': return irisAdvancedFeatureRuntime.cancel(args.taskId)
-          case 'list': return irisAdvancedFeatureRuntime.listTasks()
-          case 'diagnose': return irisAdvancedFeatureRuntime.diagnose()
-          case 'parse_command': return irisAdvancedFeatureRuntime.parseCommand(args.command || '')
-          case 'permission': return irisAdvancedFeatureRuntime.setPermission(args.capability, Boolean(args.allowed))
-          case 'health': return args.tool ? irisAdvancedFeatureRuntime.recordToolHealth(args.tool, Boolean(args.ok), args.latencyMs) : irisAdvancedFeatureRuntime.getToolHealth()
-          case 'checkpoint': return irisAdvancedFeatureRuntime.saveCheckpoint(args.taskId, args.value)
-          case 'rollback': return irisAdvancedFeatureRuntime.rollback(args.taskId)
-          default: throw new Error('Unknown advanced Iris runtime action: ' + args.action)
+        if (args.action === 'stop_all') {
+          irisAgentRuntime.emergencyStop(args.reason || 'User initiated emergency halt')
+          return { status: 'stopped', activeTasks: 0 }
         }
+        if (args.action === 'resume') {
+          irisAgentRuntime.resume()
+          return { status: 'resumed' }
+        }
+        return { status: 'active', tasks: irisAgentRuntime.getActiveTasks() }
       }
     })
 
-    // 42. gstack: Decision Ledger
+    // 41. gstack: Decision Ledger
     this.tools.set('gstack_decision_log', {
       name: 'gstack_decision_log',
       description: 'Records or queries architectural decisions (ADRs) with rationale, alternatives considered, and secret interception.',
