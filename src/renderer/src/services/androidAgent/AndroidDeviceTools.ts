@@ -86,6 +86,24 @@ export class AndroidDeviceTools {
       }
     }
 
+    // Browser/preview fallback: use Android's intent URI so Chrome can hand off to the
+    // installed native app instead of silently falling back to a web search/browser page.
+    if (typeof window !== 'undefined') {
+      try {
+        const intentUri = `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};end`
+        window.location.href = intentUri
+        accessibilityService.setForegroundApp(pkg)
+        return {
+          success: true,
+          action: 'launch_app',
+          message: `Launching "${appNameOrPackage}" (${pkg}) via Android intent.`,
+          details: { package: pkg, executionEngine: 'AndroidIntentURI' }
+        }
+      } catch (e) {
+        console.warn('[AndroidDeviceTools] Intent URI launch failed:', e)
+      }
+    }
+
     // Set mock foreground app in accessibility engine
     accessibilityService.setForegroundApp(pkg)
     return {
