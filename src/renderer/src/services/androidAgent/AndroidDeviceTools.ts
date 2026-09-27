@@ -118,13 +118,12 @@ export class AndroidDeviceTools {
       }
     }
 
-    // Set mock foreground app in accessibility engine
-    accessibilityService.setForegroundApp(pkg)
+    // Never report a launch as successful when no real Android launch path exists.
     return {
-      success: true,
+      success: false,
       action: 'launch_app',
-      message: `Opened application "${appNameOrPackage}" (${pkg}).`,
-      details: { package: pkg, executionEngine: 'AccessibilityService' }
+      message: `Could not launch "${appNameOrPackage}" (${pkg}). Enable the Iris Android bridge/accessibility service or Shizuku.`,
+      details: { package: pkg, executionEngine: 'none' }
     }
   }
 
