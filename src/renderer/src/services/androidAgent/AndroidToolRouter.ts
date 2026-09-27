@@ -1,13 +1,17 @@
 /**
  * IRIS — Android Tool Router
  * Selects and dispatches tools dynamically across native Android APIs,
- * ADB bridge, Intents, Accessibility, and AI Core.
+ * ADB bridge, Shizuku, Intents, Accessibility, Skills/MCP, and AI Core.
  */
 
 import { ParsedCommandIntent } from './types'
 import { permissionManager } from './PermissionManager'
 import { confirmationEngine } from './ConfirmationEngine'
 import { verificationEngine } from './VerificationEngine'
+import { irisActionConfirmation } from './IrisActionConfirmation'
+import { androidDeviceTools } from './AndroidDeviceTools'
+import { irisShizukuManager } from './IrisShizukuManager'
+import { irisSkillsMcpRegistry } from './IrisSkillsMcpRegistry'
 import {
   appController,
   callController,
@@ -46,15 +50,30 @@ export class AndroidToolRouter {
       }
     }
 
-    // 2. Dispatch to dedicated controller
+    // 2. Sensitive Action Safety Confirmation
+    const safetyCheck = await irisActionConfirmation.requireConfirmationIfNeeded(
+      intent.intent,
+      intent.parameters
+    )
+    if (!safetyCheck.approved) {
+      return {
+        success: false,
+        tool: intent.tool,
+        action: intent.intent,
+        output: `Operation stopped: ${safetyCheck.reason}`
+      }
+    }
+
+    // 3. Dispatch to dedicated controller / Device Tools / MCP Skills
     switch (intent.intent) {
       case 'app_launch': {
-        const res = await appController.launchApp(intent.target || intent.parameters.appName)
+        const res = await androidDeviceTools.launchApp(intent.target || intent.parameters.appName)
         return {
           success: res.success,
           tool: intent.tool,
           action: 'launch_app',
-          output: res.message
+          output: res.message,
+          details: res.details
         }
       }
 
@@ -180,7 +199,103 @@ export class AndroidToolRouter {
         }
       }
 
+      // Android Agent / Screen & Gesture Controls
+      case 'screen_inspect' as any: {
+        const state = await androidDeviceTools.inspectScreen()
+        return {
+          success: state.accessibilityReady,
+          tool: 'android_device_tools',
+          action: 'screen_inspect',
+          output: `Screen state captured. Package: ${state.packageName} (${state.appName}). Visible elements: ${state.interactiveElements.length}.`,
+          details: state
+        }
+      }
+
+      case 'tap_element' as any: {
+        const target = intent.target || intent.parameters.target
+        const res = await androidDeviceTools.tap(target)
+        return {
+          success: res.success,
+          tool: 'android_device_tools',
+          action: 'tap_element',
+          output: res.message,
+          details: res.details
+        }
+      }
+
+      case 'type_text' as any: {
+        const text = intent.parameters.text || intent.target
+        const target = intent.parameters.targetSelector
+        const res = await androidDeviceTools.typeText(text, target)
+        return {
+          success: res.success,
+          tool: 'android_device_tools',
+          action: 'type_text',
+          output: res.message,
+          details: res.details
+        }
+      }
+
+      case 'press_system_key' as any: {
+        const key = intent.parameters.key || 'back'
+        const res = await androidDeviceTools.pressSystemKey(key)
+        return {
+          success: res.success,
+          tool: 'android_device_tools',
+          action: 'press_system_key',
+          output: res.message,
+          details: res.details
+        }
+      }
+
+      case 'exec_shizuku_command' as any: {
+        const cmd = intent.parameters.command || intent.rawPrompt
+        const res = await irisShizukuManager.execAdbCommand(cmd)
+        return {
+          success: res.success,
+          tool: 'shizuku_manager',
+          action: 'exec_shizuku_command',
+          output: res.success ? res.stdout : `Shizuku command failed: ${res.stderr}`,
+          details: res
+        }
+      }
+
+      // Browser-Use Web Automation Tools
+      case 'browser_open' as any:
+      case 'browser_navigate' as any:
+      case 'browser_back' as any:
+      case 'browser_forward' as any:
+      case 'browser_click' as any:
+      case 'browser_type' as any:
+      case 'browser_extract' as any:
+      case 'browser_scroll' as any:
+      case 'browser_wait' as any:
+      case 'browser_screenshot' as any:
+      case 'browser_execute_task' as any: {
+        const { browserTaskRouter } = await import('../browser/BrowserTaskRouter')
+        const res = await browserTaskRouter.executeTool(intent.intent, intent.parameters)
+        return {
+          success: res.success,
+          tool: 'browser_task_router',
+          action: intent.intent,
+          output: res.output,
+          details: res.extractedData
+        }
+      }
+
       default: {
+        // Fallback: Check if registered in Iris Skills / MCP Registry
+        const skillRes = await irisSkillsMcpRegistry.executeTool(intent.intent, intent.parameters)
+        if (skillRes.output && !skillRes.output.includes('No registered skill found')) {
+          return {
+            success: skillRes.success,
+            tool: 'skills_mcp_registry',
+            action: intent.intent,
+            output: skillRes.output,
+            details: skillRes.details
+          }
+        }
+
         return {
           success: true,
           tool: intent.tool,

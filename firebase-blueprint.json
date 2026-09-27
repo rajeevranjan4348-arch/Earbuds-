@@ -79,6 +79,26 @@
           "items": { "type": "string" }
         }
       }
+    },
+    "KeepNote": {
+      "title": "KeepNote",
+      "description": "Google Keep notes and checklists synced with Google Workspace",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "listItems": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "color": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
     }
   },
   "firestore": {
@@ -89,6 +109,10 @@
     "/users/{userId}/notes/{noteId}": {
       "schema": "Note",
       "description": "Notes created by a user"
+    },
+    "/users/{userId}/keepNotes/{noteId}": {
+      "schema": "KeepNote",
+      "description": "Google Keep notes and checklists for a user"
     },
     "/users/{userId}/savedLocations/{locationId}": {
       "schema": "SavedLocation",

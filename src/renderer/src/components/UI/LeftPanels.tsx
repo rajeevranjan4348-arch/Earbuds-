@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { getSystemStatus } from '@renderer/services/system-info'
 import { SystemTelemetryRecharts } from './SystemTelemetryRecharts'
+import { WorkspaceTelemetryWidget } from './WorkspaceTelemetryWidget'
 
 const leftPanelsStaggerContainer = {
   hidden: { opacity: 0 },
@@ -727,6 +728,19 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           </div>
         </div>
       </PremiumGlassPanel>
+      </motion.div>
+
+      {/* Google Workspace Live Telemetry & Quick Action Widget */}
+      <motion.div variants={leftPanelItemVariant}>
+        <WorkspaceTelemetryWidget
+          onNavigateTab={(tab) => {
+            window.dispatchEvent(
+              new CustomEvent('iris:navigate', {
+                detail: { tab }
+              })
+            )
+          }}
+        />
       </motion.div>
 
       <motion.div variants={leftPanelItemVariant} className="grid grid-cols-2 gap-2 flex-1 min-h-0">

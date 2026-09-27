@@ -27,7 +27,8 @@ import {
   RiExternalLinkLine,
   RiInformationLine,
   RiFileCopyLine,
-  RiTerminalBoxLine
+  RiTerminalBoxLine,
+  RiStickyNoteLine
 } from 'react-icons/ri'
 import {
   auth,
@@ -198,6 +199,16 @@ const WORKSPACE_SERVICES = [
     color: 'border-green-500/30 bg-green-500/10 text-green-300',
     scope: 'https://www.googleapis.com/auth/classroom.courses.readonly',
     description: 'Course listings, educational assignments, course rosters, and announcements'
+  },
+  {
+    id: 'keep',
+    name: 'Google Keep',
+    tabId: 'KEEP',
+    category: 'Productivity',
+    icon: <RiStickyNoteLine size={20} className="text-amber-400" />,
+    color: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+    scope: 'https://www.googleapis.com/auth/keep',
+    description: 'Quick notes, checklists, voice memos, and pinned reminders synced with Google Keep'
   },
   {
     id: 'picker',

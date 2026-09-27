@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Iris AI</string>
+    <string name="iris_accessibility_service_label">Iris AI Screen &amp; Automation Service</string>
+    <string name="iris_accessibility_service_description">Enables Iris AI to inspect active screen nodes, intercept UI events, assist with hands-free device interactions, and execute automated actions on your behalf.</string>
+</resources>

@@ -102,6 +102,58 @@ class PermissionManager {
   constructor() {
     this.initDefaultStates()
     this.loadPersistedStates()
+    this.syncLivePermissions()
+  }
+
+  /**
+   * Reads live permission state from the system/browser environment
+   */
+  public async syncLivePermissions(): Promise<Map<PermissionName, PermissionState>> {
+    // 1. Check browser navigator.permissions for supported APIs
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      const apiMap: Partial<Record<PermissionName, PermissionName>> = {
+        microphone: 'microphone' as any,
+        camera: 'camera' as any,
+        location: 'geolocation' as any
+      }
+
+      for (const [permKey, apiName] of Object.entries(apiMap)) {
+        try {
+          const res = await navigator.permissions.query({ name: apiName as any })
+          const current = this.permissions.get(permKey as PermissionName)
+          if (current) {
+            let newStatus: PermissionState['status'] = current.status
+            if (res.state === 'granted') newStatus = 'granted'
+            else if (res.state === 'denied') newStatus = 'denied'
+            else if (res.state === 'prompt' && current.status !== 'granted') newStatus = 'prompt'
+
+            if (newStatus !== current.status) {
+              current.status = newStatus
+              this.permissions.set(permKey as PermissionName, current)
+            }
+          }
+        } catch (_e) {}
+      }
+    }
+
+    // 2. Check native IPC bridge if available
+    if (window.electron?.ipcRenderer) {
+      try {
+        const nativeStates = await window.electron.ipcRenderer.invoke('android-check-permissions')
+        if (nativeStates && typeof nativeStates === 'object') {
+          Object.entries(nativeStates).forEach(([key, val]) => {
+            const current = this.permissions.get(key as PermissionName)
+            if (current) {
+              current.status = val as any
+              this.permissions.set(key as PermissionName, current)
+            }
+          })
+        }
+      } catch (_e) {}
+    }
+
+    this.saveStates()
+    return new Map(this.permissions)
   }
 
   private initDefaultStates() {
@@ -207,7 +259,56 @@ class PermissionManager {
       } catch (_e) {}
     }
 
-    // Explicit User Authorization Gate
+    // Standard Browser / Web Runtime Permission Triggers for Mic, Camera, Location
+    if (permission === 'microphone' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        // Immediately stop tracks after verifying grant
+        stream.getTracks().forEach((track) => track.stop())
+        this.setPermissionStatus('microphone', 'granted')
+        return { granted: true, status: 'granted', rationale }
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          this.setPermissionStatus('microphone', 'denied')
+          return { granted: false, status: 'denied', rationale: 'Microphone permission denied by system.' }
+        }
+      }
+    }
+
+    if (permission === 'camera' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+        stream.getTracks().forEach((track) => track.stop())
+        this.setPermissionStatus('camera', 'granted')
+        return { granted: true, status: 'granted', rationale }
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          this.setPermissionStatus('camera', 'denied')
+          return { granted: false, status: 'denied', rationale: 'Camera permission denied by system.' }
+        }
+      }
+    }
+
+    if (permission === 'location' && navigator.geolocation) {
+      try {
+        const granted = await new Promise<boolean>((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            () => resolve(true),
+            () => resolve(false),
+            { timeout: 8000 }
+          )
+        })
+        if (granted) {
+          this.setPermissionStatus('location', 'granted')
+          return { granted: true, status: 'granted', rationale }
+        } else {
+          this.setPermissionStatus('location', 'denied')
+          return { granted: false, status: 'denied', rationale: 'Location access denied by system.' }
+        }
+      } catch (_e) {}
+    }
+
+    // Explicit User Authorization Gate for Sensitive/System Permissions (Contacts, Calls, Messages)
     const userApproved = await confirmationEngine.requestApproval({
       action: `Authorize Android ${permission.toUpperCase()} Permission`,
       target: `Capability: ${permission}`,

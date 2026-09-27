@@ -30,6 +30,7 @@ import {
 } from 'react-icons/ri'
 import { permissionManager } from '../../services/androidAgent/PermissionManager'
 import { PermissionName, PermissionState } from '../../services/androidAgent/types'
+import AndroidPermissionCenter from './AndroidPermissionCenter'
 
 interface MobileAccessPermissionsModalProps {
   isOpen: boolean
@@ -428,113 +429,7 @@ export const MobileAccessPermissionsModal: React.FC<MobileAccessPermissionsModal
 
           {/* Permission Cards Grid */}
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 custom-scrollbar">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {filteredItems.map((item) => {
-                const state = permissionStates.get(item.id)
-                const isGranted = state?.status === 'granted'
-                const isSensitive = state?.isSensitive ?? false
-                const isProcessing = activeRequesting === item.id
-
-                return (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    className={`p-3.5 sm:p-4 rounded-xl border transition-all flex flex-col justify-between gap-3 shadow-md ${
-                      isGranted
-                        ? 'bg-zinc-900/70 border-emerald-500/30 hover:border-emerald-500/50'
-                        : 'bg-zinc-900/40 border-white/10 hover:border-white/20'
-                    }`}
-                  >
-                    <div>
-                      {/* Top Header of Card */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2 rounded-lg bg-zinc-950 border border-white/10">
-                            {item.icon}
-                          </div>
-                          <div>
-                            <div className="font-bold text-xs text-zinc-100 flex items-center gap-1.5">
-                              <span>{item.label}</span>
-                              {isSensitive && (
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-mono">
-                                  Sensitive
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-mono">
-                              {item.id}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status Toggle Button */}
-                        <button
-                          onClick={() => handleToggle(item.id)}
-                          disabled={isProcessing}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            isGranted ? 'bg-emerald-500' : 'bg-zinc-800'
-                          }`}
-                          title={isGranted ? 'Click to Revoke' : 'Click to Authorize'}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                              isGranted ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Description */}
-                      <p className="text-[11px] text-zinc-400 mt-2.5 leading-relaxed">
-                        {item.description}
-                      </p>
-                    </div>
-
-                    {/* Bottom Action Footer */}
-                    <div className="pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isGranted
-                              ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
-                              : state?.status === 'prompt'
-                                ? 'bg-amber-400'
-                                : 'bg-zinc-600'
-                          }`}
-                        />
-                        <span className={isGranted ? 'text-emerald-400 font-bold' : 'text-zinc-500'}>
-                          {isGranted ? 'Granted & Active' : state?.status === 'prompt' ? 'Prompt on Demand' : 'Denied'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleOpenSettings(item.id)}
-                          className="px-2 py-1 rounded bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-white/5 flex items-center gap-1 transition-colors cursor-pointer"
-                          title={`Launch Android Intent: ${item.intent}`}
-                        >
-                          <span className="text-[9px]">Settings</span>
-                          <RiExternalLinkLine size={10} />
-                        </button>
-
-                        <button
-                          onClick={() => handleToggle(item.id)}
-                          disabled={isProcessing}
-                          className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
-                            isGranted
-                              ? 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                              : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
-                          }`}
-                        >
-                          {isProcessing ? 'Gating...' : isGranted ? 'Revoke' : 'Authorize'}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </div>
+            <AndroidPermissionCenter />
           </div>
 
           {/* Modal Footer */}

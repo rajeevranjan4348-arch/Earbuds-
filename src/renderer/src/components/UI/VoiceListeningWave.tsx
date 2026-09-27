@@ -207,14 +207,6 @@ export const VoiceListeningWave: React.FC<VoiceListeningWaveProps> = ({
               </motion.button>
             </div>
           )}
-
-          {/* Wake Word Glow Pill */}
-          {isConnected && isListening && !isMuted && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00ff41]/10 border border-[#00ff41]/20 text-[9px] font-mono text-[#00ff41] z-20 pointer-events-none">
-              <Sparkles size={10} />
-              <span>Wake: "Hey IRIS"</span>
-            </div>
-          )}
         </div>
 
         {/* Real-time Transcription Readout */}

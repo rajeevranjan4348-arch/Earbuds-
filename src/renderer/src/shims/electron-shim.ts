@@ -374,6 +374,96 @@ const electronShim = {
           return { success: true }
         }
 
+        case 'autosave-note-draft':
+        case 'save-note-draft': {
+          const payload = args[0] || {}
+          const raw = localStorage.getItem('iris_electron_store_autosave_notes')
+          let drafts: Record<string, any> = {}
+          try {
+            if (raw) drafts = JSON.parse(raw)
+          } catch (e) {}
+
+          const now = new Date().toISOString()
+          const id = payload.id || (payload.noteId ? `draft_${payload.noteId}` : 'draft_new_note')
+          const title = (payload.title || '').trim()
+          const content = payload.content || ''
+          const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+
+          const record = {
+            id,
+            noteId: payload.noteId,
+            title,
+            content,
+            createdAt: payload.createdAt || now,
+            lastAutosavedAt: now,
+            isPending: true,
+            wordCount
+          }
+          drafts[id] = record
+          localStorage.setItem('iris_electron_store_autosave_notes', JSON.stringify(drafts))
+          console.log(`[IRIS Autosave] Synced pending draft ${id} to electron-store autosave:`, record)
+          return record
+        }
+
+        case 'get-note-drafts': {
+          try {
+            const raw = localStorage.getItem('iris_electron_store_autosave_notes')
+            const draftsMap = raw ? JSON.parse(raw) : {}
+            const drafts: any[] = Object.values(draftsMap)
+            return drafts.sort(
+              (a, b) => new Date(b.lastAutosavedAt).getTime() - new Date(a.lastAutosavedAt).getTime()
+            )
+          } catch (e) {
+            return []
+          }
+        }
+
+        case 'get-note-draft': {
+          const id = args[0]
+          try {
+            const raw = localStorage.getItem('iris_electron_store_autosave_notes')
+            const drafts = raw ? JSON.parse(raw) : {}
+            return drafts[id] || null
+          } catch (e) {
+            return null
+          }
+        }
+
+        case 'delete-note-draft': {
+          const id = args[0]
+          try {
+            const raw = localStorage.getItem('iris_electron_store_autosave_notes')
+            if (raw) {
+              const drafts = JSON.parse(raw)
+              if (drafts[id]) {
+                delete drafts[id]
+                localStorage.setItem('iris_electron_store_autosave_notes', JSON.stringify(drafts))
+              }
+            }
+          } catch (e) {}
+          return { success: true }
+        }
+
+        case 'clear-note-drafts': {
+          localStorage.setItem('iris_electron_store_autosave_notes', JSON.stringify({}))
+          return { success: true }
+        }
+
+        case 'get-autosave-status': {
+          try {
+            const raw = localStorage.getItem('iris_electron_store_autosave_notes')
+            const drafts: any[] = raw ? Object.values(JSON.parse(raw)) : []
+            return {
+              folder: 'electron-store/autosave',
+              count: drafts.length,
+              lastSync: drafts[0]?.lastAutosavedAt || new Date().toISOString(),
+              drafts: drafts.map((d) => ({ id: d.id, title: d.title, lastAutosavedAt: d.lastAutosavedAt }))
+            }
+          } catch (e) {
+            return { folder: 'electron-store/autosave', count: 0, lastSync: new Date().toISOString(), drafts: [] }
+          }
+        }
+
         case 'get-gallery': {
           return getStoredGallery()
         }

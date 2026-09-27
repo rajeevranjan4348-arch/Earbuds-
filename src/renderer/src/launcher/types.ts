@@ -87,3 +87,31 @@ export interface LauncherContextState {
   isVoiceActive: boolean
   isMinimalHud: boolean
 }
+
+export type AppProcessStatus = 'active' | 'background' | 'minimized' | 'stopped'
+
+export interface RunningAppRecord {
+  id: string
+  name: string
+  category: AppCategory
+  type: AppType
+  icon: string
+  target: string
+  status: AppProcessStatus
+  pid: string
+  startedAt: number
+  lastActiveAt: number
+  cpuPercent: number
+  memoryMb: number
+  isMuted?: boolean
+  supportsControls?: boolean
+  availableActions?: Array<{ id: string; label: string; icon?: string; description?: string }>
+}
+
+export interface AppControlAction {
+  id: string
+  appId: string
+  action: string
+  payload?: any
+  timestamp: number
+}

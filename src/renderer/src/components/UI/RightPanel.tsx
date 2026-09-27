@@ -218,12 +218,12 @@ const ChatMessageItem = memo(
                   },
                   pre: ({ node, children, ...props }: any) => {
                     return (
-                      <pre
+                      <div
                         className="bg-black/60 p-2.5 rounded-xl border border-white/10 my-2 overflow-x-auto text-[11px] font-mono text-zinc-200"
                         {...props}
                       >
                         {children}
-                      </pre>
+                      </div>
                     )
                   }
                 }}
@@ -768,6 +768,10 @@ export default function RightPanel({
   const lastChunkRecordRef = useRef<Map<string, { text: string; time: number }>>(new Map())
   const lastSubmissionRef = useRef<{ text: string; time: number }>({ text: '', time: 0 })
   const lastSavedHashRef = useRef<string>('')
+  const prevUserSubmissionRef = useRef<{ text: string; time: number } | null>(null)
+  const activeSubmitLockRef = useRef(false)
+
+  const getAssistantMessageId = (requestId: string) => `msg_model_${requestId}`
 
   // 1. Initial hydration of chat history from active session or memory
   useEffect(() => {
@@ -860,42 +864,69 @@ export default function RightPanel({
       const rawText = data.text || data.content || ''
 
       if (role === 'user') {
-        const userMsgId = data.id || `msg_user_${reqId}`
-        if (seenMessageIdsRef.current.has(userMsgId)) return
+        const cleanUserText = normalizeDuplicateTokens(rawText).trim()
+        if (!cleanUserText) return
 
-        seenMessageIdsRef.current.add(userMsgId)
-        const cleanUserText = normalizeDuplicateTokens(rawText)
+        const normalized = cleanUserText.replace(/\s+/g, ' ').trim().toLowerCase()
+        const now = Date.now()
+        const previous = prevUserSubmissionRef.current
+
+        if (previous && previous.text === normalized && now - previous.time < 1500) {
+          console.debug('[IRIS_DEDUPE] Duplicate voice transcript ignored')
+          return
+        }
+
+        if (activeRequestIdRef.current && data.requestId && activeRequestIdRef.current === data.requestId) {
+          console.debug('[IRIS_DEDUPE] Active request already owns transcript')
+          return
+        }
 
         setChatHistory((prev) => {
-          if (
-            prev.some((m) => m.id === userMsgId || (m.requestId === reqId && m.role === 'user'))
-          ) {
+          const duplicate = prev.some((m) => {
+            if (m.role !== 'user') return false
+            const existing = normalizeDuplicateTokens(m.text || m.content || '').replace(/\s+/g, ' ').trim().toLowerCase()
+            return existing === normalized
+          })
+
+          if (duplicate) {
+            console.debug('[IRIS_DEDUPE] Existing user message found')
             return prev
           }
+
+          const userMsgId = data.id || `msg_user_voice_${Date.now()}`
           const userMsg: Message = {
             id: userMsgId,
             messageId: userMsgId,
             conversationId: activeSessionIdRef.current,
-            requestId: reqId,
+            requestId: data.requestId,
             role: 'user',
+            mode: 'voice',
             text: cleanUserText,
+            transcript: cleanUserText,
             content: cleanUserText,
-            timestamp: (data as any).timestamp || Date.now(),
-            inputType: (data as any).inputType || 'voice'
+            timestamp: (data as any).timestamp || now,
+            inputType: 'voice'
           }
-          console.log('[AI_STATE_UPDATED]', {
-            messageId: userMsgId,
-            role: 'user',
-            textLength: cleanUserText.length
-          })
+
+          seenMessageIdsRef.current.add(userMsgId)
+
+          try {
+            chatHistoryService.addMessage(activeSessionIdRef.current, userMsg)
+          } catch (error) {
+            console.warn('[IRIS] Transcript save failed:', error)
+          }
+
+          prevUserSubmissionRef.current = { text: normalized, time: now }
           return [...prev, userMsg].slice(-50)
         })
       } else if (role === 'model' || role === 'assistant') {
-        const assistantMsgId = data.id || `msg_model_${reqId}`
+        const reqId = data.requestId || activeRequestIdRef.current
+        if (!reqId) return
 
-        if (activeRequestIdRef.current !== reqId) {
-          activeRequestIdRef.current = reqId
-        }
+        const assistantMsgId = data.id || getAssistantMessageId(reqId)
+        const incoming = normalizeDuplicateTokens(rawText || '')
+
+        if (!incoming && data.isFinal) return
 
         if (data.chunkIndex !== undefined) {
           let seenChunks = seenChunksPerRequestRef.current.get(reqId)
@@ -903,72 +934,61 @@ export default function RightPanel({
             seenChunks = new Set<number>()
             seenChunksPerRequestRef.current.set(reqId, seenChunks)
           }
-          if (seenChunks.has(data.chunkIndex)) {
-            return
-          }
+          if (seenChunks.has(data.chunkIndex)) return
           seenChunks.add(data.chunkIndex)
         }
 
-        const now = Date.now()
-        const lastRecord = lastChunkRecordRef.current.get(reqId)
-        if (
-          lastRecord &&
-          lastRecord.text === rawText &&
-          now - lastRecord.time < 350 &&
-          data.chunkIndex === undefined
-        ) {
-          return
-        }
-        lastChunkRecordRef.current.set(reqId, { text: rawText, time: now })
-
         setActiveStreamingId(assistantMsgId)
-        seenMessageIdsRef.current.add(assistantMsgId)
 
         setChatHistory((prev) => {
           const existingIdx = prev.findIndex(
             (m) =>
               m.id === assistantMsgId ||
-              (m.requestId === reqId && (m.role === 'model' || m.role === 'assistant'))
+              (m.requestId === reqId && (m.role === 'assistant' || m.role === 'model'))
           )
 
           if (existingIdx >= 0) {
-            const current = prev[existingIdx]
-            let nextText = current.text
+            const updated = [...prev]
+            const current = updated[existingIdx]
+            let nextText = current.text || ''
 
-            if (
-              data.mode === 'cumulative' ||
-              (rawText.length >= current.text.length && rawText.startsWith(current.text))
-            ) {
-              nextText = rawText
-            } else {
-              if (current.text.endsWith(rawText) && rawText.length > 2) {
-                nextText = current.text
-              } else {
-                nextText = current.text + rawText
-              }
+            if (data.mode === 'cumulative') {
+              nextText = incoming
+            } else if (incoming && nextText && incoming.startsWith(nextText)) {
+              nextText = incoming
+            } else if (incoming && !nextText.endsWith(incoming)) {
+              nextText += incoming
+            } else if (!nextText) {
+              nextText = incoming
             }
 
-            const updated = [...prev]
             updated[existingIdx] = {
               ...current,
+              id: assistantMsgId,
+              messageId: assistantMsgId,
+              requestId: reqId,
+              role: 'assistant',
               text: nextText,
               content: nextText
             }
             return updated
-          } else {
-            const newAssistantMsg: Message = {
-              id: assistantMsgId,
-              messageId: assistantMsgId,
-              conversationId: activeSessionIdRef.current,
-              requestId: reqId,
-              role: 'assistant',
-              text: rawText,
-              content: rawText,
-              timestamp: now,
-              inputType: (data as any).inputType || 'voice'
-            }
-            return [...prev, newAssistantMsg].slice(-50)
           }
+
+          if (!incoming.trim()) return prev
+
+          const assistantMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionIdRef.current,
+            requestId: reqId,
+            role: 'assistant',
+            text: incoming,
+            content: incoming,
+            timestamp: Date.now(),
+            inputType: 'voice'
+          }
+
+          return [...prev, assistantMsg].slice(-50)
         })
       }
     }
@@ -984,57 +1004,51 @@ export default function RightPanel({
       if (!isMounted) return
 
       const reqId = data?.requestId || activeRequestIdRef.current
-      const assistantMsgId = data?.id || (reqId ? `msg_model_${reqId}` : null)
-      const rawText = data?.text || data?.content || ''
-      const cleaned = rawText ? normalizeDuplicateTokens(rawText.trim()) : ''
-
-      if (assistantMsgId || reqId) {
-        setChatHistory((prev) => {
-          const idx = prev.findIndex(
-            (m) =>
-              (assistantMsgId && m.id === assistantMsgId) ||
-              (reqId && m.requestId === reqId && (m.role === 'model' || m.role === 'assistant'))
-          )
-          if (idx >= 0) {
-            const final = cleaned || prev[idx].text || prev[idx].content || ''
-            const updated = [...prev]
-            updated[idx] = {
-              ...updated[idx],
-              text: final,
-              content: final,
-              status: data?.status || 'success'
-            }
-            console.log('[AI_STATE_UPDATED]', {
-              messageId: updated[idx].id,
-              role: updated[idx].role,
-              status: data?.status || 'success'
-            })
-            return updated
-          } else if (cleaned) {
-            const finalId = assistantMsgId || `msg_model_${Date.now()}`
-            const newAssistantMsg: Message = {
-              id: finalId,
-              messageId: finalId,
-              conversationId: activeSessionIdRef.current,
-              requestId: reqId || undefined,
-              role: 'assistant',
-              text: cleaned,
-              content: cleaned,
-              timestamp: Date.now(),
-              inputType: (data as any)?.inputType || 'voice',
-              status: data?.status || 'success'
-            }
-            console.log('[AI_STATE_UPDATED]', {
-              messageId: finalId,
-              role: 'assistant',
-              status: data?.status || 'success',
-              createdOnComplete: true
-            })
-            return [...prev, newAssistantMsg].slice(-50)
-          }
-          return prev
-        })
+      if (!reqId) {
+        setActiveStreamingId(null)
+        setIsSubmitting(false)
+        return
       }
+
+      const assistantMsgId = data?.id || getAssistantMessageId(reqId)
+      const finalText = normalizeDuplicateTokens(data?.text || data?.content || '').trim()
+
+      setChatHistory((prev) => {
+        const idx = prev.findIndex(
+          (m) =>
+            m.id === assistantMsgId ||
+            (m.requestId === reqId && (m.role === 'assistant' || m.role === 'model'))
+        )
+
+        if (idx >= 0) {
+          const final = finalText || prev[idx].text || prev[idx].content || ''
+          const updated = [...prev]
+          updated[idx] = {
+            ...updated[idx],
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            text: final,
+            content: final,
+            status: data?.status || 'success'
+          }
+          return updated
+        } else if (finalText) {
+          const assistantMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionIdRef.current,
+            requestId: reqId,
+            role: 'assistant',
+            text: finalText,
+            content: finalText,
+            timestamp: Date.now(),
+            inputType: 'voice',
+            status: data?.status || 'success'
+          }
+          return [...prev, assistantMsg].slice(-50)
+        }
+        return prev
+      })
 
       setActiveStreamingId(null)
       activeRequestIdRef.current = null
@@ -1086,7 +1100,8 @@ export default function RightPanel({
         if (
           currentSession.messages.length === chatHistory.length &&
           currentSession.messages[currentSession.messages.length - 1]?.id === lastMsg?.id &&
-          currentSession.messages[currentSession.messages.length - 1]?.text === lastMsg?.text
+          currentSession.messages[currentSession.messages.length - 1]?.text === lastMsg?.text &&
+          currentSession.messages[currentSession.messages.length - 1]?.status === lastMsg?.status
         ) {
           return prevSessions
         }
@@ -1111,7 +1126,7 @@ export default function RightPanel({
         nextSessions = [newSession, ...prevSessions]
       }
 
-      // Schedule saveSessions asynchronously so it never dispatches event synchronously inside React render loop
+      // Save sessions asynchronously without triggering unneeded re-renders
       setTimeout(() => {
         chatHistoryService.saveSessions(nextSessions)
       }, 0)
@@ -1197,10 +1212,16 @@ export default function RightPanel({
         const currentActive = updated.find((s) => s.id === curActiveId)
         if (currentActive && Array.isArray(currentActive.messages)) {
           setChatHistory((prev) => {
+            const lastPrev = prev[prev.length - 1]
+            const lastCurr = currentActive.messages[currentActive.messages.length - 1]
             const hasNewMessages =
               currentActive.messages.length !== prev.length ||
-              (currentActive.messages.length > 0 &&
-                currentActive.messages[currentActive.messages.length - 1]?.id !== prev[prev.length - 1]?.id)
+              (lastCurr && lastPrev && (
+                lastCurr.id !== lastPrev.id ||
+                lastCurr.text !== lastPrev.text ||
+                lastCurr.status !== lastPrev.status
+              ))
+
             if (hasNewMessages) {
               seenMessageIdsRef.current.clear()
               for (const m of currentActive.messages) {
@@ -1295,9 +1316,9 @@ export default function RightPanel({
 
   // Retry prompt handler for fallback notices / failed messages
   const handleRetry = (failedMsg: Message) => {
-    // Find the preceding user message in chatHistory
     const msgIdx = chatHistory.findIndex((m) => m.id === failedMsg.id)
     let promptToRetry = ''
+
     if (msgIdx > 0) {
       for (let i = msgIdx - 1; i >= 0; i--) {
         if (chatHistory[i].role === 'user') {
@@ -1308,31 +1329,27 @@ export default function RightPanel({
     }
 
     if (!promptToRetry) {
-      // Extract from message text if available (e.g. *"prompt"*)
       const match = failedMsg.text.match(/\*"([^"]+)"\*/) || failedMsg.text.match(/> \*"([^"]+)"\*/)
-      if (match && match[1]) {
+      if (match?.[1]) {
         promptToRetry = match[1].trim()
       }
     }
 
     if (promptToRetry) {
-      if (onSendPrompt) {
-        onSendPrompt(promptToRetry)
-      } else {
-        voiceService.triggerVoiceInput(promptToRetry, 'text')
-      }
+      void handleSubmit(undefined, promptToRetry)
     }
   }
 
-  const handleSendPrompt = (promptText: string, attachedFiles?: any[]) => {
-    const trimmed = (promptText || '').trim()
-    const hasAttachments = Array.isArray(attachedFiles) && attachedFiles.length > 0
-    if (!trimmed && !hasAttachments) return
-    if (onSendPrompt && trimmed) {
-      onSendPrompt(trimmed)
-    }
-    handleSubmit(undefined, trimmed, attachedFiles)
-  }
+  const handleSendPrompt = useCallback(
+    (promptText: string, attachedFiles?: any[]) => {
+      const trimmed = (promptText || '').trim()
+      const hasAttachments = Array.isArray(attachedFiles) && attachedFiles.length > 0
+      if (!trimmed && !hasAttachments) return
+
+      void handleSubmit(undefined, trimmed, attachedFiles)
+    },
+    []
+  )
 
   // Safety watchdog: clear streaming and submitting if hanging for more than 16 seconds
   useEffect(() => {
@@ -1502,6 +1519,85 @@ export default function RightPanel({
           }
         } catch (err: any) {
           console.error('[RightPanel] App launch error:', err)
+          setIsSubmitting(false)
+        }
+      })()
+      return
+    }
+
+    // 0b. Check for Memory Storage Intent ("store this memory in Google Drive", "store this memory in Google Spreadsheets")
+    const lowerTrimmed = trimmed.toLowerCase()
+    const isMemoryDriveIntent =
+      (lowerTrimmed.includes('store') || lowerTrimmed.includes('save') || lowerTrimmed.includes('keep') || lowerTrimmed.includes('add')) &&
+      (lowerTrimmed.includes('memory') || lowerTrimmed.includes('this note') || lowerTrimmed.includes('note') || lowerTrimmed.includes('history')) &&
+      (lowerTrimmed.includes('google drive') || lowerTrimmed.includes('drive'))
+
+    const isMemorySheetsIntent =
+      (lowerTrimmed.includes('store') || lowerTrimmed.includes('save') || lowerTrimmed.includes('keep') || lowerTrimmed.includes('add')) &&
+      (lowerTrimmed.includes('memory') || lowerTrimmed.includes('this note') || lowerTrimmed.includes('note') || lowerTrimmed.includes('history')) &&
+      (lowerTrimmed.includes('spreadsheet') || lowerTrimmed.includes('spreadsheets') || lowerTrimmed.includes('sheets') || lowerTrimmed.includes('google sheets'))
+
+    if (isMemoryDriveIntent || isMemorySheetsIntent) {
+      ;(async () => {
+        try {
+          const target = isMemorySheetsIntent ? 'sheets' : 'drive'
+          let memoryContent = trimmed
+
+          if (trimmed.length < 50 && chatHistory.length > 0) {
+            const lastAssistantMsg = [...chatHistory].reverse().find((m) => m.role === 'assistant' && m.text)
+            if (lastAssistantMsg) {
+              memoryContent = `Prompt: ${trimmed}\n\nContext Memory:\n${lastAssistantMsg.text}`
+            }
+          }
+
+          const res = await fetch('/api/workspace/memory/store', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              memoryText: memoryContent,
+              target,
+              title: `IRIS Memory Record (${new Date().toLocaleDateString()})`
+            })
+          })
+
+          const data = await res.json()
+          let responseText = ''
+          let spokenText = ''
+
+          if (data.success) {
+            const targetName = target === 'sheets' ? 'Google Spreadsheets' : 'Google Drive'
+            const fileLink = data.link || '#'
+            responseText = `📁 **Memory Saved to ${targetName}**\n\nYour memory record has been successfully exported and stored in your ${targetName}.\n\n[👉 View File in ${targetName}](${fileLink})`
+            spokenText = `I have stored your memory in ${targetName}.`
+          } else {
+            responseText = `⚠️ **Workspace Memory Storage Notice**\n\n${data.error || 'Unable to store memory to Google Workspace. Please check your OAuth connection in the Google Workspace Hub.'}`
+            spokenText = `Failed to store memory to Google Workspace. Please verify your connection.`
+          }
+
+          seenMessageIdsRef.current.add(assistantMsgId)
+          const assistantMsg: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            requestId: reqId,
+            role: 'assistant',
+            text: responseText,
+            content: responseText,
+            timestamp: Date.now(),
+            inputType: isVoiceInput ? 'voice' : 'text'
+          }
+
+          setChatHistory((prev) => [...prev, assistantMsg].slice(-50))
+          try {
+            chatHistoryService.addMessage(activeSessionId, assistantMsg)
+          } catch (_err) {}
+          setIsSubmitting(false)
+
+          if (isVoiceInput) {
+            speakAI(spokenText)
+          }
+        } catch (err: any) {
+          console.error('[RightPanel] Memory storage error:', err)
           setIsSubmitting(false)
         }
       })()
@@ -2323,6 +2419,8 @@ export default function RightPanel({
               <div className="flex flex-col gap-1.5 w-full max-w-xs pt-1.5">
                 {[
                   'What is IRIS and what can you do?',
+                  '📱 Inspect screen nodes via Iris Accessibility Service',
+                  '⚡ Automate Android action: Open YouTube & Play',
                   '🗺️ Find top restaurants nearby',
                   '🛎️ Reserve a dinner table for 2 tomorrow at 7pm',
                   '🚗 Directions from here to Times Square',
@@ -2335,7 +2433,7 @@ export default function RightPanel({
                     whileHover={{ x: 2, scale: 1.005 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      const cleanPrompt = prompt.replace(/^[^\w\s]+\s*/, '')
+                      const cleanPrompt = prompt.replace(/^[^\p{L}\p{N}\s]+/u, '').trim() || prompt
                       handleSendPrompt(cleanPrompt)
                     }}
                     className="w-full text-left px-2.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"

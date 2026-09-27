@@ -10,11 +10,13 @@
  */
 
 import { app, shell } from 'electron'
+import Store from 'electron-store'
 import {
   copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   rmSync,
   statSync,
   writeFileSync
@@ -26,6 +28,17 @@ export interface NoteRecord {
   title: string
   content: string
   createdAt: string
+}
+
+export interface NoteDraftRecord {
+  id: string
+  noteId?: string
+  title: string
+  content: string
+  createdAt: string
+  lastAutosavedAt: string
+  isPending: boolean
+  wordCount?: number
 }
 
 export interface GalleryRecord {
@@ -52,10 +65,20 @@ export function ensureDir(dir: string): string {
 /** Root folder for all IRIS user data (created on first access). */
 export function getDataRoot(): string {
   if (!dataRoot) {
-    dataRoot = ensureDir(join(app.getPath('userData'), 'iris-data'))
+    try {
+      const userPath = app?.getPath ? app.getPath('userData') : join(process.cwd(), '.iris-user-data')
+      dataRoot = ensureDir(join(userPath, 'iris-data'))
+    } catch {
+      dataRoot = ensureDir(join(process.cwd(), '.iris-user-data'))
+    }
     ensureDir(getGalleryDir())
+    ensureDir(getAutosaveDir())
   }
   return dataRoot
+}
+
+export function getAutosaveDir(): string {
+  return ensureDir(join(dataRoot || join(process.cwd(), '.iris-user-data', 'iris-data'), 'autosave'))
 }
 
 export function getGalleryDir(): string {
@@ -140,6 +163,157 @@ export function deleteNote(filename: string): { success: boolean } {
   const notes = listNotes().filter((note) => note.filename !== filename)
   writeCollection(NOTES_FILE(), notes)
   return { success: true }
+}
+
+/* ----------------------------------------------------------- notes autosave */
+
+let autosaveStore: Store<{ drafts: Record<string, NoteDraftRecord>; lastSync: string }> | null = null
+
+export function getAutosaveStore(): Store<{ drafts: Record<string, NoteDraftRecord>; lastSync: string }> {
+  if (!autosaveStore) {
+    const dir = getAutosaveDir()
+    autosaveStore = new Store<{ drafts: Record<string, NoteDraftRecord>; lastSync: string }>({
+      name: 'notes-autosave',
+      cwd: dir,
+      defaults: {
+        drafts: {},
+        lastSync: new Date().toISOString()
+      }
+    })
+  }
+  return autosaveStore
+}
+
+export function saveNoteDraft(payload: Partial<NoteDraftRecord>): NoteDraftRecord {
+  const store = getAutosaveStore()
+  const now = new Date().toISOString()
+  const id = payload.id || (payload.noteId ? `draft_${payload.noteId}` : 'draft_new_note')
+  const title = (payload.title || '').trim()
+  const content = payload.content || ''
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+
+  const draftRecord: NoteDraftRecord = {
+    id,
+    noteId: payload.noteId,
+    title,
+    content,
+    createdAt: payload.createdAt || now,
+    lastAutosavedAt: now,
+    isPending: true,
+    wordCount
+  }
+
+  // 1. Sync into electron-store
+  try {
+    const drafts = store.get('drafts') || {}
+    drafts[id] = draftRecord
+    store.set('drafts', drafts)
+    store.set('lastSync', now)
+  } catch (err) {
+    console.warn('[IRIS Store] electron-store write draft notice:', err)
+  }
+
+  // 2. Also write atomic snapshot files in local 'autosave' folder
+  try {
+    const dir = getAutosaveDir()
+    writeFileSync(join(dir, `${id}.json`), JSON.stringify(draftRecord, null, 2), 'utf-8')
+    writeFileSync(join(dir, `${id}.draft.md`), `# ${title || 'Untitled Draft'}\n\n${content}`, 'utf-8')
+  } catch (err) {
+    console.warn('[IRIS Store] Failed writing autosave snapshot file:', err)
+  }
+
+  return draftRecord
+}
+
+export function listNoteDrafts(): NoteDraftRecord[] {
+  try {
+    const store = getAutosaveStore()
+    const draftsMap = store.get('drafts') || {}
+    const drafts = Object.values(draftsMap)
+    return drafts.sort((a, b) => new Date(b.lastAutosavedAt).getTime() - new Date(a.lastAutosavedAt).getTime())
+  } catch (err) {
+    console.warn('[IRIS Store] Failed reading drafts from electron-store:', err)
+    return []
+  }
+}
+
+export function getNoteDraft(id: string): NoteDraftRecord | null {
+  try {
+    const store = getAutosaveStore()
+    const drafts = store.get('drafts') || {}
+    if (drafts[id]) return drafts[id]
+
+    // Fallback to checking disk file in autosave folder
+    const jsonPath = join(getAutosaveDir(), `${id}.json`)
+    if (existsSync(jsonPath)) {
+      return JSON.parse(readFileSync(jsonPath, 'utf-8'))
+    }
+  } catch {}
+  return null
+}
+
+export function deleteNoteDraft(id: string): { success: boolean } {
+  try {
+    const store = getAutosaveStore()
+    const drafts = store.get('drafts') || {}
+    if (drafts[id]) {
+      delete drafts[id]
+      store.set('drafts', drafts)
+    }
+  } catch (err) {
+    console.warn('[IRIS Store] Failed removing draft from electron-store:', err)
+  }
+
+  // Clean snapshot files in autosave folder
+  try {
+    const dir = getAutosaveDir()
+    const jsonPath = join(dir, `${id}.json`)
+    const mdPath = join(dir, `${id}.draft.md`)
+    if (existsSync(jsonPath)) rmSync(jsonPath, { force: true })
+    if (existsSync(mdPath)) rmSync(mdPath, { force: true })
+  } catch (err) {
+    console.warn('[IRIS Store] Failed cleaning autosave draft files:', err)
+  }
+
+  return { success: true }
+}
+
+export function clearNoteDrafts(): { success: boolean } {
+  try {
+    const store = getAutosaveStore()
+    store.set('drafts', {})
+  } catch (err) {
+    console.warn('[IRIS Store] Failed resetting electron-store drafts:', err)
+  }
+
+  try {
+    const dir = getAutosaveDir()
+    const files = existsSync(dir) ? readdirSync(dir) : []
+    for (const f of files) {
+      if ((f.endsWith('.json') && f !== 'notes-autosave.json') || f.endsWith('.md')) {
+        rmSync(join(dir, f), { force: true })
+      }
+    }
+  } catch (err) {
+    console.warn('[IRIS Store] Failed clearing autosave directory:', err)
+  }
+
+  return { success: true }
+}
+
+export function getAutosaveStatus(): {
+  folder: string
+  count: number
+  lastSync: string
+  drafts: Array<{ id: string; title: string; lastAutosavedAt: string }>
+} {
+  const drafts = listNoteDrafts()
+  return {
+    folder: getAutosaveDir(),
+    count: drafts.length,
+    lastSync: drafts[0]?.lastAutosavedAt || new Date().toISOString(),
+    drafts: drafts.map((d) => ({ id: d.id, title: d.title, lastAutosavedAt: d.lastAutosavedAt }))
+  }
 }
 
 /* ---------------------------------------------------------------- gallery */

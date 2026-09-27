@@ -51,6 +51,7 @@ import {
   googleSlidesProvider,
   googleGmailProvider,
   googleCalendarProvider,
+  keepProvider,
   workspaceSessionManager,
   googleWorkspaceApiClient
 } from './workspace'
@@ -1265,6 +1266,111 @@ export async function handleApiRequest(
       })
     }
 
+    // 2b. Store Memory in Google Drive or Google Spreadsheets
+    if (pathname === '/api/workspace/memory/store' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_memory_store', async () => {
+        const body = await parseBody(req)
+        const memoryText = body.memoryText || body.text || 'IRIS Memory Record'
+        const target = (body.target || 'drive').toLowerCase()
+        const title = body.title || `IRIS Memory - ${new Date().toLocaleDateString()}`
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = body.userId || parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+
+        if (target === 'sheets' || target === 'spreadsheet' || target === 'spreadsheets') {
+          // Create spreadsheet with memory text
+          const resObj = await googleWorkspaceApiClient.execute({
+            service: 'sheets',
+            url: 'https://sheets.googleapis.com/v4/spreadsheets',
+            method: 'POST',
+            body: JSON.stringify({
+              properties: { title },
+              sheets: [
+                {
+                  properties: { title: 'Memories' },
+                  data: [
+                    {
+                      startRow: 0,
+                      startColumn: 0,
+                      rowData: [
+                        {
+                          values: [
+                            { userEnteredValue: { stringValue: 'Timestamp' } },
+                            { userEnteredValue: { stringValue: 'Memory Content' } },
+                            { userEnteredValue: { stringValue: 'Source' } }
+                          ]
+                        },
+                        {
+                          values: [
+                            { userEnteredValue: { stringValue: new Date().toISOString() } },
+                            { userEnteredValue: { stringValue: memoryText } },
+                            { userEnteredValue: { stringValue: 'IRIS Neural OS' } }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }),
+            userId,
+            overrideAccessToken: bearerToken
+          })
+
+          const spreadsheet = resObj.data || {}
+          return {
+            success: true,
+            target: 'sheets',
+            spreadsheetId: spreadsheet.spreadsheetId,
+            link: spreadsheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}/edit`,
+            message: `Memory successfully stored in Google Sheets: "${title}"`
+          }
+        } else {
+          // Create Google Docs document in Drive
+          const resObj = await googleWorkspaceApiClient.execute({
+            service: 'docs',
+            url: 'https://docs.google.com/v1/documents',
+            method: 'POST',
+            body: JSON.stringify({ title }),
+            userId,
+            overrideAccessToken: bearerToken
+          })
+
+          const doc = resObj.data || {}
+          const documentId = doc.documentId
+
+          if (documentId) {
+            // Insert memory text into created document
+            await googleWorkspaceApiClient.execute({
+              service: 'docs',
+              url: `https://docs.google.com/v1/documents/${documentId}:batchUpdate`,
+              method: 'POST',
+              body: JSON.stringify({
+                requests: [
+                  {
+                    insertText: {
+                      location: { index: 1 },
+                      text: `IRIS Memory Log\nTimestamp: ${new Date().toLocaleString()}\n\n${memoryText}\n`
+                    }
+                  }
+                ]
+              }),
+              userId,
+              overrideAccessToken: bearerToken
+            })
+          }
+
+          return {
+            success: true,
+            target: 'drive',
+            fileId: documentId,
+            link: `https://docs.google.com/document/d/${documentId}/edit`,
+            message: `Memory successfully stored in Google Drive: "${title}"`
+          }
+        }
+      })
+    }
+
     // 3. Gmail List Messages
     if (pathname === '/api/workspace/gmail/messages' && req.method === 'GET') {
       return handleSafeRoute(res, 'workspace_gmail_messages', async () => {
@@ -1549,6 +1655,50 @@ export async function handleApiRequest(
           overrideAccessToken: bearerToken
         })
         return { success: true, courses: resObj.data?.courses || [] }
+      })
+    }
+
+    // 13. Google Keep Notes
+    if (pathname === '/api/workspace/keep/notes' && req.method === 'GET') {
+      return handleSafeRoute(res, 'workspace_keep_list', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        const notes = await keepProvider.listNotes(bearerToken, userId)
+        return { success: true, notes }
+      })
+    }
+
+    if (pathname === '/api/workspace/keep/notes' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_keep_create', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const body = await parseBody(req)
+        const userId = body.userId || (req.headers['x-user-id'] as string) || undefined
+        const note = await keepProvider.createNote(body, bearerToken, userId)
+        return { success: true, note }
+      })
+    }
+
+    if (pathname.startsWith('/api/workspace/keep/notes/') && req.method === 'DELETE') {
+      return handleSafeRoute(res, 'workspace_keep_delete', async () => {
+        const noteId = pathname.replace('/api/workspace/keep/notes/', '')
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const userId = parsedUrl.searchParams.get('userId') || (req.headers['x-user-id'] as string) || undefined
+        const result = await keepProvider.deleteNote(noteId, bearerToken, userId)
+        return { success: true, ...result }
+      })
+    }
+
+    if (pathname === '/api/workspace/keep/toggle-item' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_keep_toggle_item', async () => {
+        const authHeader = req.headers['authorization'] || ''
+        const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : undefined
+        const body = await parseBody(req)
+        const userId = body.userId || (req.headers['x-user-id'] as string) || undefined
+        const note = await keepProvider.toggleListItem(body.noteId, body.itemIndex, bearerToken, userId)
+        return { success: true, note }
       })
     }
 

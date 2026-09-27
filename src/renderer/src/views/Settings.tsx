@@ -33,6 +33,7 @@ import KeyboardShortcutsSettings from '../components/UI/KeyboardShortcutsSetting
 import GestureSettings from '../components/UI/GestureSettings'
 import ThemeAppearanceSettings from '../components/UI/ThemeAppearanceSettings'
 import WakeWordControlCard from '../components/UI/WakeWordControlCard'
+import AndroidPermissionCenter from '../components/UI/AndroidPermissionCenter'
 import SynthesizedVoiceSettingsPanel from '../components/Voice/SynthesizedVoiceSettingsPanel'
 import { soundEffects, SoundType } from '../services/soundEffectsService'
 import {
@@ -1249,83 +1250,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                 className="w-full"
               >
                 <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
-                  <div className="flex justify-between items-center pb-2">
-                    <span className={titleClass}>
-                      <Cpu className="text-emerald-400 shrink-0" size={22} /> Hardware Permissions &
-                      Telemetry
-                    </span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
-                    Manage hardware peripherals, speech recognition engines, and optical sensors.
-                  </p>
-
-                  <div className="space-y-3">
-                    {[
-                      {
-                        key: 'microphone' as const,
-                        label: 'Microphone & Acoustic Speech Recognition',
-                        desc: 'Processes offline microphone streams and hotwords via Vosk/WebSpeech',
-                        icon: <Mic size={18} className="text-emerald-400" />
-                      },
-                      {
-                        key: 'camera' as const,
-                        label: 'Optics & Visual Perception Camera',
-                        desc: 'Live webcam optical feed analysis and peripheral snapshot processing',
-                        icon: <Camera size={18} className="text-cyan-400" />
-                      },
-                      {
-                        key: 'screenCapture' as const,
-                        label: 'Screen Telemetry & Canvas Optics',
-                        desc: 'Allows IRIS to analyze active displays and desktop workflows',
-                        icon: <Monitor size={18} className="text-purple-400" />
-                      },
-                      {
-                        key: 'audioOutput' as const,
-                        label: 'Synthesizer Audio Output',
-                        desc: 'Vocal response playback and acoustic feedback',
-                        icon: <Volume2 size={18} className="text-amber-400" />
-                      },
-                      {
-                        key: 'location' as const,
-                        label: 'Live Geolocation & Spatial Telemetry',
-                        desc: 'Acquires satellite GPS coordinates, street/city geocoding, and telemetry mapping',
-                        icon: <MapPin size={18} className="text-cyan-400" />
-                      }
-                    ].map((item) => {
-                      const enabled = coreSettings.hardwarePermissions[item.key]
-                      return (
-                        <div
-                          key={item.key}
-                          className="flex items-center justify-between p-4 rounded-xl bg-black/40 border border-white/5 hover:border-white/10 transition-colors"
-                        >
-                          <div className="flex items-center gap-3.5">
-                            <div className="p-2.5 rounded-xl bg-white/5">{item.icon}</div>
-                            <div>
-                              <p className="text-xs sm:text-sm font-medium text-zinc-200">
-                                {item.label}
-                              </p>
-                              <p className="text-[11px] sm:text-xs text-zinc-400">{item.desc}</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() =>
-                              coreSettingsService.setHardwarePermission(item.key, !enabled)
-                            }
-                            className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                              enabled ? 'bg-emerald-500' : 'bg-zinc-800'
-                            }`}
-                          >
-                            <div
-                              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                                enabled ? 'translate-x-6' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <AndroidPermissionCenter />
                 </GlassPanel>
               </motion.div>
             )}

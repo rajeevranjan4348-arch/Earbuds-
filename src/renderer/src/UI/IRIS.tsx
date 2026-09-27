@@ -8,7 +8,8 @@ import {
   RiImageLine,
   RiGoogleFill,
   RiCompass3Line,
-  RiChat3Line
+  RiChat3Line,
+  RiApps2Line
 } from 'react-icons/ri'
 import { FileText, Database, Maximize2, MessageSquare, Mic, Cloud, Terminal } from 'lucide-react'
 import { shortcutService, formatKeyCombo } from '../services/shortcutService'
@@ -27,6 +28,7 @@ const GalleryView = lazy(() => import('../views/Gallery'))
 const GoogleWorkspaceView = lazy(() => import('../views/GoogleWorkspaceView'))
 const GoogleMapsView = lazy(() => import('../views/GoogleMapsView'))
 const YouTubeStudioView = lazy(() => import('../views/YouTubeStudioView'))
+const CoderModeView = lazy(() => import('../views/CoderMode'))
 
 interface IrisProps {
   isConnected: boolean
@@ -141,6 +143,7 @@ const IRIS = ({
 
   const tabs = [
     { id: 'DASHBOARD', label: 'Command', icon: <RiLayoutGridLine size={16} /> },
+    { id: 'CODER', label: 'IDE / Coder', icon: <Terminal size={16} /> },
     { id: 'CHAT', label: 'Chat', icon: <RiChat3Line size={16} /> },
     { id: 'WORKSPACE', label: 'Workspace', icon: <RiGoogleFill size={16} /> },
     { id: 'MAPS', label: 'Maps', icon: <RiCompass3Line size={16} /> },
@@ -258,41 +261,47 @@ const IRIS = ({
             </motion.div>
 
             <div className="flex items-center justify-end gap-2 md:gap-3 w-auto shrink-0">
-              <div className="flex flex-col items-end leading-none">
-                <span className="text-[9px] md:text-[10px] font-mono tracking-widest uppercase text-zinc-400">
-                  Voice Core
-                </span>
-                <span
-                  className={`text-[8px] md:text-[9px] font-mono tracking-widest uppercase mt-0.5 md:mt-1 ${
+              <div
+                onClick={toggleConnection}
+                className="flex items-center gap-2 md:gap-3 cursor-pointer p-1.5 rounded-xl hover:bg-zinc-900/80 transition"
+                title={isConnected ? 'Click to disconnect voice listener' : 'Click to connect voice listener'}
+              >
+                <div className="flex flex-col items-end leading-none">
+                  <span className="text-[9px] md:text-[10px] font-mono tracking-widest uppercase text-zinc-400">
+                    Voice Core
+                  </span>
+                  <span
+                    className={`text-[8px] md:text-[9px] font-mono tracking-widest uppercase mt-0.5 md:mt-1 ${
+                      isConnected
+                        ? isSpeaking
+                          ? 'text-cyan-400 font-bold'
+                          : isMuted
+                            ? 'text-yellow-400 font-bold'
+                            : 'text-emerald-500 font-bold'
+                        : 'text-red-500'
+                    }`}
+                  >
+                    {isConnected
+                      ? isSpeaking
+                        ? 'Speaking'
+                        : isMuted
+                          ? 'Muted'
+                          : 'Listening'
+                      : 'Offline'}
+                  </span>
+                </div>
+                <div
+                  className={`h-2 w-2 rounded-full shadow-[0_0_8px_currentColor] transition-all duration-300 ${
                     isConnected
                       ? isSpeaking
-                        ? 'text-cyan-400 font-bold'
+                        ? 'bg-cyan-400 text-cyan-400 animate-ping'
                         : isMuted
-                          ? 'text-yellow-400 font-bold'
-                          : 'text-emerald-500 font-bold'
-                      : 'text-red-500'
+                          ? 'bg-yellow-400 text-yellow-400'
+                          : 'bg-emerald-500 text-emerald-500'
+                      : 'bg-red-500 text-red-500'
                   }`}
-                >
-                  {isConnected
-                    ? isSpeaking
-                      ? 'Speaking'
-                      : isMuted
-                        ? 'Muted'
-                        : 'Listening'
-                    : 'Offline'}
-                </span>
+                />
               </div>
-              <div
-                className={`h-2 w-2 rounded-full shadow-[0_0_8px_currentColor] transition-all duration-300 ${
-                  isConnected
-                    ? isSpeaking
-                      ? 'bg-cyan-400 text-cyan-400 animate-ping'
-                      : isMuted
-                        ? 'bg-yellow-400 text-yellow-400'
-                        : 'bg-emerald-500 text-emerald-500'
-                    : 'bg-red-500 text-red-500'
-                }`}
-              />
             </div>
           </motion.div>
         )}
@@ -391,6 +400,7 @@ const IRIS = ({
               {activeTab === 'PHONE' && <PhoneView glassPanel={glassPanel} />}
 
               <Suspense fallback={<ModuleViewSkeleton title="Synchronizing Module Weights" />}>
+                {activeTab === 'CODER' && <CoderModeView />}
                 {activeTab === 'YOUTUBE' && <YouTubeStudioView glassPanel={glassPanel} />}
                 {activeTab === 'WORKSPACE' && <GoogleWorkspaceView glassPanel={glassPanel} />}
                 {activeTab === 'MAPS' && <GoogleMapsView glassPanel={glassPanel} />}

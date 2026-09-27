@@ -22,6 +22,22 @@ export interface WakeWordEventDetail {
   confidence: number
 }
 
+export interface WakeWordLogEntry {
+  id: string
+  phrase: string
+  commandTail?: string
+  timestamp: number
+  dateStr: string
+}
+
+export interface WakeWordFrequencyStats {
+  todayCount: number
+  weekCount: number
+  totalCount: number
+  mostCommonPhrase: string
+  avgDailyCount: number
+}
+
 export interface WakeWordConfig {
   enabled: boolean
   sensitivity: number // 0.1 to 1.0
@@ -31,13 +47,14 @@ export interface WakeWordConfig {
 }
 
 const STORAGE_KEY = 'iris_wake_word_config'
+const LOGS_STORAGE_KEY = 'iris_wake_word_logs'
 
 export const DEFAULT_WAKE_CONFIG: WakeWordConfig = {
-  enabled: false,
+  enabled: true,
   sensitivity: 0.75,
-  soundFeedback: false,
+  soundFeedback: true,
   wakePhrases: ['hey iris', 'ok iris', 'hello iris', 'hey jarvis', 'wake up iris', 'iris'],
-  autoExecuteCommand: false
+  autoExecuteCommand: true
 }
 
 class WakeWordDetectionService {
@@ -49,6 +66,7 @@ class WakeWordDetectionService {
   private lastTriggerTime: number = 0
   private audioContext: AudioContext | null = null
   private restartTimeout: any = null
+  private logs: WakeWordLogEntry[] = []
 
   // Regex patterns
   private strictPatterns: RegExp[] = [
@@ -69,6 +87,14 @@ class WakeWordDetectionService {
 
   constructor() {
     this.loadConfig()
+    this.loadLogs()
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        if (this.config.enabled && !this.isListening) {
+          this.start()
+        }
+      }, 1000)
+    }
   }
 
   private loadConfig(): void {
@@ -86,6 +112,82 @@ class WakeWordDetectionService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.config))
     } catch (_e) {}
+  }
+
+  private loadLogs(): void {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = localStorage.getItem(LOGS_STORAGE_KEY)
+      if (saved) {
+        this.logs = JSON.parse(saved)
+      }
+    } catch (_e) {}
+  }
+
+  private saveLogs(): void {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(this.logs))
+    } catch (_e) {}
+  }
+
+  public addLogEntry(entry: WakeWordLogEntry): void {
+    this.logs = [entry, ...this.logs].slice(0, 200)
+    this.saveLogs()
+  }
+
+  public getLogHistory(): WakeWordLogEntry[] {
+    return [...this.logs]
+  }
+
+  public clearLogHistory(): void {
+    this.logs = []
+    this.saveLogs()
+    this.notifyStateListeners()
+  }
+
+  public getFrequencyStats(): WakeWordFrequencyStats {
+    const now = Date.now()
+    const oneDayMs = 24 * 60 * 60 * 1000
+    const oneWeekMs = 7 * oneDayMs
+
+    const todayStart = new Date().setHours(0, 0, 0, 0)
+    const weekStart = now - oneWeekMs
+
+    let todayCount = 0
+    let weekCount = 0
+    const phraseCounts: Record<string, number> = {}
+
+    for (const log of this.logs) {
+      if (log.timestamp >= todayStart) {
+        todayCount++
+      }
+      if (log.timestamp >= weekStart) {
+        weekCount++
+      }
+      const norm = (log.phrase || 'Iris').toLowerCase().trim()
+      phraseCounts[norm] = (phraseCounts[norm] || 0) + 1
+    }
+
+    let mostCommonPhrase = 'Iris'
+    let maxPhraseCount = 0
+    for (const [p, count] of Object.entries(phraseCounts)) {
+      if (count > maxPhraseCount) {
+        maxPhraseCount = count
+        mostCommonPhrase = p.charAt(0).toUpperCase() + p.slice(1)
+      }
+    }
+
+    const uniqueDays = new Set(this.logs.map((l) => l.dateStr?.slice(0, 10))).size || 1
+    const avgDailyCount = Math.round((this.logs.length / uniqueDays) * 10) / 10
+
+    return {
+      todayCount,
+      weekCount,
+      totalCount: this.logs.length,
+      mostCommonPhrase,
+      avgDailyCount
+    }
   }
 
   public getConfig(): WakeWordConfig {
@@ -287,6 +389,15 @@ class WakeWordDetectionService {
           timestamp: now,
           confidence: 0.95
         }
+
+        // Save interaction log timestamp for interaction frequency analytics
+        this.addLogEntry({
+          id: `wake_${now}_${Math.random().toString(36).substring(2, 7)}`,
+          phrase,
+          commandTail: commandTail || undefined,
+          timestamp: now,
+          dateStr: new Date(now).toISOString()
+        })
 
         console.log(`[WakeWordService] ⚡ Wake word triggered: "${phrase}" | Command: "${commandTail}"`)
 

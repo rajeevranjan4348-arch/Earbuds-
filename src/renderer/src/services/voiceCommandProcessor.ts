@@ -20,6 +20,7 @@ import { workspacePersistenceService } from './workspacePersistenceService'
 import { notifyVoiceCommandProcessed } from './voiceToastService'
 import { voiceCommandLogService } from './voiceCommandLogService'
 import { normalizeAIResponse } from './aiResponseNormalizer'
+import { appControlService } from './appControlService'
 
 export type VoiceCommandIntent =
   | 'PLAN_EXECUTION_AGENT'
@@ -27,6 +28,7 @@ export type VoiceCommandIntent =
   | 'android_control'
   | 'SECURITY_CONFIRMATION'
   | 'NAVIGATE'
+  | 'APP_CONTROL'
   | 'WORKSPACE_ACTION'
   | 'WORKSPACE_CONFIG'
   | 'VISION_MODE'
@@ -236,6 +238,10 @@ class VoiceCommandProcessor {
     // 0. Mem0 Explicit Memory Commands ("Remember that...", "What do you remember about me?", "Forget that", "Clear memories")
     const memoryCmdResult = await this.checkExplicitMemoryCommands(originalText, cleaned)
     if (memoryCmdResult) return memoryCmdResult
+
+    // 0.08 Universal App Opening & Controlling Commands (running apps, close apps, app controller)
+    const appControlResult = await this.checkAppControl(cleaned, originalText, context)
+    if (appControlResult) return appControlResult
 
     // 0.1 AI Command Detection: Internal 'launch_app' Intent for Android Applications
     const appResult = await this.checkAppLauncher(cleaned, originalText, context)
@@ -543,9 +549,33 @@ class VoiceCommandProcessor {
     }
 
     if (
+      cleaned.includes('open coder') ||
+      cleaned.includes('show coder') ||
+      cleaned.includes('code editor') ||
+      cleaned.includes('open ide') ||
+      cleaned === 'coder' ||
+      cleaned === 'ide' ||
+      cleaned.includes('switch to coder') ||
+      cleaned.includes('launch coder') ||
+      cleaned.includes('ai coder')
+    ) {
+      context.navigate?.('CODER')
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_CODER',
+        spokenResponse: 'Opening AI Coder IDE with Monaco editor, live multi-tab preview, and terminal.'
+      }
+    }
+
+    if (
       cleaned.includes('open setting') ||
       cleaned.includes('show setting') ||
+      cleaned.includes('go to setting') ||
+      cleaned.includes('launch setting') ||
+      cleaned.includes('view setting') ||
       cleaned === 'settings' ||
+      cleaned === 'setting' ||
       cleaned.includes('system preferences') ||
       cleaned.includes('api keys') ||
       cleaned.includes('configure iris')
@@ -556,6 +586,27 @@ class VoiceCommandProcessor {
         intent: 'NAVIGATE',
         actionExecuted: 'NAVIGATE_SETTINGS',
         spokenResponse: 'Switching to IRIS system settings and configuration.'
+      }
+    }
+
+    if (
+      cleaned.includes('open keep') ||
+      cleaned.includes('google keep') ||
+      cleaned.includes('show keep') ||
+      cleaned.includes('keep notes') ||
+      cleaned === 'keep'
+    ) {
+      context.navigate?.('WORKSPACE')
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('iris:workspace-select-service', { detail: { service: 'KEEP' } })
+        )
+      }
+      return {
+        handled: true,
+        intent: 'NAVIGATE',
+        actionExecuted: 'NAVIGATE_WORKSPACE_KEEP',
+        spokenResponse: 'Opening Google Keep notes.'
       }
     }
 
@@ -1480,6 +1531,178 @@ class VoiceCommandProcessor {
   }
 
   // ==========================================
+  // 6.8. UNIVERSAL APP CONTROLLER & RUNNING PROCESS MANAGEMENT
+  // ==========================================
+  private async checkAppControl(
+    cleaned: string,
+    originalText: string,
+    context?: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    // 1. Open Universal App Controller Hub / Manager
+    if (
+      cleaned === 'open app controller' ||
+      cleaned === 'show app controller' ||
+      cleaned === 'app controller' ||
+      cleaned === 'open apps' ||
+      cleaned === 'show all apps' ||
+      cleaned === 'all apps' ||
+      cleaned === 'control apps' ||
+      cleaned === 'manage apps' ||
+      cleaned === 'running apps manager' ||
+      cleaned === 'process manager'
+    ) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('iris:open-app-controller'))
+      }
+      return {
+        handled: true,
+        intent: 'APP_CONTROL',
+        actionExecuted: 'OPEN_APP_CONTROLLER',
+        spokenResponse: 'Opening Universal App Controller and active process manager.',
+        displayText: 'Opened Universal App Controller and Process Manager.'
+      }
+    }
+
+    // 2. Close / Terminate All Running Apps
+    if (
+      cleaned === 'close all apps' ||
+      cleaned === 'close open apps' ||
+      cleaned === 'exit all apps' ||
+      cleaned === 'kill all apps' ||
+      cleaned === 'terminate all apps' ||
+      cleaned === 'stop all apps' ||
+      cleaned === 'close all running apps'
+    ) {
+      const res = await appControlService.closeAllApps()
+      return {
+        handled: true,
+        intent: 'APP_CONTROL',
+        actionExecuted: 'CLOSE_ALL_APPS',
+        spokenResponse: 'All background applications closed. Switched to Command Dashboard.',
+        displayText: `**App Controller:** ${res.message}`
+      }
+    }
+
+    // 3. Query Active / Running Applications
+    if (
+      cleaned === 'show running apps' ||
+      cleaned === 'list running apps' ||
+      cleaned === 'running apps' ||
+      cleaned === 'what apps are running' ||
+      cleaned === 'what apps are open' ||
+      cleaned === 'active apps' ||
+      cleaned === 'open apps list'
+    ) {
+      const running = appControlService.getRunningApps()
+      if (running.length === 0) {
+        return {
+          handled: true,
+          intent: 'APP_CONTROL',
+          actionExecuted: 'LIST_RUNNING_APPS',
+          spokenResponse: 'No background applications are currently active.',
+          displayText: 'No background applications are currently active.'
+        }
+      }
+
+      const names = running.map((r) => r.name).join(', ')
+      const displayRows = running
+        .map(
+          (r) =>
+            `- **${r.name}** (${r.type}) — Status: \`${r.status}\`, RAM: ${r.memoryMb}MB, CPU: ${r.cpuPercent}%`
+        )
+        .join('\n')
+
+      return {
+        handled: true,
+        intent: 'APP_CONTROL',
+        actionExecuted: 'LIST_RUNNING_APPS',
+        spokenResponse: `There are ${running.length} applications active: ${names}.`,
+        displayText: `### Active Running Applications (${running.length})\n\n${displayRows}`,
+        metadata: { runningApps: running }
+      }
+    }
+
+    // 4. Close / Kill / Stop a Specific App (e.g. "close coder", "close notes", "exit settings", "kill whatsapp")
+    const closeMatch = cleaned.match(
+      /^(?:close|kill|stop|exit|terminate|quit)\s+(?:the\s+)?([a-z0-9\s_-]+)$/i
+    )
+    if (closeMatch) {
+      const targetQuery = closeMatch[1].trim()
+      if (targetQuery && targetQuery !== 'all' && targetQuery !== 'all apps') {
+        const running = appControlService.getRunningApps()
+        const matchedRunning = running.find(
+          (r) =>
+            r.id.toLowerCase() === targetQuery ||
+            r.name.toLowerCase() === targetQuery ||
+            r.name.toLowerCase().includes(targetQuery) ||
+            targetQuery.includes(r.id.toLowerCase())
+        )
+
+        if (matchedRunning) {
+          const res = await appControlService.closeApp(matchedRunning.id)
+          return {
+            handled: true,
+            intent: 'APP_CONTROL',
+            actionExecuted: `CLOSE_APP_${matchedRunning.id.toUpperCase()}`,
+            spokenResponse: res.message,
+            displayText: `**App Controller:** Terminated ${matchedRunning.name}.`
+          }
+        }
+      }
+    }
+
+    // 5. Restart / Reload a Specific App (e.g. "restart coder", "reload notes")
+    const restartMatch = cleaned.match(/^(?:restart|reload)\s+(?:the\s+)?([a-z0-9\s_-]+)$/i)
+    if (restartMatch) {
+      const targetQuery = restartMatch[1].trim()
+      const running = appControlService.getRunningApps()
+      const matchedRunning = running.find(
+        (r) =>
+          r.id.toLowerCase() === targetQuery ||
+          r.name.toLowerCase() === targetQuery ||
+          r.name.toLowerCase().includes(targetQuery)
+      )
+
+      if (matchedRunning) {
+        const res = await appControlService.restartApp(matchedRunning.id)
+        return {
+          handled: true,
+          intent: 'APP_CONTROL',
+          actionExecuted: `RESTART_APP_${matchedRunning.id.toUpperCase()}`,
+          spokenResponse: res.message,
+          displayText: `**App Controller:** Reloaded ${matchedRunning.name}.`
+        }
+      }
+    }
+
+    // 6. Mute / Unmute App Audio
+    const muteMatch = cleaned.match(/^(?:mute|unmute)\s+(?:the\s+)?([a-z0-9\s_-]+)$/i)
+    if (muteMatch) {
+      const targetQuery = muteMatch[1].trim()
+      const running = appControlService.getRunningApps()
+      const matchedRunning = running.find(
+        (r) =>
+          r.id.toLowerCase() === targetQuery ||
+          r.name.toLowerCase() === targetQuery ||
+          r.name.toLowerCase().includes(targetQuery)
+      )
+
+      if (matchedRunning) {
+        const isMuted = appControlService.toggleMuteApp(matchedRunning.id)
+        return {
+          handled: true,
+          intent: 'APP_CONTROL',
+          actionExecuted: `MUTE_APP_${matchedRunning.id.toUpperCase()}`,
+          spokenResponse: `${matchedRunning.name} is now ${isMuted ? 'muted' : 'unmuted'}.`,
+          displayText: `**App Controller:** ${matchedRunning.name} is now ${isMuted ? 'muted' : 'unmuted'}.`
+        }
+      }
+    }
+
+    return null
+  }
+
+  // ==========================================
   // 7. UNIVERSAL & ANDROID AI APP LAUNCHER PIPELINE
   // ==========================================
   private async checkAppLauncher(
@@ -2330,8 +2553,17 @@ class VoiceCommandProcessor {
     originalText: string,
     cleaned: string
   ): Promise<CommandProcessResult | null> {
-    // 1. FLUX Image Generation (FLUX #20)
+    // 1. FLUX Image & Asset Generation (FLUX #20 & Asset Generation)
+    const assetMatch =
+      originalText.match(
+        /^(?:generate asset for|generate asset of|generate an asset for|generate an asset of|generate asset|create asset|generate an asset|create an asset|produce asset|build asset|design asset|make asset|generate 3d asset|generate visual asset|generate ui asset)\s*(.*)$/i
+      ) ||
+      cleaned.match(
+        /^(?:generate asset|create asset|build asset|design asset|make asset|generate an asset|create an asset)\s*(.*)$/i
+      )
+
     const imageMatch =
+      assetMatch ||
       originalText.match(
         /^(?:generate an image of|create an image of|generate image of|draw an image of|draw a|paint a|flux image of|flux image|generate picture of|create image of|generate logo for|create logo for|make logo for|design logo for|generat logo for|generat image of)\s+(.+)$/i
       ) ||
@@ -2340,7 +2572,10 @@ class VoiceCommandProcessor {
       )
 
     if (imageMatch) {
-      const prompt = imageMatch[1].trim()
+      let prompt = (imageMatch[1] || '').trim()
+      if (!prompt || prompt === 'asset' || prompt === 'an asset') {
+        prompt = 'cyberpunk holographic neural interface asset with glowing cyan and emerald circuits'
+      }
       try {
         const res = await fetch('/api/image/generate', {
           method: 'POST',
@@ -2350,14 +2585,21 @@ class VoiceCommandProcessor {
         if (res.ok) {
           const data = await res.json()
           if (data.success && data.imageUrl) {
-            const markdownDisplay = `![${prompt}](${data.imageUrl})\n\n**FLUX Generation:** "${prompt}" (${data.model})`
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('iris:asset-generated', {
+                  detail: { imageUrl: data.imageUrl, prompt }
+                })
+              )
+            }
+            const markdownDisplay = `![${prompt}](${data.imageUrl})\n\n**FLUX Asset Generation:** "${prompt}" (${data.model})`
             return {
               handled: true,
               intent: 'IMAGE_GENERATION',
-              actionExecuted: 'FLUX_IMAGE_GENERATE',
-              spokenResponse: `Generated image for: "${prompt}". Rendering visual output.`,
+              actionExecuted: 'FLUX_ASSET_GENERATE',
+              spokenResponse: `Generated AI asset for: "${prompt}". Rendering visual output.`,
               displayText: markdownDisplay,
-              metadata: { imageUrl: data.imageUrl, model: data.model }
+              metadata: { imageUrl: data.imageUrl, model: data.model, prompt }
             }
           }
         }

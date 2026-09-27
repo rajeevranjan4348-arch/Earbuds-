@@ -352,33 +352,6 @@ export const AiChat8: React.FC<AiChat8Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mic / Barge-In Interrupt Button */}
-            <button
-              onClick={handleMicToggle}
-              title={
-                voiceState === 'speaking'
-                  ? 'Interrupt AI (Barge-in)'
-                  : voiceState === 'listening'
-                  ? 'Stop listening'
-                  : 'Start voice input'
-              }
-              className={`p-2.5 rounded-xl transition-all duration-200 flex items-center justify-center ${
-                voiceState === 'speaking'
-                  ? 'bg-amber-500 text-neutral-950 hover:bg-amber-400 animate-pulse'
-                  : voiceState === 'listening' || voiceState === 'user_speaking'
-                  ? 'bg-emerald-500 text-neutral-950 hover:bg-emerald-400 shadow-lg shadow-emerald-500/25'
-                  : 'bg-neutral-800 text-neutral-300 hover:text-emerald-400 hover:bg-neutral-700'
-              }`}
-            >
-              {voiceState === 'speaking' ? (
-                <StopCircle className="w-4 h-4" />
-              ) : voiceState === 'listening' || voiceState === 'user_speaking' ? (
-                <Mic className="w-4 h-4 animate-bounce" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
-
             {/* Send Button */}
             <button
               onClick={handleSend}

@@ -381,4 +381,49 @@ export class GoogleWorkspaceService {
       link: c.alternateLink
     }))
   }
+
+  // 13. Google Keep
+  async listKeepNotes(): Promise<any[]> {
+    const data: any = await this.executeWithAutoRefresh('/api/workspace/keep/notes', { method: 'GET' }, 'Keep')
+    return data.notes || []
+  }
+
+  async createKeepNote(dto: {
+    title: string
+    text?: string
+    listItems?: Array<{ text: string; checked?: boolean } | string>
+    color?: string
+    isPinned?: boolean
+  }): Promise<any> {
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/keep/notes',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto)
+      },
+      'Keep'
+    )
+    return data.note || data
+  }
+
+  async deleteKeepNote(noteId: string): Promise<boolean> {
+    const data: any = await this.executeWithAutoRefresh(
+      `/api/workspace/keep/notes/${encodeURIComponent(noteId)}`,
+      { method: 'DELETE' },
+      'Keep'
+    )
+    return Boolean(data.success)
+  }
+
+  async toggleKeepListItem(noteId: string, itemIndex: number): Promise<any> {
+    const data: any = await this.executeWithAutoRefresh(
+      '/api/workspace/keep/toggle-item',
+      {
+        method: 'POST',
+        body: JSON.stringify({ noteId, itemIndex })
+      },
+      'Keep'
+    )
+    return data.note || data
+  }
 }

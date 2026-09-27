@@ -28,15 +28,21 @@ import { closeApp, openApp } from './lib/apps'
 import { applyKeysToEnvironment, readKeys, writeKeys } from './lib/keys'
 import {
   clearGallery,
+  clearNoteDrafts,
   deleteGalleryItem,
   deleteNote,
+  deleteNoteDraft,
   exportMediaFile,
+  getAutosaveStatus,
+  getNoteDraft,
   listAdbHistory,
   listGallery,
+  listNoteDrafts,
   listNotes,
   revealInFileManager,
   saveGalleryItem,
-  saveNote
+  saveNote,
+  saveNoteDraft
 } from './lib/store'
 import { fetchInstalledApps, fetchStorageDrives, fetchSystemStats } from './lib/system'
 
@@ -90,6 +96,13 @@ export function registerIpcHandlers(context: IpcContext = {}): void {
   handle(ipcMain, 'get-notes', () => listNotes())
   handle(ipcMain, 'save-note', (payload: any) => saveNote(payload || {}))
   handle(ipcMain, 'delete-note', (filename: string) => deleteNote(filename))
+  handle(ipcMain, 'autosave-note-draft', (payload: any) => saveNoteDraft(payload || {}))
+  handle(ipcMain, 'save-note-draft', (payload: any) => saveNoteDraft(payload || {}))
+  handle(ipcMain, 'get-note-drafts', () => listNoteDrafts())
+  handle(ipcMain, 'get-note-draft', (id: string) => getNoteDraft(id))
+  handle(ipcMain, 'delete-note-draft', (id: string) => deleteNoteDraft(id))
+  handle(ipcMain, 'clear-note-drafts', () => clearNoteDrafts())
+  handle(ipcMain, 'get-autosave-status', () => getAutosaveStatus())
 
   /* -------------------------------------------------------------- gallery */
   handle(ipcMain, 'get-gallery', () => listGallery())

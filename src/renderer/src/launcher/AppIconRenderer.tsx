@@ -28,7 +28,17 @@ import {
   RiDeleteBin6Line,
   RiBrainLine,
   RiShieldCrossLine,
-  RiAppsLine
+  RiAppsLine,
+  RiTerminalBoxLine,
+  RiSlackFill,
+  RiVideoChatLine,
+  RiShapeLine,
+  RiCodeSSlashLine,
+  RiMovie2Line,
+  RiOpenaiFill,
+  RiSparklingFill,
+  RiCalculatorLine,
+  RiTimeLine
 } from 'react-icons/ri'
 import { Hand, Sparkles } from 'lucide-react'
 
@@ -105,6 +115,26 @@ export const AppIconRenderer: React.FC<AppIconProps> = ({
       return <RiBrainLine size={size} className={className || 'text-violet-400'} />
     case 'RiShieldCrossLine':
       return <RiShieldCrossLine size={size} className={className || 'text-red-500'} />
+    case 'RiTerminalBoxLine':
+      return <RiTerminalBoxLine size={size} className={className || 'text-emerald-400'} />
+    case 'RiSlackFill':
+      return <RiSlackFill size={size} className={className || 'text-amber-400'} />
+    case 'RiVideoChatLine':
+      return <RiVideoChatLine size={size} className={className || 'text-blue-400'} />
+    case 'RiShapeLine':
+      return <RiShapeLine size={size} className={className || 'text-purple-400'} />
+    case 'RiCodeSSlashLine':
+      return <RiCodeSSlashLine size={size} className={className || 'text-cyan-400'} />
+    case 'RiMovie2Line':
+      return <RiMovie2Line size={size} className={className || 'text-red-500'} />
+    case 'RiOpenaiFill':
+      return <RiOpenaiFill size={size} className={className || 'text-teal-400'} />
+    case 'RiSparklingFill':
+      return <RiSparklingFill size={size} className={className || 'text-indigo-400'} />
+    case 'RiCalculatorLine':
+      return <RiCalculatorLine size={size} className={className || 'text-amber-300'} />
+    case 'RiTimeLine':
+      return <RiTimeLine size={size} className={className || 'text-sky-300'} />
     default:
       if (category === 'media') return <RiYoutubeFill size={size} className={className || 'text-rose-400'} />
       if (category === 'communication') return <RiChat3Line size={size} className={className || 'text-cyan-400'} />

@@ -66,7 +66,7 @@ export class GStackInvestigateEngine {
     }
 
     // 2. Extract affected file paths from trace
-    const fileMatches = raw.match(/(?:[a-zA-Z0-9_\-\.\/]+)\.(?:ts|tsx|js|jsx|json|html|css):(\d+)?/g)
+    const fileMatches = raw.match(/(?:[a-zA-Z0-9._/-]+)\.(?:ts|tsx|js|jsx|json|html|css):(\d+)?/g)
     if (fileMatches) {
       for (const m of fileMatches) {
         const cleanPath = m.split(':')[0]

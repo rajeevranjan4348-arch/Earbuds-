@@ -68,7 +68,7 @@ export function extractAndNormalizeUrls(text: string): { normalizedText: string;
 
   // Normalize bare www.example.com into [www.example.com](https://www.example.com) if not already markdown linked
   const normalizedText = text.replace(
-    /(?<!\]\()(?<!https?:\/\/)\b(www\.[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(?:\/[^\s)]*)?)/gi,
+    /(?<!\]\()(?<!https?:\/\/)\b(www\.[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s)]*)?)/gi,
     (m) => `[${m}](https://${m})`
   )
 

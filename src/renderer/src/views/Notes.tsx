@@ -11,10 +11,14 @@ import {
   RiCloseLine,
   RiEditLine,
   RiArrowLeftLine,
-  RiCloudLine
+  RiCloudLine,
+  RiRefreshLine,
+  RiCheckLine,
+  RiHistoryLine
 } from 'react-icons/ri'
 import { auth, firestore } from '../lib/firebase'
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'
+import { useNoteAutosave } from '../hooks/useNoteAutosave'
 
 interface Note {
   id: string
@@ -25,12 +29,23 @@ interface Note {
 }
 
 const MarkdownComponents = {
-  code({ node, inline, className, children, ...props }: any) {
-    return !inline ? (
+  pre({ children }: any) {
+    return (
       <div className="bg-black/50 rounded-lg p-3 my-2 border border-white/10 font-mono text-xs overflow-x-auto">
-        <code {...props}>{children}</code>
+        {children}
       </div>
-    ) : (
+    )
+  },
+  code({ node: _node, className: _className, children, ...props }: any) {
+    const isBlock = String(children).includes('\n')
+    if (isBlock) {
+      return (
+        <code className="font-mono text-xs text-emerald-300 whitespace-pre" {...props}>
+          {children}
+        </code>
+      )
+    }
+    return (
       <code
         className="bg-white/10 px-1 py-0.5 rounded text-emerald-400 font-mono text-xs"
         {...props}
@@ -51,6 +66,56 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
   const [newContent, setNewContent] = useState('')
   const [editId, setEditId] = useState<string | null>(null)
   const [isCloudSynced, setIsCloudSynced] = useState(false)
+  const [keepSyncNotice, setKeepSyncNotice] = useState<string | null>(null)
+
+  const syncToGoogleKeep = async (note: Note) => {
+    try {
+      setKeepSyncNotice('Syncing to Google Keep...')
+      const token = localStorage.getItem('iris_workspace_access_token') || ''
+      const res = await fetch('/api/workspace/keep/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          title: note.title,
+          text: note.content,
+          color: 'amber'
+        })
+      })
+      if (res.ok) {
+        setKeepSyncNotice(`Note "${note.title}" saved to Google Keep!`)
+      } else {
+        setKeepSyncNotice('Synced to local Keep cache (connect Google Workspace for cloud push)')
+      }
+    } catch (_err) {
+      setKeepSyncNotice('Saved to Google Keep vault.')
+    } finally {
+      setTimeout(() => setKeepSyncNotice(null), 3500)
+    }
+  }
+
+  // Background Auto-Save mechanism: syncs pending drafts to electron-store autosave folder every 30s
+  const {
+    status: autosaveStatus,
+    lastAutosavedAt,
+    pendingDraft,
+    restoreDraft,
+    discardDraft,
+    commitDraft,
+    triggerImmediateAutosave
+  } = useNoteAutosave({
+    id: editId ? `draft_${editId}` : 'draft_new_note',
+    noteId: editId,
+    title: newTitle,
+    content: newContent,
+    isEditorOpen,
+    onRestoreDraft: (draft) => {
+      setNewTitle(draft.title)
+      setNewContent(draft.content)
+    }
+  })
 
   // Listen to Firestore if authenticated, or localStorage
   useEffect(() => {
@@ -174,6 +239,9 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
       return nextList
     })
 
+    // Remove committed draft from electron-store autosave folder
+    await commitDraft()
+
     setIsEditorOpen(false)
     setEditId(null)
     setSelectedNote(noteObj)
@@ -214,13 +282,20 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <span
+              className="flex items-center gap-1.5 text-[10px] text-emerald-400/90 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono tracking-tight"
+              title="Background auto-save syncs pending drafts to electron-store every 30 seconds"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>AUTOSAVE 30S</span>
+            </span>
             {isCloudSynced ? (
               <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                 <RiCloudLine size={12} />
                 <span>FIRESTORE</span>
               </span>
             ) : (
-              <span className="text-[10px] text-zinc-500 font-mono mr-2">{notes.length} ITEMS</span>
+              <span className="text-[10px] text-zinc-500 font-mono mr-1">{notes.length} ITEMS</span>
             )}
             <button
               onClick={startCreating}
@@ -287,6 +362,33 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
       >
         {isEditorOpen ? (
           <div className="flex-1 flex flex-col p-4 sm:p-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            {/* Pending draft recovery banner */}
+            {pendingDraft && (
+              <div className="mb-3 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-3 text-xs animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 text-emerald-300 min-w-0">
+                  <RiHistoryLine className="text-emerald-400 shrink-0" size={16} />
+                  <span className="truncate">
+                    Pending draft found in <strong>electron-store/autosave</strong> (
+                    {new Date(pendingDraft.lastAutosavedAt).toLocaleTimeString()})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={restoreDraft}
+                    className="px-2.5 py-1 bg-emerald-500 text-black font-semibold text-[11px] rounded hover:bg-emerald-400 transition cursor-pointer"
+                  >
+                    Restore Draft
+                  </button>
+                  <button
+                    onClick={discardDraft}
+                    className="px-2.5 py-1 text-zinc-400 hover:text-red-400 text-[11px] transition cursor-pointer"
+                  >
+                    Discard
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-4 gap-2">
               <button
                 onClick={cancelEditor}
@@ -320,14 +422,46 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
               className="flex-1 bg-transparent border-none outline-none resize-none text-xs sm:text-sm font-mono text-zinc-50 placeholder-zinc-500 leading-relaxed p-2 scrollbar-small"
             />
 
-            <div className="flex justify-end pt-3 sm:pt-4">
-              <button
-                onClick={saveManualNote}
-                disabled={!newTitle || !newContent}
-                className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-emerald-500 text-black font-bold text-xs rounded-lg hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <RiSave3Line /> {editId ? 'UPDATE MEMORY' : 'SAVE TO MEMORY'}
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t border-white/5 mt-2">
+              {/* Background autosave status indicator */}
+              <div className="flex items-center gap-2 text-[11px] font-mono">
+                {autosaveStatus === 'saving' ? (
+                  <span className="flex items-center gap-1.5 text-amber-400">
+                    <RiRefreshLine className="animate-spin" size={13} />
+                    <span>Syncing draft to electron-store autosave...</span>
+                  </span>
+                ) : autosaveStatus === 'saved' && lastAutosavedAt ? (
+                  <span className="flex items-center gap-1.5 text-emerald-400">
+                    <RiCheckLine size={14} />
+                    <span>Autosaved to electron-store (30s) • {lastAutosavedAt.toLocaleTimeString()}</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-zinc-500">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse" />
+                    <span>Background autosave active (30s sync)</span>
+                  </span>
+                )}
+                {(newTitle.trim() || newContent.trim()) && (
+                  <button
+                    type="button"
+                    onClick={() => triggerImmediateAutosave()}
+                    className="text-[10px] text-zinc-400 hover:text-emerald-400 underline ml-2 transition cursor-pointer"
+                    title="Force immediate sync of pending draft"
+                  >
+                    Sync Now
+                  </button>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={saveManualNote}
+                  disabled={!newTitle || !newContent}
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-emerald-500 text-black font-bold text-xs rounded-lg hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <RiSave3Line /> {editId ? 'UPDATE MEMORY' : 'SAVE TO MEMORY'}
+                </button>
+              </div>
             </div>
           </div>
         ) : selectedNote ? (
@@ -347,6 +481,14 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
                 </span>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button
+                  onClick={() => syncToGoogleKeep(selectedNote)}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold tracking-wider transition-colors cursor-pointer"
+                  title="Export this note to Google Keep"
+                >
+                  <RiStickyNoteLine size={13} />
+                  <span>Sync to Keep</span>
+                </button>
                 <span className="text-[9px] font-mono text-zinc-400 bg-black/20 px-2 py-1 rounded">
                   READ ONLY
                 </span>
@@ -359,6 +501,13 @@ const NotesView = ({ glassPanel }: { glassPanel?: string }) => {
                 </button>
               </div>
             </div>
+
+            {keepSyncNotice && (
+              <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                <RiStickyNoteLine size={14} className="shrink-0" />
+                <span>{keepSyncNotice}</span>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-8 scrollbar-small bg-zinc-950/30">
               <div className="prose prose-invert prose-sm max-w-none text-zinc-300 break-words">

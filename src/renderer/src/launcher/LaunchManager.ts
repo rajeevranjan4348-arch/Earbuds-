@@ -108,6 +108,11 @@ class LaunchManager {
           new CustomEvent('iris:navigate', { detail: { tab: app.target } })
         )
       }
+      if (app.id === 'google-keep' && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('iris:workspace-select-service', { detail: { service: 'KEEP' } })
+        )
+      }
       return {
         success: true,
         app,

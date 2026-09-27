@@ -13,14 +13,19 @@ import { CameraPreviewModal } from './components/UI/CameraPreviewModal'
 import { MobileAccessPermissionsModal } from './components/UI/MobileAccessPermissionsModal'
 import { PersistentAuthStateModal } from './components/UI/PersistentAuthStateModal'
 import { MicrophoneListenerModal } from './components/UI/MicrophoneListenerModal'
+import { WakeWordDetectionOverlay } from './components/UI/WakeWordDetectionOverlay'
 import { workspacePersistenceService } from './services/workspacePersistenceService'
 import { ModuleViewSkeleton } from './components/UI/SkeletonLoader'
+import { AppControllerModal } from './components/UI/AppControllerModal'
+import { GlobalVoiceCommandHUD } from './components/UI/GlobalVoiceCommandHUD'
+import { appControlService } from './services/appControlService'
 import { Zap } from 'lucide-react'
 
 export type VisionMode = 'off' | 'camera' | 'screen'
 
 export type ActiveTab =
   | 'DASHBOARD'
+  | 'CODER'
   | 'CHAT'
   | 'YOUTUBE'
   | 'WORKSPACE'
@@ -33,6 +38,7 @@ export type ActiveTab =
 
 const TAB_ORDER: ActiveTab[] = [
   'DASHBOARD',
+  'CODER',
   'CHAT',
   'YOUTUBE',
   'WORKSPACE',
@@ -60,12 +66,18 @@ const IndexRoot = () => {
   const [isMobilePermissionsOpen, setIsMobilePermissionsOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isMicListenerOpen, setIsMicListenerOpen] = useState(false)
+  const [isAppControllerOpen, setIsAppControllerOpen] = useState(false)
   const [isCoreUiMinimal, setIsCoreUiMinimal] = useState<boolean>(() => {
     const saved = workspacePersistenceService.getConfig()
     return Boolean(saved?.isMinimalHud)
   })
 
   const isFirstMount = useRef(true)
+
+  // Sync running app status with navigation tab
+  useEffect(() => {
+    appControlService.syncWithNavigationTab(activeTab)
+  }, [activeTab])
 
   // Initialize Firestore Workspace Config Sync
   useEffect(() => {
@@ -133,6 +145,34 @@ const IndexRoot = () => {
     soundEffects.initGlobalListeners()
   }, [])
 
+  // Global Wake Word Detection Handler
+  useEffect(() => {
+    const handleWakeWordEvent = (e: any) => {
+      const { phrase, commandTail } = e.detail || {}
+      console.log('[IRISRoot] Wake word triggered:', phrase, commandTail)
+
+      shortcutService.triggerToast({
+        title: `Wake Word Triggered: "${phrase || 'Hey IRIS'}"`,
+        comboDisplay: 'AI ACTIVATED'
+      })
+
+      if (!isConnected) {
+        toggleConnection()
+      }
+
+      if (commandTail) {
+        setTimeout(() => {
+          submitVoicePrompt(commandTail)
+        }, 600)
+      }
+    }
+
+    window.addEventListener('iris:wake-word-detected', handleWakeWordEvent)
+    return () => {
+      window.removeEventListener('iris:wake-word-detected', handleWakeWordEvent)
+    }
+  }, [isConnected, toggleConnection, submitVoicePrompt])
+
   // Hook up LaunchManager navigation callback
   useEffect(() => {
     launchManager.setNavigateCallback((tab) => {
@@ -161,6 +201,19 @@ const IndexRoot = () => {
     const handleMicListenerEvent = () => {
       setIsMicListenerOpen(true)
     }
+    const handleAppControllerOpen = () => {
+      setIsAppControllerOpen(true)
+    }
+    const handleAppControllerToggle = () => {
+      setIsAppControllerOpen((prev) => !prev)
+    }
+
+    const handleKeyNav = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault()
+        setIsAppControllerOpen((prev) => !prev)
+      }
+    }
 
     window.addEventListener('iris:navigate', handleNavEvent)
     window.addEventListener('iris:vision-mode', handleVisionEvent)
@@ -168,6 +221,9 @@ const IndexRoot = () => {
     window.addEventListener('iris:open-mobile-permissions', handleMobilePermissionsEvent)
     window.addEventListener('iris:open-auth-manager', handleAuthModalEvent)
     window.addEventListener('iris:open-mic-listener', handleMicListenerEvent)
+    window.addEventListener('iris:open-app-controller', handleAppControllerOpen)
+    window.addEventListener('iris:toggle-app-controller', handleAppControllerToggle)
+    window.addEventListener('keydown', handleKeyNav)
 
     return () => {
       window.removeEventListener('iris:navigate', handleNavEvent)
@@ -176,6 +232,9 @@ const IndexRoot = () => {
       window.removeEventListener('iris:open-mobile-permissions', handleMobilePermissionsEvent)
       window.removeEventListener('iris:open-auth-manager', handleAuthModalEvent)
       window.removeEventListener('iris:open-mic-listener', handleMicListenerEvent)
+      window.removeEventListener('iris:open-app-controller', handleAppControllerOpen)
+      window.removeEventListener('iris:toggle-app-controller', handleAppControllerToggle)
+      window.removeEventListener('keydown', handleKeyNav)
     }
   }, [])
 
@@ -368,6 +427,9 @@ const IndexRoot = () => {
           setIsCoreUiMinimal={setIsCoreUiMinimal}
         />
 
+        {/* Visual Overlay Feedback for Ambient Wake Word Detection */}
+        <WakeWordDetectionOverlay />
+
         {/* Floating HUD Shortcut Trigger Banner Toast */}
         <VoiceCommandToastHUD />
 
@@ -425,6 +487,31 @@ const IndexRoot = () => {
         <MicrophoneListenerModal
           isOpen={isMicListenerOpen}
           onClose={() => setIsMicListenerOpen(false)}
+        />
+
+        {/* Universal App Opening & Controlling Feature Modal */}
+        <AppControllerModal
+          isOpen={isAppControllerOpen}
+          onClose={() => setIsAppControllerOpen(false)}
+          currentTab={activeTab}
+          onNavigate={(tab) => setActiveTab(tab as ActiveTab)}
+        />
+
+        {/* Global Voice Command Listener HUD */}
+        <GlobalVoiceCommandHUD
+          isConnected={isConnected}
+          isListening={isListening}
+          isSpeaking={isSpeaking}
+          isMuted={isMuted}
+          interimTranscript={interimTranscript}
+          lastFinalTranscript={lastFinalTranscript}
+          micLevel={micLevel}
+          statusMessage={statusMessage}
+          toggleConnection={toggleConnection}
+          toggleMute={toggleMute}
+          stopSpeaking={stopSpeaking}
+          submitVoicePrompt={submitVoicePrompt}
+          onOpenAppController={() => setIsAppControllerOpen(true)}
         />
       </main>
     </div>

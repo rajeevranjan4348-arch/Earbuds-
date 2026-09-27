@@ -1,7 +1,7 @@
 import React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, BrainCog, FileText, File as FileIcon } from "lucide-react";
+import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, BrainCog, FileText, File as FileIcon, Film, Music } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Utility function for className merging
@@ -865,28 +865,6 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 text-black text-[9px] font-bold flex items-center justify-center">
                     {files.length}
                   </span>
-                )}
-              </Button>
-            </PromptInputAction>
-
-            <PromptInputAction tooltip={isSTTListening ? "Stop Voice-to-Text" : "Voice-to-Text (Hands-Free)"}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={toggleVoiceToText}
-                className={cn(
-                  "text-gray-400 hover:text-emerald-400 transition-colors relative",
-                  isSTTListening && "text-red-500 hover:text-red-400"
-                )}
-              >
-                {isSTTListening ? (
-                  <StopCircle className="h-4 w-4 text-red-500 animate-pulse" />
-                ) : (
-                  <Mic className="h-4 w-4 text-emerald-400" />
-                )}
-                {isSTTListening && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-ping" />
                 )}
               </Button>
             </PromptInputAction>

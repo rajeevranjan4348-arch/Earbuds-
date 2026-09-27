@@ -13,6 +13,15 @@ interface TypingAnimationProps extends React.HTMLAttributes<HTMLElement> {
   cursor?: boolean
 }
 
+const motionComponents: Record<string, any> = {
+  span: motion.span,
+  div: motion.div,
+  p: motion.p,
+  h1: motion.h1,
+  h2: motion.h2,
+  h3: motion.h3
+}
+
 export function TypingAnimation({
   children,
   text,
@@ -28,6 +37,11 @@ export function TypingAnimation({
   const [displayedText, setDisplayedText] = React.useState<string>('')
   const [started, setStarted] = React.useState(!startOnView)
   const elementRef = React.useRef<HTMLElement>(null)
+
+  const MotionComponent =
+    typeof Component === 'string' && motionComponents[Component]
+      ? motionComponents[Component]
+      : motion.span
 
   React.useEffect(() => {
     if (!startOnView) {
@@ -72,8 +86,6 @@ export function TypingAnimation({
 
     return () => clearTimeout(timeout)
   }, [fullText, duration, delay, started])
-
-  const MotionComponent = motion(Component as any)
 
   return (
     <MotionComponent

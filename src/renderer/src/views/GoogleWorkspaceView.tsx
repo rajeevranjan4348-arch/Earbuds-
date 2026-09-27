@@ -22,7 +22,16 @@ import {
   RiExternalLinkLine,
   RiLogoutBoxRLine,
   RiShieldCheckLine,
-  RiTimeLine
+  RiTimeLine,
+  RiStickyNoteLine,
+  RiDeleteBinLine,
+  RiPushpinLine,
+  RiPushpinFill,
+  RiCheckboxCircleLine,
+  RiCheckboxBlankCircleLine,
+  RiFileCopyLine,
+  RiCloseLine,
+  RiListCheck
 } from 'react-icons/ri'
 import {
   auth,
@@ -34,7 +43,8 @@ import {
   setCachedAccessToken,
   getCachedWorkspaceUser,
   setCachedWorkspaceUser,
-  useAuth
+  useAuth,
+  syncSessionToBackend
 } from '../lib/firebase'
 import { GoogleWorkspaceService, WorkspaceItem } from '../services/workspace'
 import { User } from 'firebase/auth'
@@ -51,6 +61,7 @@ type WorkspaceTab =
   | 'TELEMETRY'
   | 'DIAGNOSTICS'
   | 'DRIVE'
+  | 'KEEP'
   | 'GMAIL'
   | 'CALENDAR'
   | 'TASKS'
@@ -80,6 +91,20 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   const [docTitleInput, setDocTitleInput] = useState('')
   const [sheetTitleInput, setSheetTitleInput] = useState('')
   const [calTitleInput, setCalTitleInput] = useState('')
+
+  // Google Keep states
+  const [keepNotes, setKeepNotes] = useState<any[]>([])
+  const [keepTitle, setKeepTitle] = useState('')
+  const [keepText, setKeepText] = useState('')
+  const [keepListItems, setKeepListItems] = useState<string[]>([])
+  const [keepItemInput, setKeepItemInput] = useState('')
+  const [keepColor, setKeepColor] = useState('amber')
+  const [keepIsPinned, setKeepIsPinned] = useState(false)
+  const [isChecklistMode, setIsChecklistMode] = useState(false)
+  const [keepSearchQuery, setKeepSearchQuery] = useState('')
+  const [keepFilter, setKeepFilter] = useState<'all' | 'pinned' | 'checklist'>('all')
+  const [noteToDelete, setNoteToDelete] = useState<any | null>(null)
+  const [isDeletingNote, setIsDeletingNote] = useState(false)
 
   // Listen to auth and synchronize with Centralized Session Manager
   useEffect(() => {
@@ -146,7 +171,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
     const handleSelectService = (e: any) => {
       const svc = (e.detail?.service || '').toUpperCase()
-      if (svc && ['HUB', 'HISTORY', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
+      if (svc && ['HUB', 'HISTORY', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'KEEP', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
         setActiveSubTab(svc as WorkspaceTab)
       }
     }
@@ -211,6 +236,19 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
         case 'DRIVE':
           results = await client.listDriveFiles()
           break
+        case 'KEEP': {
+          const keepData = await client.listKeepNotes()
+          setKeepNotes(keepData)
+          results = keepData.map((k: any) => ({
+            id: k.id,
+            service: 'keep',
+            title: k.title,
+            subtitle: k.text || (k.listItems && k.listItems.length > 0 ? `${k.listItems.length} checklist items` : ''),
+            date: k.updatedAt || k.createdAt,
+            extra: k
+          }))
+          break
+        }
         case 'GMAIL':
           results = await client.listGmailMessages()
           break
@@ -262,6 +300,19 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
               case 'DRIVE':
                 retryResults = await freshClient.listDriveFiles()
                 break
+              case 'KEEP': {
+                const keepData = await freshClient.listKeepNotes()
+                setKeepNotes(keepData)
+                retryResults = keepData.map((k: any) => ({
+                  id: k.id,
+                  service: 'keep',
+                  title: k.title,
+                  subtitle: k.text || (k.listItems && k.listItems.length > 0 ? `${k.listItems.length} checklist items` : ''),
+                  date: k.updatedAt || k.createdAt,
+                  extra: k
+                }))
+                break
+              }
               case 'GMAIL':
                 retryResults = await freshClient.listGmailMessages()
                 break
@@ -407,6 +458,107 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
     }
   }
 
+  // Google Keep Handlers
+  const handleCreateKeepNote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!keepTitle.trim()) {
+      setStatusMessage('Please provide a title for the Google Keep note.')
+      setTimeout(() => setStatusMessage(null), 3000)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const client = new GoogleWorkspaceService(token)
+      const created = await client.createKeepNote({
+        title: keepTitle.trim(),
+        text: keepText.trim(),
+        listItems: keepListItems,
+        color: keepColor,
+        isPinned: keepIsPinned
+      })
+      setKeepTitle('')
+      setKeepText('')
+      setKeepListItems([])
+      setKeepItemInput('')
+      setKeepIsPinned(false)
+      setIsChecklistMode(false)
+      setStatusMessage(`Google Keep note created: "${created.title}"`)
+      setTimeout(() => setStatusMessage(null), 3500)
+      loadTabItems()
+    } catch (err: any) {
+      setStatusMessage(`Failed to create Keep note: ${err?.message}`)
+      setTimeout(() => setStatusMessage(null), 4000)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteKeepNote = async (note: any) => {
+    setIsDeletingNote(true)
+    try {
+      const client = new GoogleWorkspaceService(token)
+      await client.deleteKeepNote(note.id)
+      setNoteToDelete(null)
+      setStatusMessage(`Deleted Keep note: "${note.title}"`)
+      setTimeout(() => setStatusMessage(null), 3500)
+      loadTabItems()
+    } catch (err: any) {
+      setStatusMessage(`Failed to delete note: ${err?.message}`)
+      setTimeout(() => setStatusMessage(null), 4000)
+    } finally {
+      setIsDeletingNote(false)
+    }
+  }
+
+  const handleToggleKeepListItem = async (noteId: string, index: number) => {
+    try {
+      const client = new GoogleWorkspaceService(token)
+      await client.toggleKeepListItem(noteId, index)
+      loadTabItems()
+    } catch (err: any) {
+      console.warn('Failed to toggle item:', err)
+    }
+  }
+
+  const handleExportToIrisNotes = async (note: any) => {
+    try {
+      const noteContent = [
+        note.text || '',
+        note.listItems && note.listItems.length > 0
+          ? '\n\n### Checklist:\n' + note.listItems.map((li: any) => `- [${li.checked ? 'x' : ' '}] ${li.text}`).join('\n')
+          : ''
+      ].join('')
+
+      const raw = localStorage.getItem('iris_persisted_notes')
+      const list = raw ? JSON.parse(raw) : []
+      list.unshift({
+        id: `note_keep_${Date.now()}`,
+        filename: `keep_${Date.now()}`,
+        title: note.title || 'Imported Keep Note',
+        content: noteContent,
+        createdAt: new Date().toISOString()
+      })
+      localStorage.setItem('iris_persisted_notes', JSON.stringify(list))
+
+      setStatusMessage(`Exported "${note.title}" to IRIS Neural Notes!`)
+      setTimeout(() => setStatusMessage(null), 3500)
+    } catch (err: any) {
+      setStatusMessage(`Export error: ${err?.message}`)
+      setTimeout(() => setStatusMessage(null), 4000)
+    }
+  }
+
+  const addChecklistItem = () => {
+    if (!keepItemInput.trim()) return
+    setKeepListItems((prev) => [...prev, keepItemInput.trim()])
+    setKeepItemInput('')
+  }
+
+  const removeChecklistItem = (index: number) => {
+    setKeepListItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
   // Google Picker API Launcher
   const launchGooglePicker = () => {
     if (!token) return
@@ -474,6 +626,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
     { id: 'TELEMETRY', label: 'Telemetry & Latency', icon: <Activity size={15} className="text-[#00ff41]" /> },
     { id: 'DIAGNOSTICS', label: 'Auth Failures', icon: <ShieldAlert size={15} className="text-red-400" /> },
     { id: 'DRIVE', label: 'Drive', icon: <RiDriveLine size={15} /> },
+    { id: 'KEEP', label: 'Keep', icon: <RiStickyNoteLine size={15} className="text-amber-400" /> },
     { id: 'SHEETS', label: 'Sheets', icon: <RiFileExcelLine size={15} /> },
     { id: 'GMAIL', label: 'Gmail', icon: <RiMailLine size={15} /> },
     { id: 'CALENDAR', label: 'Calendar', icon: <RiCalendarLine size={15} /> },
@@ -672,6 +825,341 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
             {/* Sub-tab view bodies */}
             <div className="flex-1 min-h-0 overflow-y-auto mt-3 pr-1 space-y-3">
+              {/* GOOGLE KEEP */}
+              {activeSubTab === 'KEEP' && (
+                <div className="space-y-4">
+                  {/* Top Bar: Controls & Filters */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-900/70 border border-white/10 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                        <RiStickyNoteLine size={18} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs uppercase text-zinc-100">Google Keep Notes & Lists</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {keepNotes.length} Notes Synced
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400">
+                          Create checklists, memos, and thoughts synchronized with Google Keep
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={keepSearchQuery}
+                        onChange={(e) => setKeepSearchQuery(e.target.value)}
+                        placeholder="Search Keep notes..."
+                        className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 w-44"
+                      />
+                      <div className="flex items-center p-0.5 bg-black/40 border border-white/10 rounded-lg text-[10px]">
+                        <button
+                          onClick={() => setKeepFilter('all')}
+                          className={`px-2 py-0.5 rounded cursor-pointer ${keepFilter === 'all' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+                        >
+                          All
+                        </button>
+                        <button
+                          onClick={() => setKeepFilter('pinned')}
+                          className={`px-2 py-0.5 rounded cursor-pointer ${keepFilter === 'pinned' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+                        >
+                          Pinned
+                        </button>
+                        <button
+                          onClick={() => setKeepFilter('checklist')}
+                          className={`px-2 py-0.5 rounded cursor-pointer ${keepFilter === 'checklist' ? 'bg-amber-500/20 text-amber-300 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
+                        >
+                          Lists
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Create Note Input Card */}
+                  <form onSubmit={handleCreateKeepNote} className="p-4 bg-zinc-900/80 border border-white/10 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={keepTitle}
+                        onChange={(e) => setKeepTitle(e.target.value)}
+                        placeholder="Note Title or Topic..."
+                        className="flex-1 bg-transparent font-bold text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setKeepIsPinned((prev) => !prev)}
+                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                          keepIsPinned
+                            ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                            : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-zinc-200'
+                        }`}
+                        title={keepIsPinned ? 'Pinned Note' : 'Pin Note'}
+                      >
+                        {keepIsPinned ? <RiPushpinFill size={15} /> : <RiPushpinLine size={15} />}
+                      </button>
+                    </div>
+
+                    {!isChecklistMode ? (
+                      <textarea
+                        value={keepText}
+                        onChange={(e) => setKeepText(e.target.value)}
+                        placeholder="Take a note, type details, markdown supported..."
+                        rows={3}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 resize-none font-sans"
+                      />
+                    ) : (
+                      <div className="space-y-2 bg-black/30 p-2.5 rounded-lg border border-white/10">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={keepItemInput}
+                            onChange={(e) => setKeepItemInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                addChecklistItem()
+                              }
+                            }}
+                            placeholder="Add checklist item & press Enter..."
+                            className="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-zinc-200 focus:outline-none focus:border-amber-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={addChecklistItem}
+                            className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs cursor-pointer"
+                          >
+                            Add
+                          </button>
+                        </div>
+                        {keepListItems.length > 0 && (
+                          <div className="space-y-1 max-h-32 overflow-y-auto pt-1">
+                            {keepListItems.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between gap-2 px-2 py-1 bg-zinc-900/60 rounded text-xs text-zinc-300">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-3.5 h-3.5 border border-zinc-500 rounded-sm" />
+                                  <span>{item}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeChecklistItem(idx)}
+                                  className="text-zinc-500 hover:text-red-400 cursor-pointer"
+                                >
+                                  <RiCloseLine size={13} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/5">
+                      <div className="flex items-center gap-2">
+                        {/* Toggle checklist mode */}
+                        <button
+                          type="button"
+                          onClick={() => setIsChecklistMode((prev) => !prev)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors cursor-pointer ${
+                            isChecklistMode
+                              ? 'bg-amber-500/20 border-amber-500/40 text-amber-300 font-semibold'
+                              : 'bg-zinc-800 border-white/10 text-zinc-400 hover:text-zinc-200'
+                          }`}
+                        >
+                          <RiListCheck size={14} />
+                          <span className="text-[11px]">{isChecklistMode ? 'Checklist Mode' : 'Add Checklist'}</span>
+                        </button>
+
+                        {/* Color Picker */}
+                        <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
+                          {[
+                            { id: 'amber', bg: 'bg-amber-500', label: 'Amber' },
+                            { id: 'emerald', bg: 'bg-emerald-500', label: 'Green' },
+                            { id: 'blue', bg: 'bg-blue-500', label: 'Blue' },
+                            { id: 'purple', bg: 'bg-purple-500', label: 'Purple' },
+                            { id: 'rose', bg: 'bg-rose-500', label: 'Red' },
+                            { id: 'default', bg: 'bg-zinc-700', label: 'Dark' }
+                          ].map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setKeepColor(c.id)}
+                              className={`w-4 h-4 rounded-full ${c.bg} transition-transform cursor-pointer ${
+                                keepColor === c.id ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100'
+                              }`}
+                              title={c.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading || !keepTitle.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        <RiAddLine size={15} />
+                        <span>Save to Google Keep</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Notes Masonry/Grid Display */}
+                  {(() => {
+                    const filtered = keepNotes.filter((note) => {
+                      if (keepSearchQuery.trim()) {
+                        const q = keepSearchQuery.toLowerCase()
+                        const matchTitle = (note.title || '').toLowerCase().includes(q)
+                        const matchText = (note.text || '').toLowerCase().includes(q)
+                        const matchItems = (note.listItems || []).some((li: any) => (li.text || '').toLowerCase().includes(q))
+                        if (!matchTitle && !matchText && !matchItems) return false
+                      }
+                      if (keepFilter === 'pinned' && !note.isPinned) return false
+                      if (keepFilter === 'checklist' && (!note.listItems || note.listItems.length === 0)) return false
+                      return true
+                    })
+
+                    const pinnedList = filtered.filter((n) => n.isPinned)
+                    const otherList = filtered.filter((n) => !n.isPinned)
+
+                    const renderNoteCard = (note: any) => {
+                      const colorStyles: Record<string, string> = {
+                        amber: 'border-amber-500/40 bg-amber-950/20 hover:border-amber-500/70',
+                        emerald: 'border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-500/70',
+                        blue: 'border-blue-500/40 bg-blue-950/20 hover:border-blue-500/70',
+                        purple: 'border-purple-500/40 bg-purple-950/20 hover:border-purple-500/70',
+                        rose: 'border-rose-500/40 bg-rose-950/20 hover:border-rose-500/70',
+                        default: 'border-white/10 bg-zinc-900/60 hover:border-white/20'
+                      }
+                      const cardStyle = colorStyles[note.color] || colorStyles.amber
+
+                      return (
+                        <div
+                          key={note.id}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all shadow-md group ${cardStyle}`}
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 pb-1.5">
+                              <h5 className="font-bold text-xs text-zinc-100 leading-snug break-words flex-1">
+                                {note.title}
+                              </h5>
+                              {note.isPinned && (
+                                <RiPushpinFill size={13} className="text-amber-400 shrink-0 mt-0.5" title="Pinned Note" />
+                              )}
+                            </div>
+
+                            {note.text && (
+                              <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed py-1 line-clamp-6 font-sans">
+                                {note.text}
+                              </p>
+                            )}
+
+                            {note.listItems && note.listItems.length > 0 && (
+                              <div className="space-y-1.5 py-1.5">
+                                {note.listItems.map((item: any, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    onClick={() => handleToggleKeepListItem(note.id, idx)}
+                                    className="flex items-center gap-2 text-xs cursor-pointer select-none group/item"
+                                  >
+                                    {item.checked ? (
+                                      <RiCheckboxCircleLine size={14} className="text-emerald-400 shrink-0" />
+                                    ) : (
+                                      <RiCheckboxBlankCircleLine size={14} className="text-zinc-500 group-hover/item:text-zinc-300 shrink-0" />
+                                    )}
+                                    <span
+                                      className={`text-[11px] leading-tight ${
+                                        item.checked ? 'line-through text-zinc-500' : 'text-zinc-300'
+                                      }`}
+                                    >
+                                      {item.text}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pt-2.5 mt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-zinc-500">
+                            <span>
+                              {note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : 'Active'}
+                            </span>
+                            <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => {
+                                  const textToCopy = `${note.title}\n\n${note.text || ''}\n${(note.listItems || []).map((li: any) => `- [${li.checked ? 'x' : ' '}] ${li.text}`).join('\n')}`
+                                  navigator.clipboard.writeText(textToCopy)
+                                  setStatusMessage('Note copied to clipboard!')
+                                  setTimeout(() => setStatusMessage(null), 2500)
+                                }}
+                                className="p-1 text-zinc-400 hover:text-zinc-200 rounded hover:bg-white/10 cursor-pointer"
+                                title="Copy note"
+                              >
+                                <RiFileCopyLine size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleExportToIrisNotes(note)}
+                                className="p-1 text-zinc-400 hover:text-emerald-300 rounded hover:bg-white/10 cursor-pointer"
+                                title="Export to IRIS Notes"
+                              >
+                                <RiFolderDownloadLine size={13} />
+                              </button>
+                              <button
+                                onClick={() => setNoteToDelete(note)}
+                                className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-red-500/10 cursor-pointer"
+                                title="Delete note"
+                              >
+                                <RiDeleteBinLine size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-12 text-zinc-500 text-xs">
+                          No Google Keep notes match your query. Create one above!
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {pinnedList.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                              <RiPushpinFill size={12} />
+                              <span>Pinned Notes ({pinnedList.length})</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {pinnedList.map(renderNoteCard)}
+                            </div>
+                          </div>
+                        )}
+
+                        {otherList.length > 0 && (
+                          <div className="space-y-2">
+                            {pinnedList.length > 0 && (
+                              <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                                All Notes ({otherList.length})
+                              </div>
+                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {otherList.map(renderNoteCard)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
               {/* GOOGLE MEET */}
               {activeSubTab === 'MEET' && (
                 <div className="space-y-4 max-w-xl mx-auto py-6 text-center">
@@ -850,6 +1338,39 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
           </div>
         )}
       </div>
+      )}
+
+      {/* Google Keep Note Deletion User Confirmation Modal (Workspace API safety requirement) */}
+      {noteToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-red-400">
+              <RiDeleteBinLine size={24} />
+              <h3 className="font-bold text-sm uppercase text-white">Delete Google Keep Note?</h3>
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-amber-300">"{noteToDelete.title}"</strong>? This action cannot be undone and will remove the note from Google Keep.
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setNoteToDelete(null)}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteKeepNote(noteToDelete)}
+                disabled={isDeletingNote}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingNote ? <RiRefreshLine className="animate-spin" size={14} /> : <RiDeleteBinLine size={14} />}
+                <span>Confirm Delete</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
