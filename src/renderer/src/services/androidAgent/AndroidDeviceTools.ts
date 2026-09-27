@@ -49,7 +49,21 @@ export class AndroidDeviceTools {
    * Resolves and launches an Android app by name or package
    */
   public async launchApp(appNameOrPackage: string): Promise<DeviceActionResult> {
-    let pkg = appNameOrPackage
+    const aliases: Record<string, string> = {
+      'maps': 'com.google.android.apps.maps',
+      'google maps': 'com.google.android.apps.maps',
+      'whatsapp': 'com.whatsapp',
+      'youtube': 'com.google.android.youtube',
+      'chrome': 'com.android.chrome',
+      'google chrome': 'com.android.chrome',
+      'instagram': 'com.instagram.android',
+      'telegram': 'org.telegram.messenger',
+      'spotify': 'com.spotify.music',
+      'gmail': 'com.google.android.gm',
+      'settings': 'com.android.settings'
+    }
+    const normalizedName = appNameOrPackage.trim().toLowerCase()
+    let pkg = aliases[normalizedName] || appNameOrPackage
     if (!pkg.includes('.')) {
       const resolved = await resolve_app(appNameOrPackage)
       if (resolved && resolved.package_name) {
