@@ -195,6 +195,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     // ============================================================
+    // IRIS BACKGROUND AGENT CONTROL
+    // ============================================================
+
+    fun startIrisBackgroundAgent() {
+        val intent = IrisBackgroundService.startIntent(this)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    fun stopIrisBackgroundAgent() {
+        startService(IrisBackgroundService.stopIntent(this))
+    }
+
+    // ============================================================
     // OPEN GALLERY FOR OCR
     // ============================================================
 
