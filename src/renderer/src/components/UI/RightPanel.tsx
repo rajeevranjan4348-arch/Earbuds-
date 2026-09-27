@@ -441,8 +441,20 @@ const AIThinkingIndicator = memo(function AIThinkingIndicator({
     >
       <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-zinc-900/95 border border-emerald-500/30 text-xs sm:text-sm text-zinc-200 shadow-[0_0_24px_rgba(16,185,129,0.15)] flex flex-col gap-2.5">
         {/* Top Header with Lattice Loader & Status */}
+        <motion.div
+          className="h-px w-full overflow-hidden rounded-full bg-emerald-500/10"
+          aria-hidden="true"
+        >
+          <motion.div
+            className="h-full w-1/3 rounded-full bg-gradient-to-r from-transparent via-emerald-400/80 to-transparent"
+            animate={{ x: ["-120%", "320%"] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </motion.div>
+
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
             <LatticeLoader
               status="working"
               label={currentStatus || thinkingStages[stageIndex]}
@@ -458,6 +470,28 @@ const AIThinkingIndicator = memo(function AIThinkingIndicator({
               glowColor="rgba(34, 197, 94, 0.4)"
               color="#10b981"
             />
+            <motion.span
+              aria-label="Loading"
+              className="flex items-center gap-0.5 text-emerald-400/80"
+              initial={{ opacity: 0.35 }}
+              animate={{ opacity: [0.35, 1, 0.35] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {[0, 1, 2].map((dot) => (
+                <motion.span
+                  key={dot}
+                  className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                  animate={{ y: [0, -3, 0], scale: [0.8, 1.15, 0.8] }}
+                  transition={{
+                    duration: 0.8,
+                    repeat: Infinity,
+                    delay: dot * 0.16,
+                    ease: "easeInOut"
+                  }}
+                />
+              ))}
+            </motion.span>
+          </div>
           </div>
 
           <button
