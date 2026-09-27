@@ -26,7 +26,10 @@ export const RUNTIME_KEY_MAP: Record<string, string> = {
   googleMapsKey: 'VITE_GOOGLE_MAPS_API_KEY',
   youtubeClientId: 'YOUTUBE_CLIENT_ID',
   youtubeClientSecret: 'YOUTUBE_CLIENT_SECRET',
-  youtubeRefreshToken: 'YOUTUBE_REFRESH_TOKEN'
+  youtubeRefreshToken: 'YOUTUBE_REFRESH_TOKEN',
+  irisApiKey: 'IRIS_API_KEY',
+  apiKey: 'API_KEY',
+  agentApiKey: 'AGENT_API_KEY'
 }
 
 export interface RuntimeKeyPayload {
@@ -98,6 +101,15 @@ export function hydrateRuntimeKeys(): RuntimeKeyPayload {
   }
   if (!process.env.FLUX_API_KEY) {
     process.env.FLUX_API_KEY = '7b32001d-ea08-4ceb-be8e-2f72c507bd54:6601780593dea6f449464c5d770f70442509d66db40e408fc43b1a8d3a37e3be'
+  }
+  if (!process.env.IRIS_API_KEY) {
+    process.env.IRIS_API_KEY = 'ak_live_EYimCEG3c2CnqiacHPp3MgJ9K0aAW6Yy8FRoCExhLtU'
+  }
+  if (!process.env.API_KEY) {
+    process.env.API_KEY = 'ak_live_EYimCEG3c2CnqiacHPp3MgJ9K0aAW6Yy8FRoCExhLtU'
+  }
+  if (!process.env.AGENT_API_KEY) {
+    process.env.AGENT_API_KEY = 'ak_live_EYimCEG3c2CnqiacHPp3MgJ9K0aAW6Yy8FRoCExhLtU'
   }
   return persisted
 }

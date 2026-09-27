@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera,
   Cpu,
@@ -13,6 +14,26 @@ import {
 } from 'lucide-react'
 import { getSystemStatus } from '@renderer/services/system-info'
 import { SystemTelemetryRecharts } from './SystemTelemetryRecharts'
+
+const leftPanelsStaggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.05
+    }
+  }
+}
+
+const leftPanelItemVariant = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
+  }
+}
 
 function getHealthColor(value: number, type: 'cpu' | 'ram' | 'temp') {
   let ratio = Math.min(1, Math.max(0, value / 100))
@@ -484,9 +505,17 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
   const [panelView, setPanelView] = useState<'telemetry' | 'optics'>('telemetry')
 
   return (
-    <div className="flex h-full flex-col gap-3 p-0">
+    <motion.div
+      variants={leftPanelsStaggerContainer}
+      initial="hidden"
+      animate="show"
+      className="flex h-full flex-col gap-3 p-0"
+    >
       {/* Sub-panel Selector */}
-      <div className="flex items-center gap-1 bg-zinc-950/90 p-1 rounded-xl border border-white/10 shrink-0">
+      <motion.div
+        variants={leftPanelItemVariant}
+        className="flex items-center gap-1 bg-zinc-950/90 p-1 rounded-xl border border-white/10 shrink-0"
+      >
         <button
           onClick={() => setPanelView('telemetry')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase transition-all cursor-pointer ${
@@ -509,14 +538,17 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           <Camera size={12} />
           <span>Optics Feed</span>
         </button>
-      </div>
+      </motion.div>
 
       {panelView === 'telemetry' && (
-        <SystemTelemetryRecharts compact={false} />
+        <motion.div variants={leftPanelItemVariant}>
+          <SystemTelemetryRecharts compact={false} />
+        </motion.div>
       )}
 
       {panelView === 'optics' && (
-        <PremiumGlassPanel accent="green" className="group" glow>
+        <motion.div variants={leftPanelItemVariant}>
+          <PremiumGlassPanel accent="green" className="group" glow>
         <div className="p-3 flex flex-col h-full gap-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -599,9 +631,11 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           </div>
         </div>
       </PremiumGlassPanel>
+        </motion.div>
       )}
 
-      <PremiumGlassPanel accent="cyan" glow className="group">
+      <motion.div variants={leftPanelItemVariant}>
+        <PremiumGlassPanel accent="cyan" glow className="group">
         <div className="p-3 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -693,8 +727,9 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           </div>
         </div>
       </PremiumGlassPanel>
+      </motion.div>
 
-      <div className="grid grid-cols-2 gap-2 flex-1 min-h-0">
+      <motion.div variants={leftPanelItemVariant} className="grid grid-cols-2 gap-2 flex-1 min-h-0">
         <PremiumGlassPanel accent="green" className="p-3 flex flex-col justify-between" glow>
           <div>
             <IconBadge icon={<Cpu size={12} />} color="#00ff88" active={isActive} />
@@ -759,7 +794,7 @@ export default function LeftPanelsPremium({ status, visionMode }: any) {
           </div>
           <BootSequence isActive={isActive} osType={stats.os?.type || 'UNKNOWN'} />
         </PremiumGlassPanel>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

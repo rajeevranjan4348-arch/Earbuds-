@@ -148,7 +148,6 @@ class MemoryService {
 
   public subscribe(fn: (memories: MemoryItem[]) => void): () => void {
     this.memoryListeners.add(fn)
-    fn(this.loadLocalMemories(this.getActiveUserId()))
     return () => {
       this.memoryListeners.delete(fn)
     }

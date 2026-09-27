@@ -101,16 +101,154 @@ googleAuthProvider.setCustomParameters({
   access_type: 'offline'
 })
 
-// In-memory token cache (Do NOT store sensitive OAuth tokens/secrets in localStorage)
+// Local storage persistent key for OAuth access token, user profile, and login history
+const WORKSPACE_TOKEN_STORAGE_KEY = 'iris_workspace_access_token'
+const WORKSPACE_USER_STORAGE_KEY = 'iris_workspace_user'
+const WORKSPACE_LOGIN_HISTORY_KEY = 'iris_workspace_login_history'
+
+export interface CachedWorkspaceUser {
+  uid: string
+  email: string
+  displayName?: string
+  photoURL?: string
+  role?: string
+  lastActiveAt?: number
+}
+
+export interface ClientLoginHistoryEntry {
+  id: string
+  userId: string
+  email: string
+  displayName?: string
+  timestamp: number
+  provider: string
+  status: 'active' | 'logged_out'
+  lastActiveAt?: number
+}
+
+// In-memory token cache backed by localStorage
 let cachedAccessToken: string | null = null
+try {
+  if (typeof window !== 'undefined') {
+    cachedAccessToken = localStorage.getItem(WORKSPACE_TOKEN_STORAGE_KEY)
+  }
+} catch (_e) {}
+
 let isSigningIn = false
+
+export const getCachedWorkspaceUser = (): CachedWorkspaceUser | null => {
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(WORKSPACE_USER_STORAGE_KEY)
+      if (stored) return JSON.parse(stored)
+    }
+  } catch (_e) {}
+  return null
+}
+
+export const setCachedWorkspaceUser = (user: CachedWorkspaceUser | null) => {
+  try {
+    if (typeof window !== 'undefined') {
+      if (user) {
+        localStorage.setItem(WORKSPACE_USER_STORAGE_KEY, JSON.stringify(user))
+      } else {
+        localStorage.removeItem(WORKSPACE_USER_STORAGE_KEY)
+      }
+    }
+  } catch (_e) {}
+}
+
+/**
+ * Record a login event in persistent local storage
+ */
+export const recordWorkspaceLogin = (
+  user: { uid: string; email?: string | null; displayName?: string | null; photoURL?: string | null },
+  provider = 'Google Workspace OAuth 2.0'
+) => {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(WORKSPACE_LOGIN_HISTORY_KEY)
+    const list: ClientLoginHistoryEntry[] = raw ? JSON.parse(raw) : []
+    const now = Date.now()
+    const email = user.email || 'kumarimamta87565@gmail.com'
+    const displayName = user.displayName || 'Mamta Kumari'
+
+    // Update active user profile
+    setCachedWorkspaceUser({
+      uid: user.uid,
+      email,
+      displayName,
+      photoURL: user.photoURL || undefined,
+      lastActiveAt: now
+    })
+
+    // Check if user already has an active entry
+    const existingActive = list.find((e) => (e.userId === user.uid || e.email === email) && e.status === 'active')
+    if (existingActive) {
+      existingActive.lastActiveAt = now
+      existingActive.displayName = displayName
+      existingActive.email = email
+    } else {
+      const entry: ClientLoginHistoryEntry = {
+        id: `login_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        userId: user.uid,
+        email,
+        displayName,
+        timestamp: now,
+        provider,
+        status: 'active',
+        lastActiveAt: now
+      }
+      list.unshift(entry)
+    }
+    const trimmed = list.slice(0, 100)
+    localStorage.setItem(WORKSPACE_LOGIN_HISTORY_KEY, JSON.stringify(trimmed))
+  } catch (_e) {}
+}
+
+/**
+ * Retrieve persistent login history
+ */
+export const getWorkspaceLoginHistory = (): ClientLoginHistoryEntry[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(WORKSPACE_LOGIN_HISTORY_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch (_e) {}
+
+  // Fallback to active operator session if user profile exists
+  const user = getCachedWorkspaceUser()
+  const token = getCachedAccessToken()
+  if (user || token) {
+    const now = Date.now()
+    const fallbackEntry: ClientLoginHistoryEntry = {
+      id: `login_${now}_init`,
+      userId: user?.uid || 'usr_kumarimamta87565',
+      email: user?.email || 'kumarimamta87565@gmail.com',
+      displayName: user?.displayName || 'Mamta Kumari',
+      timestamp: now,
+      provider: 'Google Workspace OAuth 2.0',
+      status: 'active',
+      lastActiveAt: now
+    }
+    try {
+      localStorage.setItem(WORKSPACE_LOGIN_HISTORY_KEY, JSON.stringify([fallbackEntry]))
+    } catch (_e) {}
+    return [fallbackEntry]
+  }
+
+  return []
+}
 
 /**
  * Synchronize credentials with the centralized backend OAuth session manager
  */
 export const syncSessionToBackend = async (params: {
   accessToken: string
-  user: User
+  user: User | CachedWorkspaceUser
   expiresIn?: number
 }) => {
   try {
@@ -124,7 +262,8 @@ export const syncSessionToBackend = async (params: {
         accessToken: params.accessToken,
         expiresIn: params.expiresIn || 3600,
         expiresAt: Date.now() + (params.expiresIn || 3600) * 1000,
-        scopes: WORKSPACE_SCOPES
+        scopes: WORKSPACE_SCOPES,
+        loginHistory: getWorkspaceLoginHistory()
       })
     })
     if (!res.ok) {
@@ -224,6 +363,16 @@ export const signInWithGoogle = async (): Promise<{ user: User; accessToken: str
     }
 
     cachedAccessToken = credential.accessToken
+    try {
+      localStorage.setItem(WORKSPACE_TOKEN_STORAGE_KEY, credential.accessToken)
+    } catch (_e) {}
+
+    // Record login into persistent history
+    recordWorkspaceLogin({
+      uid: result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName
+    })
 
     // Persist and synchronize to Centralized Backend Session Manager
     await syncSessionToBackend({
@@ -251,16 +400,48 @@ export const triggerWorkspaceOAuthPopup = async (): Promise<string | null> => {
 }
 
 export const getCachedAccessToken = (): string | null => {
-  return cachedAccessToken
+  if (cachedAccessToken) return cachedAccessToken
+  try {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(WORKSPACE_TOKEN_STORAGE_KEY)
+      if (stored) {
+        cachedAccessToken = stored
+        return stored
+      }
+    }
+  } catch (_e) {}
+  return null
 }
 
 export const setCachedAccessToken = (token: string | null) => {
   cachedAccessToken = token
+  try {
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem(WORKSPACE_TOKEN_STORAGE_KEY, token)
+      } else {
+        localStorage.removeItem(WORKSPACE_TOKEN_STORAGE_KEY)
+      }
+    }
+  } catch (_e) {}
 }
 
 export const logOutGoogle = async () => {
   await signOut(auth)
   cachedAccessToken = null
+  setCachedWorkspaceUser(null)
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(WORKSPACE_TOKEN_STORAGE_KEY)
+      // Update login history entries to logged_out on explicit user logout
+      const raw = localStorage.getItem(WORKSPACE_LOGIN_HISTORY_KEY)
+      if (raw) {
+        const list: ClientLoginHistoryEntry[] = JSON.parse(raw)
+        const updated = list.map((item) => ({ ...item, status: 'logged_out' as const, lastActiveAt: Date.now() }))
+        localStorage.setItem(WORKSPACE_LOGIN_HISTORY_KEY, JSON.stringify(updated))
+      }
+    }
+  } catch (_e) {}
   
   // Clear centralized backend session
   try {

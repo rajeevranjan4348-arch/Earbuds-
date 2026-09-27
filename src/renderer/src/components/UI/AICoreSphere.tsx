@@ -12,6 +12,40 @@ const _blendColor = new THREE.Color()
 const _ringColor = new THREE.Color()
 const _scaleVec = new THREE.Vector3()
 
+/**
+ * Creates a high-precision crisp neon particle point sprite with a brilliant core
+ */
+function createCrispParticleTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.clearRect(0, 0, 64, 64)
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 30)
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)')
+    gradient.addColorStop(0.15, 'rgba(200, 255, 210, 1.0)')
+    gradient.addColorStop(0.35, 'rgba(0, 255, 65, 0.9)')
+    gradient.addColorStop(0.65, 'rgba(0, 255, 65, 0.35)')
+    gradient.addColorStop(0.9, 'rgba(0, 255, 65, 0.08)')
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, 64, 64)
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.generateMipmaps = true
+  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.needsUpdate = true
+  return texture
+}
+
+function dtEase(rate: number, delta: number): number {
+  return 1 - Math.pow(1 - rate, delta * 60)
+}
+
 function ParticleShell({
   isConnected,
   isSpeaking,
@@ -27,21 +61,28 @@ function ParticleShell({
 }) {
   const ref = useRef<THREE.Points>(null)
   const volRef = useRef(0)
-  const COUNT = config.density || 900
+  
+  // Dense particle count matching reference image (approx 4,800 - 5,400 crisp points)
+  const COUNT = 5200
+
+  const particleTexture = useMemo(() => createCrispParticleTexture(), [])
 
   const scheme = COLOR_SCHEMES[config.colorScheme] || COLOR_SCHEMES.emerald
-  const idleCol = useMemo(() => new THREE.Color(scheme.idleColor), [scheme.idleColor])
-  const activeCol = useMemo(() => new THREE.Color(scheme.activeColor), [scheme.activeColor])
+  const idleCol = useMemo(() => new THREE.Color(scheme.idleColor || '#00ff41'), [scheme.idleColor])
+  const activeCol = useMemo(() => new THREE.Color(scheme.activeColor || '#39ff14'), [scheme.activeColor])
 
-  const { positions, original, seeds } = useMemo(() => {
+  const { positions, original, colors, seeds } = useMemo(() => {
     const pos = new Float32Array(COUNT * 3)
     const orig = new Float32Array(COUNT * 3)
+    const cols = new Float32Array(COUNT * 3)
     const s = new Float32Array(COUNT * 2)
 
     for (let i = 0; i < COUNT; i++) {
+      // Golden Spiral / Fibonacci sphere lattice distribution
       const phi = Math.acos(1 - (2 * (i + 0.5)) / COUNT)
       const theta = Math.PI * (1 + Math.sqrt(5)) * i
-      const r = 1.3
+      // Natural spherical shell with tiny micro-variation
+      const r = 1.48 + (Math.random() - 0.5) * 0.03
 
       const px = r * Math.sin(phi) * Math.cos(theta)
       const py = r * Math.sin(phi) * Math.sin(theta)
@@ -54,10 +95,29 @@ function ParticleShell({
       orig[i * 3 + 1] = py
       orig[i * 3 + 2] = pz
 
+      // Intense neon green vertex colors with slight hue & brightness variations
+      const tint = Math.random()
+      if (tint > 0.85) {
+        // Super bright lime/white-green highlight points
+        cols[i * 3] = 0.55
+        cols[i * 3 + 1] = 1.0
+        cols[i * 3 + 2] = 0.55
+      } else if (tint > 0.45) {
+        // Vivid neon green
+        cols[i * 3] = 0.0
+        cols[i * 3 + 1] = 1.0
+        cols[i * 3 + 2] = 0.25
+      } else {
+        // Deep electric emerald
+        cols[i * 3] = 0.0
+        cols[i * 3 + 1] = 0.95
+        cols[i * 3 + 2] = 0.15
+      }
+
       s[i * 2] = Math.random() * Math.PI * 2
-      s[i * 2 + 1] = 0.5 + Math.random() * 0.8
+      s[i * 2 + 1] = 0.6 + Math.random() * 0.8
     }
-    return { positions: pos, original: orig, seeds: s }
+    return { positions: pos, original: orig, colors: cols, seeds: s }
   }, [COUNT])
 
   useFrame((_, delta) => {
@@ -70,47 +130,53 @@ function ParticleShell({
 
     const safeDelta = Math.min(delta, 0.05)
     const isReduced = Boolean(config.reducedMotion)
-    const speedMult = isReduced ? (config.speed || 1.0) * 0.4 : config.speed || 1.0
+    const speedMult = isReduced ? (config.speed || 1.0) * 0.3 : config.speed || 1.0
     const intensityMult = config.intensity || 1.0
 
-    pts.rotation.y += safeDelta * 0.07 * speedMult
-    pts.rotation.z += safeDelta * 0.03 * speedMult
+    // Smooth, slow continuous 3D rotation
+    pts.rotation.y += safeDelta * 0.045 * speedMult
+    pts.rotation.x += safeDelta * 0.015 * speedMult
 
     const t = performance.now() * 0.001 * speedMult
 
     let targetVol = 0
     if (isSpeaking) {
-      const pulse = Math.abs(Math.sin(t * 9) * 0.6 + Math.sin(t * 4.3) * 0.4)
-      targetVol = (pulse * 0.6 + Math.random() * 0.1) * intensityMult
+      const pulse = Math.abs(Math.sin(t * 8.5) * 0.6 + Math.sin(t * 4.2) * 0.4)
+      targetVol = (pulse * 0.7 + Math.random() * 0.1) * intensityMult
     } else if (isListening) {
-      const micBoost = micLevel ? Math.min(micLevel * 2.8, 1) : Math.abs(Math.sin(t * 5.2)) * 0.35 + 0.15
-      targetVol = (0.2 + micBoost * 0.8) * intensityMult
-    } else if (isConnected) {
-      targetVol = Math.abs(Math.sin(t * 1.6)) * 0.035 * intensityMult
+      const micBoost = micLevel ? Math.min(micLevel * 3.0, 1.2) : Math.abs(Math.sin(t * 5.0)) * 0.35 + 0.15
+      targetVol = (0.3 + micBoost * 0.85) * intensityMult
+    } else {
+      // Gentle natural breathing pulse
+      targetVol = (Math.sin(t * 1.8) * 0.08 + 0.1) * intensityMult
     }
-    const lerpSpeed = isSpeaking || isListening ? 0.15 : 0.09
-    volRef.current += (targetVol - volRef.current) * lerpSpeed
+
+    const lerpSpeed = isSpeaking || isListening ? 0.16 : 0.08
+    volRef.current += (targetVol - volRef.current) * dtEase(lerpSpeed, safeDelta)
     const vol = volRef.current
 
-    _blendColor.lerpColors(idleCol, activeCol, Math.min(vol * 2, 1))
+    _blendColor.lerpColors(idleCol, activeCol, Math.min(vol * 1.5, 1))
     mat.color.copy(_blendColor)
-    const targetOp = (isConnected ? 0.65 + vol * 0.35 : 0.2) * (config.glow || 1.0)
-    mat.opacity += (targetOp - mat.opacity) * 0.07
+    
+    // High luminous opacity for prominent visual brightness
+    const baseOpacity = isConnected ? 0.95 : 0.85
+    mat.opacity = (baseOpacity + vol * 0.15) * (config.glow || 1.0)
 
-    if (vol > 0.002 && !isReduced) {
+    // Micro-motion wave displacement on particles
+    if (!isReduced) {
       const posArr = geo.attributes.position.array as Float32Array
       for (let i = 0; i < COUNT; i++) {
         const ix = i * 3
         const phase = seeds[i * 2]
         const weight = seeds[i * 2 + 1]
 
-        const waveMult = isListening ? 9 : 7
-        const wave = Math.sin(t * waveMult + phase) * vol * weight * 0.22 * intensityMult
+        const waveMult = isListening ? 7.5 : isSpeaking ? 6.0 : 2.5
+        const wave = Math.sin(t * waveMult + phase) * (0.015 + vol * 0.08) * weight * intensityMult
 
         const ox = original[ix]
         const oy = original[ix + 1]
         const oz = original[ix + 2]
-        const invR = 0.7692 // 1 / 1.3
+        const invR = 0.675 // ~ 1 / 1.48
 
         posArr[ix] = ox + ox * invR * wave
         posArr[ix + 1] = oy + oy * invR * wave
@@ -129,17 +195,21 @@ function ParticleShell({
           // @ts-ignore
           usage={THREE.DynamicDrawUsage}
         />
+        <bufferAttribute
+          attach="attributes-color"
+          args={[colors, 3]}
+        />
       </bufferGeometry>
       <pointsMaterial
         // @ts-ignore
-        size={0.018 * (config.glow || 1.0)}
+        size={0.034 * (config.glow || 1.0)}
+        map={particleTexture}
         transparent
-        opacity={0.3}
+        opacity={0.92}
         sizeAttenuation
         blending={THREE.AdditiveBlending}
         depthWrite={false}
-        vertexColors={false}
-        color={idleCol}
+        vertexColors
       />
     </points>
   )
@@ -173,8 +243,8 @@ function OrbitalRing({
   const volRef = useRef(0)
 
   const scheme = COLOR_SCHEMES[config.colorScheme] || COLOR_SCHEMES.emerald
-  const ringCol = useMemo(() => new THREE.Color(scheme.ringColor), [scheme.ringColor])
-  const glowCol = useMemo(() => new THREE.Color(scheme.ringGlow), [scheme.ringGlow])
+  const ringCol = useMemo(() => new THREE.Color(scheme.ringColor || '#00ff41'), [scheme.ringColor])
+  const glowCol = useMemo(() => new THREE.Color(scheme.ringGlow || '#39ff14'), [scheme.ringGlow])
 
   useFrame((_, delta) => {
     if (!ref.current || !matRef.current) return
@@ -183,38 +253,38 @@ function OrbitalRing({
     const speedMult = config.speed || 1.0
     const intensityMult = config.intensity || 1.0
 
-    const rotBoost = isListening ? 1.6 : 1.0
+    const rotBoost = isListening ? 1.4 : 1.0
     ref.current.rotation.y += safeDelta * rotSpeed * speedMult * rotBoost
 
     const t = performance.now() * 0.001 * speedMult + phase
     let targetVol = 0
     if (isSpeaking) {
-      targetVol = (Math.abs(Math.sin(t * 8)) * 0.55 + 0.15) * intensityMult
+      targetVol = (Math.abs(Math.sin(t * 8)) * 0.5 + 0.15) * intensityMult
     } else if (isListening) {
       const micBoost = micLevel ? Math.min(micLevel * 2.2, 1) : Math.abs(Math.sin(t * 4.5)) * 0.4 + 0.15
       targetVol = (0.2 + micBoost * 0.6) * intensityMult
-    } else if (isConnected) {
-      targetVol = Math.abs(Math.sin(t * 1.4)) * 0.1 * intensityMult
+    } else {
+      targetVol = (Math.sin(t * 1.5) * 0.05 + 0.08) * intensityMult
     }
-    volRef.current += (targetVol - volRef.current) * 0.1
+    volRef.current += (targetVol - volRef.current) * dtEase(0.1, safeDelta)
     const vol = volRef.current
 
     _ringColor.lerpColors(ringCol, glowCol, vol)
     matRef.current.color.copy(_ringColor)
 
-    const targetOp = (isConnected ? 0.12 + vol * 0.6 : 0.03) * (config.glow || 1.0)
-    matRef.current.opacity += (targetOp - matRef.current.opacity) * 0.09
+    const targetOp = (0.15 + vol * 0.4) * (config.glow || 1.0)
+    matRef.current.opacity += (targetOp - matRef.current.opacity) * dtEase(0.09, safeDelta)
   })
 
   return (
     <mesh ref={ref} rotation={[tilt, 0, 0]}>
-      <torusGeometry args={[radius, tube, 2, 48]} />
+      <torusGeometry args={[radius, tube, 2, 64]} />
       <meshBasicMaterial
         ref={matRef}
         // @ts-ignore
         color={ringCol}
         transparent
-        opacity={0.06}
+        opacity={0.12}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -241,13 +311,16 @@ function AIOrb({
     if (!groupRef.current) return
 
     const intensityScale = config.intensity || 1.0
-    const micExpansion = isListening ? (micLevel || 0) * 0.35 : 0
-    const baseScale = !isConnected ? 0.44 : isSpeaking ? 0.72 : isListening ? 0.67 + micExpansion : 0.62
-    const targetScale = baseScale * (0.85 + intensityScale * 0.15)
+    const micExpansion = isListening ? (micLevel || 0) * 0.22 : 0
+    // Slightly reduced scale for ideal viewport height balance
+    const baseScale = isSpeaking ? 0.85 : isListening ? 0.82 + micExpansion : 0.78
+    const targetScale = baseScale * (0.9 + intensityScale * 0.1)
     _scaleVec.set(targetScale, targetScale, targetScale)
-    groupRef.current.scale.lerp(_scaleVec, delta * 3.5)
-    const spinSpeed = isSpeaking ? 1.4 : isListening ? 1.25 : 1.0
-    groupRef.current.rotation.y += delta * 0.03 * (config.speed || 1.0) * spinSpeed
+    
+    const scaleEase = 1 - Math.pow(1 - 0.35, delta * 60)
+    groupRef.current.scale.lerp(_scaleVec, scaleEase)
+    const spinSpeed = isSpeaking ? 1.3 : isListening ? 1.2 : 1.0
+    groupRef.current.rotation.y += delta * 0.02 * (config.speed || 1.0) * spinSpeed
   })
 
   return (
@@ -261,10 +334,10 @@ function AIOrb({
       />
 
       <OrbitalRing
-        radius={1.5}
-        tube={0.005}
-        tilt={Math.PI * 0.1}
-        rotSpeed={0.16}
+        radius={1.75}
+        tube={0.003}
+        tilt={Math.PI * 0.12}
+        rotSpeed={0.12}
         isConnected={isConnected}
         isSpeaking={isSpeaking}
         isListening={isListening}
@@ -273,10 +346,10 @@ function AIOrb({
         config={config}
       />
       <OrbitalRing
-        radius={1.72}
-        tube={0.003}
-        tilt={Math.PI * 0.42}
-        rotSpeed={-0.1}
+        radius={1.9}
+        tube={0.002}
+        tilt={Math.PI * 0.45}
+        rotSpeed={-0.08}
         isConnected={isConnected}
         isSpeaking={isSpeaking}
         isListening={isListening}
@@ -293,18 +366,30 @@ export default function AICore({
   isSpeaking = false,
   isListening = false,
   micLevel = 0,
-  onClick
+  onClick,
+  className = ''
 }: {
   isConnected?: boolean
   isSpeaking?: boolean
   isListening?: boolean
   micLevel?: number
   onClick?: () => void
+  className?: string
 }) {
   const [coreConfig, setCoreConfig] = useState<ParticleCoreConfig>(() => {
     return coreSettingsService.getSettings().particleCore
   })
   const [isHovered, setIsHovered] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
+
+  // Pause/reduce animation when tab/page is not visible to save GPU and battery
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden)
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   useEffect(() => {
     const unsub = coreSettingsService.subscribe((state) => {
@@ -318,9 +403,9 @@ export default function AICore({
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`absolute inset-0 flex items-center justify-center z-0 transition-all duration-500 ${
+      className={`w-full h-full flex items-center justify-center relative z-0 transition-all duration-500 ${
         onClick ? 'cursor-pointer pointer-events-auto' : 'pointer-events-none'
-      }`}
+      } ${className}`}
       title={
         !isConnected
           ? 'Click to Initialize IRIS Voice AI'
@@ -331,38 +416,38 @@ export default function AICore({
               : 'Click to toggle IRIS voice'
       }
     >
-      {/* Ambient Pulsing Glow Halos with Spring Transitions */}
+      {/* Subtle atmospheric neon green glow halo matching reference */}
       <div
-        className={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full blur-[100px] pointer-events-none transition-all duration-700 ease-out ${
+        className={`absolute w-72 h-72 sm:w-[380px] sm:h-[380px] rounded-full blur-[85px] pointer-events-none transition-all duration-700 ease-out ${
           isSpeaking
-            ? 'bg-cyan-500/25 scale-125 animate-pulse'
+            ? 'bg-[#00ff41]/20 scale-115 animate-pulse'
             : isListening
-              ? 'bg-[#00ff41]/25 scale-110'
+              ? 'bg-[#39ff14]/25 scale-110'
               : isConnected
-                ? 'bg-[#00ff41]/10 scale-95'
+                ? 'bg-[#00ff41]/15 scale-100'
                 : isHovered
-                  ? 'bg-[#00ff41]/15 scale-105'
-                  : 'bg-[#00ff41]/5 scale-75 opacity-40'
+                  ? 'bg-[#00ff41]/18 scale-105'
+                  : 'bg-[#00ff41]/12 scale-95 opacity-80'
         }`}
       />
 
-      {/* Ripple Rings when Listening */}
-      {isConnected && (isListening || isSpeaking) && (
+      {/* Ripple Rings when Listening / Speaking */}
+      {(isListening || isSpeaking) && (
         <div
-          className={`absolute w-64 h-64 sm:w-80 sm:h-80 rounded-full border border-dashed pointer-events-none transition-all duration-500 ${
+          className={`absolute w-64 h-64 sm:w-84 sm:h-84 rounded-full border border-dashed pointer-events-none transition-all duration-500 ${
             isSpeaking
-              ? 'border-cyan-400/30 animate-spin'
-              : 'border-[#00ff41]/30 animate-[spin_12s_linear_infinite]'
+              ? 'border-[#39ff14]/40 animate-spin'
+              : 'border-[#00ff41]/40 animate-[spin_14s_linear_infinite]'
           }`}
           style={{
-            transform: `scale(${1 + (micLevel || 0) * 0.4})`
+            transform: `scale(${1 + (micLevel || 0) * 0.3})`
           }}
         />
       )}
 
       <Canvas
         style={{ width: '100%', height: '100%' }}
-        camera={{ position: [0, 0, 5], fov: 42 }}
+        camera={{ position: [0, 0, 4.6], fov: 40 }}
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
@@ -370,8 +455,8 @@ export default function AICore({
           depth: false,
           stencil: false
         }}
-        dpr={[1, 2]}
-        frameloop="always"
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1}
+        frameloop={isVisible ? 'always' : 'never'}
       >
         <AIOrb
           isConnected={isConnected}
@@ -380,11 +465,12 @@ export default function AICore({
           micLevel={micLevel}
           config={{
             ...coreConfig,
-            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.4 : isListening ? 1.25 : isHovered ? 1.2 : 1),
-            intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.5 : isListening ? 1.3 : 1)
+            speed: (coreConfig.speed || 1) * (isSpeaking ? 1.3 : isListening ? 1.2 : isHovered ? 1.15 : 1),
+            intensity: (coreConfig.intensity || 1) * (isSpeaking ? 1.4 : isListening ? 1.3 : 1.1)
           }}
         />
       </Canvas>
     </div>
   )
 }
+

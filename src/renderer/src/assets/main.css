@@ -127,6 +127,19 @@ body {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  touch-action: pan-y;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.ultra-smooth-scroll {
+  scroll-behavior: smooth !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: scroll-position, transform;
 }
 
 @keyframes scan {

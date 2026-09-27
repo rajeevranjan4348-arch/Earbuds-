@@ -25,7 +25,11 @@ import {
   RiVolumeMuteLine,
   RiFileCopyLine,
   RiCheckLine,
-  RiExternalLinkLine
+  RiExternalLinkLine,
+  RiShareForwardLine,
+  RiCheckboxCircleFill,
+  RiCheckboxBlankCircleLine,
+  RiSendPlaneFill
 } from 'react-icons/ri'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -89,13 +93,19 @@ function getFileExtension(filename: string): string {
   return 'FILE'
 }
 
+const MAX_GALLERY_BATCH_UPLOAD = 50
+const MAX_CHAT_SHARE_FILES = 10
+
 const GalleryView = () => {
   const [allMedia, setAllMedia] = useState<MediaFile[]>([])
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'image' | 'video' | 'audio' | 'document'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [selectedFilenames, setSelectedFilenames] = useState<Set<string>>(new Set())
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Audio Player State in Modal
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
@@ -110,6 +120,11 @@ const GalleryView = () => {
   const ITEMS_PER_PAGE = 12
   const observer = useRef<IntersectionObserver | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage((prev) => (prev === msg ? null : prev)), 4000)
+  }
 
   const fetchGallery = async () => {
     try {
@@ -174,11 +189,20 @@ const GalleryView = () => {
 
   const processAndSaveFiles = async (files: FileList | File[]) => {
     if (!files || files.length === 0) return
+    const fileArray = Array.from(files)
+    const batch = fileArray.slice(0, MAX_GALLERY_BATCH_UPLOAD)
+
+    if (fileArray.length > MAX_GALLERY_BATCH_UPLOAD) {
+      showToast(`Selected ${fileArray.length} files. Uploading max limit of ${MAX_GALLERY_BATCH_UPLOAD} files for this batch.`)
+    }
+
     setIsUploading(true)
+    setUploadProgress({ current: 0, total: batch.length })
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+      for (let i = 0; i < batch.length; i++) {
+        const file = batch[i]
+        setUploadProgress({ current: i + 1, total: batch.length })
         const category = detectMediaType(file.name, file.type)
 
         let url = ''
@@ -219,10 +243,13 @@ const GalleryView = () => {
         await window.electron.ipcRenderer.invoke('save-gallery-image', payload)
       }
       await fetchGallery()
+      showToast(`Successfully uploaded ${batch.length} file(s) to Vault.`)
     } catch (err) {
       console.error('[IRIS Gallery] Error processing file upload:', err)
+      showToast('Error uploading some files. Please check storage.')
     } finally {
       setIsUploading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -254,9 +281,87 @@ const GalleryView = () => {
     }
   }
 
+  // Multi-selection management for sharing to Chat (Max 10 files)
+  const toggleSelect = (filename: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setSelectedFilenames((prev) => {
+      const next = new Set(prev)
+      if (next.has(filename)) {
+        next.delete(filename)
+      } else {
+        if (next.size >= MAX_CHAT_SHARE_FILES) {
+          showToast(`Maximum ${MAX_CHAT_SHARE_FILES} files can be shared in chat at once.`)
+          return prev
+        }
+        next.add(filename)
+      }
+      return next
+    })
+  }
+
+  const selectAllUpTo10 = () => {
+    const next = new Set<string>()
+    for (let i = 0; i < Math.min(MAX_CHAT_SHARE_FILES, filteredMedia.length); i++) {
+      next.add(filteredMedia[i].filename)
+    }
+    setSelectedFilenames(next)
+    showToast(`Selected ${next.size} files for Chat (Max ${MAX_CHAT_SHARE_FILES}).`)
+  }
+
+  const shareSelectedToChat = () => {
+    const selectedItems = allMedia.filter((m) => selectedFilenames.has(m.filename)).slice(0, MAX_CHAT_SHARE_FILES)
+    if (selectedItems.length === 0) return
+
+    window.dispatchEvent(
+      new CustomEvent('iris:share-to-chat', {
+        detail: {
+          files: selectedItems.map((m) => ({
+            name: m.displayName || m.filename,
+            url: m.url,
+            type: m.type,
+            mimeType: m.mimeType,
+            size: m.size
+          }))
+        }
+      })
+    )
+
+    showToast(`Shared ${selectedItems.length} file(s) to Chat conversation!`)
+    setSelectedFilenames(new Set())
+  }
+
+  const shareSingleToChat = (media: MediaFile, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    window.dispatchEvent(
+      new CustomEvent('iris:share-to-chat', {
+        detail: {
+          files: [
+            {
+              name: media.displayName || media.filename,
+              url: media.url,
+              type: media.type,
+              mimeType: media.mimeType,
+              size: media.size
+            }
+          ]
+        }
+      })
+    )
+    showToast(`Shared "${media.displayName}" to Chat conversation!`)
+  }
+
   const deleteMedia = async (filename: string, e?: React.MouseEvent) => {
     e?.stopPropagation()
     await window.electron.ipcRenderer.invoke('delete-image', filename)
+
+    setSelectedFilenames((prev) => {
+      if (prev.has(filename)) {
+        const next = new Set(prev)
+        next.delete(filename)
+        return next
+      }
+      return prev
+    })
 
     if (selectedMedia) {
       const currentIndex = filteredMedia.findIndex((media) => media.filename === selectedMedia.filename)
@@ -351,20 +456,38 @@ const GalleryView = () => {
   const renderGridItem = (media: MediaFile, index: number) => {
     const isLast = index === visibleMedia.length - 1
     const ext = media.fileType || getFileExtension(media.filename)
+    const isSelected = selectedFilenames.has(media.filename)
 
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.04, duration: 0.35 }}
+        transition={{ delay: (index % 12) * 0.04, duration: 0.35 }}
         key={`${media.filename}-${index}`}
         ref={isLast ? lastMediaRef : null}
         onClick={() => {
           setDirection(0)
           setSelectedMedia(media)
         }}
-        className="group relative aspect-4/5 bg-neutral-900 rounded-xl sm:rounded-2xl border border-white/5 overflow-hidden hover:border-emerald-500/50 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+        className={`group relative aspect-4/5 bg-neutral-900 rounded-xl sm:rounded-2xl border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between ${
+          isSelected
+            ? 'border-emerald-400 ring-2 ring-emerald-400/80 shadow-[0_0_20px_rgba(52,211,153,0.3)]'
+            : 'border-white/5 hover:border-emerald-500/50'
+        }`}
       >
+        {/* Selection Checkbox for Chat Share (Max 10) */}
+        <button
+          type="button"
+          onClick={(e) => toggleSelect(media.filename, e)}
+          className={`absolute top-2 right-2 z-30 p-1 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+            isSelected
+              ? 'bg-emerald-500 text-black shadow-lg scale-110'
+              : 'bg-black/60 text-white/70 hover:text-white hover:bg-black/90 opacity-0 group-hover:opacity-100'
+          }`}
+          title={isSelected ? 'Deselect file' : 'Select for Chat (Max 10)'}
+        >
+          {isSelected ? <RiCheckboxCircleFill size={18} /> : <RiCheckboxBlankCircleLine size={18} />}
+        </button>
         {/* Card Content based on type */}
         {media.type === 'image' && (
           <img
@@ -495,6 +618,16 @@ const GalleryView = () => {
 
           <div className="flex gap-1.5 justify-end pointer-events-auto">
             <button
+              onClick={(e) => {
+                e.stopPropagation()
+                shareSingleToChat(media, e)
+              }}
+              className="p-1.5 bg-neutral-800 text-emerald-400 rounded hover:bg-emerald-500 hover:text-black transition-colors"
+              title="Share to Chat"
+            >
+              <RiShareForwardLine size={14} />
+            </button>
+            <button
               onClick={(e) => openLocation(media.path, e)}
               className="p-1.5 bg-neutral-800 text-white rounded hover:bg-emerald-500 hover:text-black transition-colors"
               title="Locate File"
@@ -527,6 +660,27 @@ const GalleryView = () => {
       onDrop={handleDrop}
       className="relative flex-1 bg-neutral-950 h-full p-3 sm:p-6 md:p-10 animate-in fade-in duration-500 flex flex-col overflow-hidden selection:bg-emerald-500/30 text-white font-sans pb-24"
     >
+      {/* Toast Notification Banner */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-9999 bg-neutral-900/95 border border-emerald-500/50 text-emerald-300 px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-mono flex items-center gap-2.5 backdrop-blur-xl"
+          >
+            <RiCheckLine size={16} className="text-emerald-400 shrink-0" />
+            <span>{toastMessage}</span>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="text-neutral-400 hover:text-white ml-2 cursor-pointer"
+            >
+              <RiCloseLine size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Drag & Drop Visual Overlay */}
       <AnimatePresence>
         {isDragging && (
@@ -537,9 +691,9 @@ const GalleryView = () => {
             className="absolute inset-0 z-100 bg-emerald-950/90 backdrop-blur-xl border-4 border-dashed border-emerald-500 rounded-2xl flex flex-col items-center justify-center gap-4 text-emerald-400 p-8 shadow-2xl"
           >
             <RiUploadCloud2Line size={64} className="animate-bounce" />
-            <h3 className="text-2xl font-bold uppercase tracking-wider">Drop Files to Add to IRIS Vault</h3>
+            <h3 className="text-2xl font-bold uppercase tracking-wider">Drop Up to 50 Files to Add to IRIS Vault</h3>
             <p className="text-sm font-mono text-emerald-300/80">
-              Photos, Videos, Audio Recordings, Documents, PDFs, Archives & Code Files
+              Upload photos, videos, audio tracks, PDFs, documents & archives (Max 50 files per batch)
             </p>
           </motion.div>
         )}
@@ -566,7 +720,7 @@ const GalleryView = () => {
               Media & File Vault
             </h2>
             <p className="text-[10px] sm:text-xs text-neutral-500 mt-0.5 uppercase tracking-widest truncate">
-              Local Storage • All Formats Supported
+              Local Storage • Up to 50 Files Upload • Share 10 to Chat
             </p>
           </div>
         </div>
@@ -577,9 +731,16 @@ const GalleryView = () => {
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
             className="cursor-pointer px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 border border-emerald-400 active:scale-95 disabled:opacity-50"
+            title="Upload up to 50 photos, videos, audio, or files at once"
           >
             <RiUploadCloud2Line size={16} />
-            <span>{isUploading ? 'IMPORTING...' : 'ADD FILES'}</span>
+            <span>
+              {isUploading
+                ? uploadProgress
+                  ? `UPLOADING (${uploadProgress.current}/${uploadProgress.total})...`
+                  : 'IMPORTING...'
+                : 'ADD FILES (MAX 50)'}
+            </span>
           </button>
 
           <div className="text-[10px] sm:text-xs font-bold tracking-widest text-emerald-400 bg-neutral-900 px-3 py-2 rounded-xl border border-neutral-800 shadow-sm flex items-center gap-2">
@@ -961,6 +1122,17 @@ const GalleryView = () => {
             {/* Modal Bottom Action Controls */}
             <div className="absolute bottom-4 sm:bottom-8 z-50 flex gap-2 sm:gap-3 p-2 bg-neutral-900/80 backdrop-blur-md border border-white/10 rounded-xl max-w-[calc(100vw-24px)] overflow-x-auto shadow-2xl">
               <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  shareSingleToChat(selectedMedia, e)
+                  setSelectedMedia(null)
+                }}
+                className="cursor-pointer flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs tracking-wide transition-colors whitespace-nowrap shadow-md"
+                title="Share this file to Chat"
+              >
+                <RiShareForwardLine size={14} /> Share to Chat
+              </button>
+              <button
                 onClick={(e) => openLocation(selectedMedia.path, e)}
                 className="cursor-pointer flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 hover:bg-white text-white hover:text-black rounded-lg text-xs font-bold tracking-wide transition-colors whitespace-nowrap"
               >
@@ -979,6 +1151,51 @@ const GalleryView = () => {
                 <RiDeleteBinLine size={14} /> Delete
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Multi-Selection Share to Chat Toolbar (Max 10 files) */}
+      <AnimatePresence>
+        {selectedFilenames.size > 0 && (
+          <motion.div
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 60, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-999 bg-neutral-900/95 backdrop-blur-xl border border-emerald-500/40 rounded-2xl px-4 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.6)] flex items-center gap-3 md:gap-4 max-w-[95vw]"
+          >
+            <div className="flex items-center gap-2 font-mono text-xs text-emerald-400 font-bold shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                {selectedFilenames.size} / {MAX_CHAT_SHARE_FILES} selected
+              </span>
+            </div>
+
+            <button
+              onClick={shareSelectedToChat}
+              disabled={selectedFilenames.size === 0 || selectedFilenames.size > MAX_CHAT_SHARE_FILES}
+              className="cursor-pointer flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-xl shadow-lg transition-all active:scale-95 whitespace-nowrap disabled:opacity-50"
+              title="Share selected files directly to Chat conversation (Max 10)"
+            >
+              <RiSendPlaneFill size={15} />
+              <span>Share to Chat ({selectedFilenames.size})</span>
+            </button>
+
+            <button
+              onClick={selectAllUpTo10}
+              className="cursor-pointer px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-semibold rounded-xl transition-colors border border-white/5 whitespace-nowrap"
+              title="Select first 10 files"
+            >
+              Select 10
+            </button>
+
+            <button
+              onClick={() => setSelectedFilenames(new Set())}
+              className="cursor-pointer p-2 text-neutral-400 hover:text-white rounded-xl hover:bg-neutral-800 transition-colors"
+              title="Clear selection"
+            >
+              <RiCloseLine size={18} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1057,6 +1057,10 @@ export async function handleApiRequest(
           scopes: body.scopes
         })
 
+        if (Array.isArray(body.loginHistory)) {
+          workspaceSessionManager.syncLoginHistory(body.loginHistory)
+        }
+
         return {
           success: true,
           message: 'Google Workspace session synchronized successfully',
@@ -1092,6 +1096,23 @@ export async function handleApiRequest(
       const userId = parsedUrl.searchParams.get('userId') || undefined
       workspaceSessionManager.clearSession(userId)
       return sendJson(res, 200, { success: true, message: 'Google Workspace session disconnected' })
+    }
+
+    // Get persistent login history for Workspace
+    if (pathname === '/api/workspace/auth/history' && req.method === 'GET') {
+      const userId = parsedUrl.searchParams.get('userId') || undefined
+      const history = workspaceSessionManager.getLoginHistory(userId)
+      return sendJson(res, 200, { success: true, history })
+    }
+
+    // Synchronize client-side and server-side login history
+    if (pathname === '/api/workspace/auth/history' && req.method === 'POST') {
+      return handleSafeRoute(res, 'workspace_auth_history_sync', async () => {
+        const body = await parseBody(req)
+        const entries = Array.isArray(body.history) ? body.history : Array.isArray(body) ? body : []
+        const merged = workspaceSessionManager.syncLoginHistory(entries)
+        return { success: true, history: merged }
+      })
     }
 
     // Diagnostic Authentication Failure Logs (supporting /api/workspace/auth/failures and /api/workspace/auth/logs)

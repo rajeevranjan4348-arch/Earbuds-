@@ -2,7 +2,8 @@
  * IRIS 120 FPS Ultra-Smooth Engine
  *
  * Hardware-composited delta-time lerping, GPU layer promotion,
- * sub-millisecond frame pacing, and live frame rate telemetry.
+ * sub-millisecond frame pacing, kinetic momentum scroll damping,
+ * and live frame rate telemetry.
  */
 
 export interface SmoothnessProfile {
@@ -34,6 +35,9 @@ class SmoothScrollEngine {
   private lastFpsSampleTime: number = performance.now()
   private droppedFrames: number = 0
 
+  // Active smooth scroll animations map
+  private activeScrollAnimations: Map<HTMLElement, number> = new Map()
+
   constructor() {
     this.initGlobalGpuStyles()
     this.startTelemetryLoop()
@@ -59,15 +63,23 @@ class SmoothScrollEngine {
         will-change: transform, opacity;
       }
       .iris-120fps-scroll {
-        scroll-behavior: auto !important;
-        overscroll-behavior: none;
+        scroll-behavior: smooth !important;
+        overscroll-behavior: contain;
         contain: paint layout;
         will-change: transform, scroll-position;
+        -webkit-overflow-scrolling: touch;
       }
       /* Hardware compositing for all smooth animated elements */
       .smooth-transform {
         transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
         transform: translateZ(0);
+      }
+      .ultra-smooth-scroll {
+        scroll-behavior: smooth;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        transform: translateZ(0);
+        backface-visibility: hidden;
       }
     `
     document.head.appendChild(style)
@@ -160,6 +172,116 @@ class SmoothScrollEngine {
 
   public isGpuEnabled(): boolean {
     return this.gpuBoosted
+  }
+
+  /**
+   * Ultra-smooth physics-based programmatic scroll to bottom.
+   * Uses precision cubic interpolation with delta-time compensation to ensure buttery 120fps motion.
+   */
+  public smoothScrollToBottom(element: HTMLElement | null, durationMs = 280) {
+    if (!element) return
+
+    // Cancel any ongoing animation on this element
+    const existingAnim = this.activeScrollAnimations.get(element)
+    if (existingAnim) {
+      cancelAnimationFrame(existingAnim)
+      this.activeScrollAnimations.delete(element)
+    }
+
+    const startTop = element.scrollTop
+    const targetTop = element.scrollHeight - element.clientHeight
+    const distance = targetTop - startTop
+
+    // If already at or very close to bottom, snap immediately
+    if (Math.abs(distance) < 2) {
+      element.scrollTop = targetTop
+      return
+    }
+
+    const startTime = performance.now()
+
+    // Quintic ease out for fluid deceleration
+    const easeOutQuint = (t: number): number => 1 - Math.pow(1 - t, 5)
+
+    const step = (now: number) => {
+      const elapsed = now - startTime
+      const progress = Math.min(1, elapsed / durationMs)
+      const easedProgress = easeOutQuint(progress)
+
+      element.scrollTop = startTop + distance * easedProgress
+
+      if (progress < 1) {
+        const anim = requestAnimationFrame(step)
+        this.activeScrollAnimations.set(element, anim)
+      } else {
+        element.scrollTop = targetTop
+        this.activeScrollAnimations.delete(element)
+      }
+    }
+
+    const anim = requestAnimationFrame(step)
+    this.activeScrollAnimations.set(element, anim)
+  }
+
+  /**
+   * Attaches smooth inertial wheel scrolling to a container element.
+   * Transforms discrete wheel ticks into continuous exponential decay momentum.
+   */
+  public attachSmoothScroll(element: HTMLElement | null): () => void {
+    if (!element) return () => {}
+
+    let currentScroll = element.scrollTop
+    let targetScroll = element.scrollTop
+    let isRunning = false
+    let wheelDampingFactor = 0.12
+
+    const update = () => {
+      if (!element) return
+
+      const diff = targetScroll - currentScroll
+      if (Math.abs(diff) > 0.5) {
+        currentScroll += diff * wheelDampingFactor
+        element.scrollTop = Math.round(currentScroll)
+        requestAnimationFrame(update)
+      } else {
+        element.scrollTop = targetScroll
+        currentScroll = targetScroll
+        isRunning = false
+      }
+    }
+
+    const onWheel = (e: WheelEvent) => {
+      // Do not intercept if user is holding ctrl (zoom) or shift (horizontal)
+      if (e.ctrlKey || e.shiftKey) return
+
+      const maxScroll = element.scrollHeight - element.clientHeight
+      if (maxScroll <= 0) return
+
+      // Smooth step calculation
+      const delta = e.deltaY
+      targetScroll = Math.max(0, Math.min(maxScroll, targetScroll + delta))
+
+      if (!isRunning) {
+        isRunning = true
+        currentScroll = element.scrollTop
+        requestAnimationFrame(update)
+      }
+    }
+
+    const onScrollSync = () => {
+      if (!isRunning) {
+        currentScroll = element.scrollTop
+        targetScroll = element.scrollTop
+      }
+    }
+
+    element.addEventListener('wheel', onWheel, { passive: true })
+    element.addEventListener('scroll', onScrollSync, { passive: true })
+
+    return () => {
+      element.removeEventListener('wheel', onWheel)
+      element.removeEventListener('scroll', onScrollSync)
+    }
   }
 }
 

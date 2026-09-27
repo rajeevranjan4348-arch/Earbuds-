@@ -9,6 +9,10 @@ import { soundEffects } from './services/soundEffectsService'
 import { LauncherModal, launchManager } from './launcher'
 import { VoiceCommandToastHUD } from './components/UI/VoiceCommandToastHUD'
 import { AgentPermissionDialog } from './components/AgentPermissionDialog'
+import { CameraPreviewModal } from './components/UI/CameraPreviewModal'
+import { MobileAccessPermissionsModal } from './components/UI/MobileAccessPermissionsModal'
+import { PersistentAuthStateModal } from './components/UI/PersistentAuthStateModal'
+import { MicrophoneListenerModal } from './components/UI/MicrophoneListenerModal'
 import { workspacePersistenceService } from './services/workspacePersistenceService'
 import { ModuleViewSkeleton } from './components/UI/SkeletonLoader'
 import { Zap } from 'lucide-react'
@@ -52,6 +56,10 @@ const IndexRoot = () => {
     return (saved?.visionMode as VisionMode) || 'off'
   })
   const [isDocOverlayOpen, setIsDocOverlayOpen] = useState(false)
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false)
+  const [isMobilePermissionsOpen, setIsMobilePermissionsOpen] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isMicListenerOpen, setIsMicListenerOpen] = useState(false)
   const [isCoreUiMinimal, setIsCoreUiMinimal] = useState<boolean>(() => {
     const saved = workspacePersistenceService.getConfig()
     return Boolean(saved?.isMinimalHud)
@@ -141,13 +149,33 @@ const IndexRoot = () => {
         setVisionMode(e.detail.mode as VisionMode)
       }
     }
+    const handleCameraModalEvent = () => {
+      setIsCameraModalOpen(true)
+    }
+    const handleMobilePermissionsEvent = () => {
+      setIsMobilePermissionsOpen(true)
+    }
+    const handleAuthModalEvent = () => {
+      setIsAuthModalOpen(true)
+    }
+    const handleMicListenerEvent = () => {
+      setIsMicListenerOpen(true)
+    }
 
     window.addEventListener('iris:navigate', handleNavEvent)
     window.addEventListener('iris:vision-mode', handleVisionEvent)
+    window.addEventListener('iris:open-camera', handleCameraModalEvent)
+    window.addEventListener('iris:open-mobile-permissions', handleMobilePermissionsEvent)
+    window.addEventListener('iris:open-auth-manager', handleAuthModalEvent)
+    window.addEventListener('iris:open-mic-listener', handleMicListenerEvent)
 
     return () => {
       window.removeEventListener('iris:navigate', handleNavEvent)
       window.removeEventListener('iris:vision-mode', handleVisionEvent)
+      window.removeEventListener('iris:open-camera', handleCameraModalEvent)
+      window.removeEventListener('iris:open-mobile-permissions', handleMobilePermissionsEvent)
+      window.removeEventListener('iris:open-auth-manager', handleAuthModalEvent)
+      window.removeEventListener('iris:open-mic-listener', handleMicListenerEvent)
     }
   }, [])
 
@@ -374,6 +402,30 @@ const IndexRoot = () => {
 
         {/* Sensitive Action Human-In-The-Loop Approval Dialog */}
         <AgentPermissionDialog />
+
+        {/* Live Camera Preview & OCR/Vision Analysis Modal */}
+        <CameraPreviewModal
+          isOpen={isCameraModalOpen}
+          onClose={() => setIsCameraModalOpen(false)}
+        />
+
+        {/* Mobile Access Permissions & Capability Gateways Modal */}
+        <MobileAccessPermissionsModal
+          isOpen={isMobilePermissionsOpen}
+          onClose={() => setIsMobilePermissionsOpen(false)}
+        />
+
+        {/* Persistent Auth State Manager Modal */}
+        <PersistentAuthStateModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+        />
+
+        {/* Microphone Listener & Neural OS Command Router Modal */}
+        <MicrophoneListenerModal
+          isOpen={isMicListenerOpen}
+          onClose={() => setIsMicListenerOpen(false)}
+        />
       </main>
     </div>
   )

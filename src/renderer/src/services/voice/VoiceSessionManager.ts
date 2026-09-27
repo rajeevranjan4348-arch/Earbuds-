@@ -37,7 +37,7 @@ import { VoiceCommandRouter } from './VoiceCommandRouter'
 import { voiceSettings } from './VoiceSettings'
 import { agentClientService } from '../agentClientService'
 import { voiceTranscriptStorage } from './VoiceTranscriptStorage'
-import { chatHistoryService } from '../chatHistoryService'
+import { chatHistoryService, extractAndNormalizeUrls, Message } from '../chatHistoryService'
 import { aiInputPipeline } from './AIInputPipeline'
 import { responseStreamManager } from './ResponseStreamManager'
 
@@ -579,8 +579,9 @@ export class VoiceSessionManager {
     })
 
     // Record user turn in conversation history
+    const userMsgId = `turn_u_${Date.now()}`
     const userMsg: VoiceTurnMessage = {
-      id: `turn_u_${Date.now()}`,
+      id: userMsgId,
       role: 'user',
       text: normalizedPrompt,
       timestamp: Date.now(),
@@ -604,6 +605,28 @@ export class VoiceSessionManager {
       language: this.config.language
     })
     this.activeStorageSessionId = savedSession.id
+
+    // Unified Conversation Persistence: Persist user turn to active chat session
+    try {
+      const activeSessionId = this.activeStorageSessionId || chatHistoryService.getActiveSessionId()
+      const unifiedUserMessage: Message = {
+        id: userMsgId,
+        messageId: userMsgId,
+        conversationId: activeSessionId,
+        role: 'user',
+        mode: 'voice',
+        text: normalizedPrompt,
+        transcript: rawPrompt,
+        content: normalizedPrompt,
+        timestamp: Date.now(),
+        inputType: 'voice',
+        status: 'success',
+        isFinal: true
+      }
+      chatHistoryService.addMessage(activeSessionId, unifiedUserMessage)
+    } catch (_chatErr) {
+      console.warn('[VoiceSessionManager] Error persisting turn to chatHistoryService:', _chatErr)
+    }
 
     this.notify('transcript_updated', { message: userMsg, history: this.conversationHistory })
 
@@ -675,10 +698,14 @@ export class VoiceSessionManager {
         const spokenResponse = `Task finished across ${completedTasks} of ${totalTasks} stages. ${cleanSummary}`
         this.lastSpokenAnswer = spokenResponse
 
+        const assistantMsgId = `turn_a_${Date.now()}`
+        const assistantText = `🤖 **Task Execution Completed**\n\n**Goal:** ${routerResult.goal}\n\n**Status:** ${res.status || 'COMPLETED'} (${completedTasks}/${totalTasks} stages)\n\n${solutionText}`
+        const { normalizedText: normTaskText, urls: taskUrls } = extractAndNormalizeUrls(assistantText)
+
         const assistantMsg: VoiceTurnMessage = {
-          id: `turn_a_${Date.now()}`,
+          id: assistantMsgId,
           role: 'assistant',
-          text: `🤖 **Task Execution Completed**\n\n**Goal:** ${routerResult.goal}\n\n**Status:** ${res.status || 'COMPLETED'} (${completedTasks}/${totalTasks} stages)\n\n${solutionText}`,
+          text: normTaskText,
           timestamp: Date.now()
         }
         this.conversationHistory.push(assistantMsg)
@@ -686,6 +713,26 @@ export class VoiceSessionManager {
           personality: this.config.personality,
           language: this.config.language
         })
+
+        try {
+          const activeSessionId = this.activeStorageSessionId || chatHistoryService.getActiveSessionId()
+          const unifiedAssistantMessage: Message = {
+            id: assistantMsgId,
+            messageId: assistantMsgId,
+            conversationId: activeSessionId,
+            role: 'assistant',
+            mode: 'voice',
+            text: normTaskText,
+            transcript: normTaskText,
+            content: normTaskText,
+            timestamp: Date.now(),
+            inputType: 'voice',
+            status: 'success',
+            links: taskUrls.length > 0 ? taskUrls : undefined,
+            isFinal: true
+          }
+          chatHistoryService.addMessage(activeSessionId, unifiedAssistantMessage)
+        } catch (_chatErr) {}
         this.notify('transcript_updated', {
           message: assistantMsg,
           history: this.conversationHistory
@@ -743,11 +790,22 @@ export class VoiceSessionManager {
     this.activeAbortController = new AbortController()
 
     const personality = getPersonality(this.config.personality)
-    const recentHistory = this.conversationHistory.slice(-6).map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.text,
-      text: m.text
-    }))
+    const activeSessionId = this.activeStorageSessionId || chatHistoryService.getActiveSessionId()
+    
+    // Shared Multi-turn Context: Get unified history from chatHistoryService (combining prior text & voice)
+    const unifiedHistory = chatHistoryService.getConversationHistoryForContext(activeSessionId, 8)
+    const recentHistory =
+      unifiedHistory.length > 0
+        ? unifiedHistory.map((m) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.text,
+            text: m.text
+          }))
+        : this.conversationHistory.slice(-6).map((m) => ({
+            role: m.role === 'user' ? 'user' : 'assistant',
+            content: m.text,
+            text: m.text
+          }))
 
     // Build context with memory
     const { systemInstruction } = await aiInputPipeline.buildContext(prompt, recentHistory as any)
@@ -778,11 +836,13 @@ export class VoiceSessionManager {
       this.currentResponse = answerText
 
       const cleanSpoken = responseStreamManager.cleanTextForSpeech(answerText)
+      const { normalizedText, urls } = extractAndNormalizeUrls(answerText)
 
+      const assistantMsgId = `turn_a_${Date.now()}`
       const assistantMsg: VoiceTurnMessage = {
-        id: `turn_a_${Date.now()}`,
+        id: assistantMsgId,
         role: 'assistant',
-        text: answerText,
+        text: normalizedText,
         timestamp: Date.now(),
         metadata: {
           inputMode: 'voice',
@@ -796,6 +856,29 @@ export class VoiceSessionManager {
         personality: this.config.personality,
         language: this.config.language
       })
+
+      // Unified Conversation Persistence: Persist assistant turn to active chat session BEFORE/DURING TTS playback
+      try {
+        const unifiedAssistantMessage: Message = {
+          id: assistantMsgId,
+          messageId: assistantMsgId,
+          conversationId: activeSessionId,
+          role: 'assistant',
+          mode: 'voice',
+          text: normalizedText,
+          transcript: normalizedText,
+          content: normalizedText,
+          timestamp: Date.now(),
+          inputType: 'voice',
+          status: 'success',
+          links: urls.length > 0 ? urls : undefined,
+          isFinal: true
+        }
+        chatHistoryService.addMessage(activeSessionId, unifiedAssistantMessage)
+      } catch (_chatErr) {
+        console.warn('[VoiceSessionManager] Error persisting assistant message to chatHistoryService:', _chatErr)
+      }
+
       this.notify('transcript_updated', {
         message: assistantMsg,
         history: this.conversationHistory
@@ -805,7 +888,7 @@ export class VoiceSessionManager {
         ;(window as any).iris.emitTranscript({
           id: assistantMsg.id,
           role: 'assistant',
-          text: answerText,
+          text: normalizedText,
           timestamp: Date.now(),
           inputType: 'voice',
           isFinal: true
@@ -827,8 +910,9 @@ export class VoiceSessionManager {
       this.lastSpokenAnswer = fallback
       this.currentResponse = fallback
 
+      const fallbackMsgId = `turn_a_${Date.now()}`
       const fallbackMsg: VoiceTurnMessage = {
-        id: `turn_a_${Date.now()}`,
+        id: fallbackMsgId,
         role: 'assistant',
         text: fallback,
         timestamp: Date.now(),
@@ -844,6 +928,25 @@ export class VoiceSessionManager {
         personality: this.config.personality,
         language: this.config.language
       })
+
+      try {
+        const unifiedFallbackMsg: Message = {
+          id: fallbackMsgId,
+          messageId: fallbackMsgId,
+          conversationId: activeSessionId,
+          role: 'assistant',
+          mode: 'voice',
+          text: fallback,
+          transcript: fallback,
+          content: fallback,
+          timestamp: Date.now(),
+          inputType: 'voice',
+          status: 'success',
+          isFinal: true
+        }
+        chatHistoryService.addMessage(activeSessionId, unifiedFallbackMsg)
+      } catch (_e) {}
+
       this.notify('transcript_updated', { message: fallbackMsg, history: this.conversationHistory })
 
       this.transitionToCanonical('speaking')

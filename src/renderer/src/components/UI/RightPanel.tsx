@@ -29,7 +29,12 @@ import {
   CalendarDays,
   ChevronDown,
   Check,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  Video,
+  Film,
+  Music,
+  ArrowDown
 } from 'lucide-react'
 import { RiFlashlightFill } from 'react-icons/ri'
 import GoogleMapsPlaceCard from '../Chat/GoogleMapsPlaceCard'
@@ -49,6 +54,10 @@ import { VoiceCommandLogSidePanel } from './VoiceCommandLogSidePanel'
 import { IntentResolver, launchManager } from '../../launcher'
 import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
 import { normalizeAIResponse } from '../../services/aiResponseNormalizer'
+import { smoothScrollEngine } from '../../services/smoothScrollEngine'
+import { PromptInputBox } from '@/components/ui/ai-prompt-box'
+import { Plan } from '@/components/ui/agent-plan'
+import { Brain, ChevronRight } from 'lucide-react'
 
 export type { Message, ChatSession }
 
@@ -140,10 +149,12 @@ const ChatMessageItem = memo(
 
     return (
       <motion.div
+        layoutId={`chat-msg-${msg.id}`}
         layout="position"
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+        initial={{ opacity: 0, y: 6, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        exit={{ opacity: 0, y: -6, scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 450, damping: 32 }}
         className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
       >
         <div
@@ -267,6 +278,56 @@ const ChatMessageItem = memo(
                 </div>
               )}
 
+              {/* Message File Attachments (Photos, Videos, Audio, Documents) */}
+              {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-2 mt-1 border-t border-white/10">
+                  {msg.attachments.map((att: any, attIdx: number) => {
+                    const isImg = att.type === 'image' || (att.url && att.url.startsWith('data:image'))
+                    const isVid = att.type === 'video' || (att.name && /\.(mp4|webm|mov|mkv)$/i.test(att.name))
+                    const isAud = att.type === 'audio' || (att.name && /\.(mp3|wav|ogg|m4a)$/i.test(att.name))
+
+                    if (isImg && att.url) {
+                      return (
+                        <div
+                          key={attIdx}
+                          className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-white/20 relative group/att cursor-pointer bg-black/50 hover:border-emerald-500/50 transition-colors"
+                          onClick={() => window.open(att.url, '_blank')}
+                          title={att.name || 'View Image'}
+                        >
+                          <img src={att.url} alt={att.name || 'attachment'} className="w-full h-full object-cover" />
+                        </div>
+                      )
+                    }
+
+                    if (isAud && att.url) {
+                      return (
+                        <div key={attIdx} className="flex flex-col gap-1 p-2 rounded-xl bg-black/40 border border-emerald-500/20 max-w-[220px]">
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-300 truncate">
+                            <Music size={12} className="shrink-0 text-emerald-400" />
+                            <span className="truncate">{att.name}</span>
+                          </div>
+                          <audio src={att.url} controls className="h-7 w-full max-w-[200px]" />
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <a
+                        key={attIdx}
+                        href={att.url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-emerald-500/10 border border-white/10 text-zinc-200 hover:text-emerald-300 text-xs font-mono transition-colors"
+                        title={att.name}
+                      >
+                        {isVid ? <Film size={14} className="text-purple-400" /> : <FileText size={14} className="text-amber-400" />}
+                        <span className="max-w-[150px] truncate">{att.name}</span>
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
+
               {!isUser && !isStreaming && rawContent && (
                 <div className="pt-2 mt-1 border-t border-white/5 flex items-center justify-between gap-2">
                   <button
@@ -325,7 +386,7 @@ const ChatMessageItem = memo(
 import LatticeLoader from './LatticeLoader'
 
 /**
- * Premium AI Thinking Indicator with dynamic LatticeLoader
+ * Premium AI Thinking Indicator with dynamic LatticeLoader and multi-stage reasoning animation
  */
 const AIThinkingIndicator = memo(function AIThinkingIndicator({
   statusText = 'Thinking...'
@@ -333,8 +394,21 @@ const AIThinkingIndicator = memo(function AIThinkingIndicator({
   statusText?: string
 }) {
   const [currentStatus, setCurrentStatus] = useState<string>(statusText)
+  const [stageIndex, setStageIndex] = useState<number>(0)
+  const [showPlan, setShowPlan] = useState<boolean>(false)
+
+  const thinkingStages = [
+    'Parsing intent & semantic query context...',
+    'Analyzing agent tools & memory graph...',
+    'Executing neural reasoning & planning steps...',
+    'Synthesizing final response output...'
+  ]
 
   useEffect(() => {
+    const stageInterval = setInterval(() => {
+      setStageIndex((prev) => (prev < thinkingStages.length - 1 ? prev + 1 : prev))
+    }, 1200)
+
     const unsubscribe = voiceSessionManager.subscribe((_state, payload) => {
       if (payload?.thinkingStatus) {
         setCurrentStatus(payload.thinkingStatus)
@@ -342,42 +416,115 @@ const AIThinkingIndicator = memo(function AIThinkingIndicator({
         const toolName = payload.activeTool
         const formatted =
           toolName.toLowerCase().includes('search')
-            ? 'Searching...'
+            ? 'Searching live web...'
             : toolName.toLowerCase().includes('rag') || toolName.toLowerCase().includes('code')
-            ? 'Processing codebase...'
+            ? 'Processing codebase indexing...'
             : toolName.toLowerCase().includes('map')
-            ? 'Locating on map...'
+            ? 'Locating coordinates on map...'
             : `Executing ${toolName}...`
         setCurrentStatus(formatted)
       }
     })
-    return () => unsubscribe()
+    return () => {
+      clearInterval(stageInterval)
+      unsubscribe()
+    }
   }, [])
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6, scale: 0.98 }}
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -4, scale: 0.98 }}
-      transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-      className="flex justify-start my-2"
+      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col gap-2 my-2 w-full max-w-[95%] sm:max-w-[90%]"
     >
-      <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-zinc-900/90 border border-emerald-500/30 text-xs sm:text-sm text-zinc-200 shadow-[0_0_20px_rgba(16,185,129,0.12)] flex items-center gap-3">
-        <LatticeLoader
-          status="working"
-          label={currentStatus || 'Thinking...'}
-          doneLabel="Done"
-          pattern="orbit"
-          grid={3}
-          shape="round"
-          cellSize={5}
-          gap={2}
-          fontSize={13}
-          showTimer
-          glow
-          glowColor="rgba(34, 197, 94, 0.4)"
-          color="#10b981"
-        />
+      <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-md bg-zinc-900/95 border border-emerald-500/30 text-xs sm:text-sm text-zinc-200 shadow-[0_0_24px_rgba(16,185,129,0.15)] flex flex-col gap-2.5">
+        {/* Top Header with Lattice Loader & Status */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <LatticeLoader
+              status="working"
+              label={currentStatus || thinkingStages[stageIndex]}
+              doneLabel="Done"
+              pattern="orbit"
+              grid={3}
+              shape="round"
+              cellSize={4.5}
+              gap={2}
+              fontSize={12}
+              showTimer
+              glow
+              glowColor="rgba(34, 197, 94, 0.4)"
+              color="#10b981"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPlan((p) => !p)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-800/80 hover:bg-zinc-700/80 text-[11px] font-mono text-emerald-400 border border-emerald-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+          >
+            <Brain size={12} className="animate-pulse" />
+            <span>{showPlan ? 'Hide Plan' : 'View Plan'}</span>
+            <ChevronRight
+              size={12}
+              className={`transition-transform duration-200 ${showPlan ? 'rotate-90' : ''}`}
+            />
+          </button>
+        </div>
+
+        {/* Animated Reasoning Stage Stepper */}
+        <div className="flex items-center gap-1.5 pt-1 border-t border-white/5">
+          {thinkingStages.map((stage, idx) => {
+            const isCurrent = idx === stageIndex
+            const isCompleted = idx < stageIndex
+            return (
+              <div
+                key={idx}
+                className="flex-1 flex flex-col gap-1"
+                title={stage}
+              >
+                <div className="h-1 w-full rounded-full overflow-hidden bg-zinc-800">
+                  <motion.div
+                    className={`h-full ${
+                      isCompleted
+                        ? 'bg-emerald-400'
+                        : isCurrent
+                        ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]'
+                        : 'bg-zinc-800'
+                    }`}
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: isCompleted ? '100%' : isCurrent ? '100%' : '0%'
+                    }}
+                    transition={{
+                      duration: isCurrent ? 1.2 : 0.2,
+                      ease: 'easeInOut'
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Expandable Agent Reasoning Plan */}
+        <AnimatePresence>
+          {showPlan && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden pt-2"
+            >
+              <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950/70 p-1">
+                <Plan />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )
@@ -394,9 +541,15 @@ export default function RightPanel({
   const [activeSessionId, setActiveSessionId] = useState<string>(() =>
     chatHistoryService.getActiveSessionId()
   )
+  const activeSessionIdRef = useRef<string>(activeSessionId)
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId
+  }, [activeSessionId])
 
   const [chatHistory, setChatHistory] = useState<Message[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [showVoiceLog, setShowVoiceLog] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
   const [activeStreamingId, setActiveStreamingId] = useState<string | null>(null)
@@ -630,13 +783,19 @@ export default function RightPanel({
 
     const allSessions = chatHistoryService.getSessions()
     const currentSavedSession = allSessions.find((s) => s.id === activeSessionId)
-    if (currentSavedSession && currentSavedSession.messages.length > 0) {
-      lastSavedHashRef.current = `${activeSessionId}_${currentSavedSession.messages.length}_${
-        currentSavedSession.messages[currentSavedSession.messages.length - 1]?.text || ''
-      }`
-      setChatHistory(currentSavedSession.messages)
-      for (const m of currentSavedSession.messages) {
-        seenMessageIdsRef.current.add(m.id)
+    if (currentSavedSession) {
+      if (currentSavedSession.messages.length > 0) {
+        lastSavedHashRef.current = `${activeSessionId}_${currentSavedSession.messages.length}_${
+          currentSavedSession.messages[currentSavedSession.messages.length - 1]?.text || ''
+        }`
+        setChatHistory(currentSavedSession.messages)
+        seenMessageIdsRef.current.clear()
+        for (const m of currentSavedSession.messages) {
+          seenMessageIdsRef.current.add(m.id)
+        }
+      } else {
+        setChatHistory([])
+        seenMessageIdsRef.current.clear()
       }
       return
     }
@@ -716,7 +875,7 @@ export default function RightPanel({
           const userMsg: Message = {
             id: userMsgId,
             messageId: userMsgId,
-            conversationId: activeSessionId,
+            conversationId: activeSessionIdRef.current,
             requestId: reqId,
             role: 'user',
             text: cleanUserText,
@@ -800,7 +959,7 @@ export default function RightPanel({
             const newAssistantMsg: Message = {
               id: assistantMsgId,
               messageId: assistantMsgId,
-              conversationId: activeSessionId,
+              conversationId: activeSessionIdRef.current,
               requestId: reqId,
               role: 'assistant',
               text: rawText,
@@ -856,7 +1015,7 @@ export default function RightPanel({
             const newAssistantMsg: Message = {
               id: finalId,
               messageId: finalId,
-              conversationId: activeSessionId,
+              conversationId: activeSessionIdRef.current,
               requestId: reqId || undefined,
               role: 'assistant',
               text: cleaned,
@@ -910,9 +1069,8 @@ export default function RightPanel({
   useEffect(() => {
     if (chatHistory.length === 0) return
 
-    const currentHash = `${activeSessionId}_${chatHistory.length}_${
-      chatHistory[chatHistory.length - 1]?.text || ''
-    }`
+    const lastMsg = chatHistory[chatHistory.length - 1]
+    const currentHash = `${activeSessionId}_${chatHistory.length}_${lastMsg?.id || ''}_${lastMsg?.text || ''}_${lastMsg?.status || ''}`
     if (currentHash === lastSavedHashRef.current) return
     lastSavedHashRef.current = currentHash
 
@@ -924,16 +1082,21 @@ export default function RightPanel({
       let nextSessions: ChatSession[]
 
       if (existingIdx >= 0) {
-        if (prevSessions[existingIdx].messages === chatHistory) {
+        const currentSession = prevSessions[existingIdx]
+        if (
+          currentSession.messages.length === chatHistory.length &&
+          currentSession.messages[currentSession.messages.length - 1]?.id === lastMsg?.id &&
+          currentSession.messages[currentSession.messages.length - 1]?.text === lastMsg?.text
+        ) {
           return prevSessions
         }
         nextSessions = [...prevSessions]
         nextSessions[existingIdx] = {
-          ...nextSessions[existingIdx],
+          ...currentSession,
           title:
-            nextSessions[existingIdx].title === 'New Conversation'
+            currentSession.title === 'New Conversation'
               ? titleSnippet
-              : nextSessions[existingIdx].title,
+              : currentSession.title,
           updatedAt: Date.now(),
           messages: chatHistory
         }
@@ -948,7 +1111,11 @@ export default function RightPanel({
         nextSessions = [newSession, ...prevSessions]
       }
 
-      chatHistoryService.saveSessions(nextSessions)
+      // Schedule saveSessions asynchronously so it never dispatches event synchronously inside React render loop
+      setTimeout(() => {
+        chatHistoryService.saveSessions(nextSessions)
+      }, 0)
+
       return nextSessions
     })
   }, [chatHistory, activeSessionId])
@@ -956,18 +1123,23 @@ export default function RightPanel({
   // 4. Auto-scroll on new messages and streaming updates with RAF and user scroll protection
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 90
     isUserScrolledUpRef.current = !isNearBottom
+    setShowScrollToBottom(!isNearBottom)
   }, [])
+
+  // 4. Attach ultra-smooth kinetic inertial scrolling and auto-scroll to bottom
+  useEffect(() => {
+    if (!scrollRef.current) return
+    const cleanup = smoothScrollEngine.attachSmoothScroll(scrollRef.current)
+    return () => cleanup()
+  }, [showHistory])
 
   useEffect(() => {
     if (scrollRef.current && !showHistory && !isUserScrolledUpRef.current) {
-      const el = scrollRef.current
-      requestAnimationFrame(() => {
-        if (el) {
-          el.scrollTop = el.scrollHeight
-        }
-      })
+      // Use physics-based smoothScrollToBottom for 120fps fluid scrolling
+      smoothScrollEngine.smoothScrollToBottom(scrollRef.current, activeStreamingId ? 120 : 250)
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [chatHistory, showHistory, activeStreamingId, interimTranscript, isSubmitting])
 
@@ -1021,13 +1193,16 @@ export default function RightPanel({
 
         // Real-time voice to text chat synchronization:
         // If current active session received new turns, update chatHistory immediately
-        const currentActive = updated.find((s) => s.id === activeSessionId)
-        if (currentActive && Array.isArray(currentActive.messages) && currentActive.messages.length > 0) {
+        const curActiveId = activeSessionIdRef.current || chatHistoryService.getActiveSessionId()
+        const currentActive = updated.find((s) => s.id === curActiveId)
+        if (currentActive && Array.isArray(currentActive.messages)) {
           setChatHistory((prev) => {
             const hasNewMessages =
               currentActive.messages.length !== prev.length ||
-              currentActive.messages[currentActive.messages.length - 1]?.id !== prev[prev.length - 1]?.id
+              (currentActive.messages.length > 0 &&
+                currentActive.messages[currentActive.messages.length - 1]?.id !== prev[prev.length - 1]?.id)
             if (hasNewMessages) {
+              seenMessageIdsRef.current.clear()
               for (const m of currentActive.messages) {
                 seenMessageIdsRef.current.add(m.id)
               }
@@ -1062,12 +1237,23 @@ export default function RightPanel({
     window.addEventListener('iris:sessions-updated', handleExtSessionsUpdated)
     window.addEventListener('iris:active-session-changed', handleExtActiveSessionChanged)
 
+    const handleShareToChat = (e: any) => {
+      const files = e.detail?.files
+      if (Array.isArray(files) && files.length > 0) {
+        const limited = files.slice(0, 10)
+        const summary = `Shared ${limited.length} file(s) from Gallery: ${limited.map((f: any) => f.name || f.displayName || 'file').join(', ')}`
+        handleSendPrompt(summary, limited)
+      }
+    }
+    window.addEventListener('iris:share-to-chat', handleShareToChat)
+
     return () => {
       window.removeEventListener('iris:new-chat', handleExtNewChat)
       window.removeEventListener('iris:load-session', handleExtLoadSession)
       window.removeEventListener('iris:toggle-history', handleExtToggleHistory)
       window.removeEventListener('iris:sessions-updated', handleExtSessionsUpdated)
       window.removeEventListener('iris:active-session-changed', handleExtActiveSessionChanged)
+      window.removeEventListener('iris:share-to-chat', handleShareToChat)
     }
   }, [])
 
@@ -1138,6 +1324,16 @@ export default function RightPanel({
     }
   }
 
+  const handleSendPrompt = (promptText: string, attachedFiles?: any[]) => {
+    const trimmed = (promptText || '').trim()
+    const hasAttachments = Array.isArray(attachedFiles) && attachedFiles.length > 0
+    if (!trimmed && !hasAttachments) return
+    if (onSendPrompt && trimmed) {
+      onSendPrompt(trimmed)
+    }
+    handleSubmit(undefined, trimmed, attachedFiles)
+  }
+
   // Safety watchdog: clear streaming and submitting if hanging for more than 16 seconds
   useEffect(() => {
     if (!isSubmitting && !activeStreamingId) return
@@ -1152,10 +1348,14 @@ export default function RightPanel({
     return () => clearTimeout(watchdog)
   }, [isSubmitting, activeStreamingId])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const trimmed = inputVal.trim()
-    if (!trimmed || isSubmitting) return
+  const handleSubmit = async (e?: React.FormEvent, customText?: string, attachedFiles?: any[]) => {
+    if (e) e.preventDefault()
+    let trimmed = (customText !== undefined ? customText : inputVal).trim()
+    const hasAttachments = Array.isArray(attachedFiles) && attachedFiles.length > 0
+    if ((!trimmed && !hasAttachments) || isSubmitting) return
+    if (!trimmed && hasAttachments) {
+      trimmed = `Shared ${attachedFiles.length} file(s)`
+    }
 
     console.log('[AI_INPUT]', { text: trimmed, inputType: 'text', sessionId: activeSessionId })
 
@@ -1177,8 +1377,56 @@ export default function RightPanel({
 
     activeRequestIdRef.current = reqId
     setIsSubmitting(true)
+    isUserScrolledUpRef.current = false
+    setShowScrollToBottom(false)
+    if (scrollRef.current) {
+      smoothScrollEngine.smoothScrollToBottom(scrollRef.current, 200)
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
     chatHistoryService.clearDraft(activeSessionId)
     setInputVal('')
+
+    let formattedAttachments: any[] | undefined = undefined
+    if (hasAttachments) {
+      formattedAttachments = await Promise.all(
+        attachedFiles.map(async (f: any) => {
+          if (f.url) {
+            return {
+              name: f.name || f.displayName || 'file',
+              url: f.url,
+              type: f.type || 'file',
+              size: f.size
+            }
+          }
+          if (f instanceof File) {
+            const url = await new Promise<string>((resolve) => {
+              const reader = new FileReader()
+              reader.onload = (ev) => resolve((ev.target?.result as string) || '')
+              reader.onerror = () => resolve('')
+              reader.readAsDataURL(f)
+            })
+            return {
+              name: f.name,
+              url,
+              type: f.type.startsWith('image/')
+                ? 'image'
+                : f.type.startsWith('video/')
+                  ? 'video'
+                  : f.type.startsWith('audio/')
+                    ? 'audio'
+                    : 'file',
+              size: f.size
+            }
+          }
+          return {
+            name: f.name || 'file',
+            url: f.customUrl || '',
+            type: f.type || 'file',
+            size: f.size
+          }
+        })
+      )
+    }
 
     // Immediately push user message to chat state and persist to unified chatHistoryService
     seenMessageIdsRef.current.add(userMsgId)
@@ -1193,7 +1441,8 @@ export default function RightPanel({
       transcript: trimmed,
       content: trimmed,
       timestamp: now,
-      inputType: isVoiceInput ? 'voice' : 'text'
+      inputType: isVoiceInput ? 'voice' : 'text',
+      attachments: formattedAttachments
     }
 
     try {
@@ -1641,11 +1890,13 @@ export default function RightPanel({
   // Filtered sessions for History View
   const filteredSessions = useMemo(() => {
     if (!historySearch.trim()) return sessions
-    const query = historySearch.toLowerCase()
+    const query = historySearch.toLowerCase().trim()
     return sessions.filter(
       (s) =>
-        s.title.toLowerCase().includes(query) ||
-        s.messages.some((m) => m.text.toLowerCase().includes(query))
+        (s.title || '').toLowerCase().includes(query) ||
+        (s.messages || []).some((m) =>
+          (m.text || m.content || m.transcript || '').toLowerCase().includes(query)
+        )
     )
   }, [sessions, historySearch])
 
@@ -1927,14 +2178,24 @@ export default function RightPanel({
                 type="text"
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
-                placeholder="Search conversations..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40"
+                placeholder="Filter conversations by keyword..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-8 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40"
               />
+              {historySearch && (
+                <button
+                  type="button"
+                  onClick={() => setHistorySearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white rounded-md transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
           )}
 
           {/* Sessions List */}
-          <div className="flex-1 min-h-0 overflow-y-auto mt-3 space-y-2 pr-1 scrollbar-small">
+          <div className="flex-1 min-h-0 overflow-y-auto mt-3 space-y-2 pr-1 scrollbar-small ultra-smooth-scroll smooth-scroll-container">
             {filteredSessions.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 text-zinc-500 space-y-3">
                 <MessageSquare size={32} className="text-zinc-700" />
@@ -2033,10 +2294,13 @@ export default function RightPanel({
         </div>
       ) : (
         /* Conversation Chat Messages Stream */
-        <div
+        <motion.div
+          key={activeSessionId}
+          layoutId={`chat-stream-${activeSessionId}`}
+          layout="position"
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 px-3 py-3 sm:px-4 sm:py-4 overflow-y-auto overscroll-contain flex flex-col gap-3 sm:gap-3.5 scroll-smooth smooth-scroll-container
+          className="flex-1 min-h-0 px-3 py-2.5 sm:px-4 sm:py-3 overflow-y-auto overscroll-contain flex flex-col gap-2.5 sm:gap-3 scroll-smooth smooth-scroll-container ultra-smooth-scroll iris-120fps-scroll
             [&::-webkit-scrollbar]:w-1.5
             [&::-webkit-scrollbar-track]:bg-transparent
             [&::-webkit-scrollbar-thumb]:bg-white/10
@@ -2072,7 +2336,7 @@ export default function RightPanel({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       const cleanPrompt = prompt.replace(/^[^\w\s]+\s*/, '')
-                      setInputVal(cleanPrompt)
+                      handleSendPrompt(cleanPrompt)
                     }}
                     className="w-full text-left px-2.5 py-1.5 text-[11px] sm:text-xs text-zinc-300 bg-white/5 hover:bg-emerald-500/10 hover:text-emerald-300 border border-white/10 hover:border-emerald-500/30 rounded-xl transition-colors cursor-pointer truncate"
                   >
@@ -2147,11 +2411,38 @@ export default function RightPanel({
 
           {/* Bottom spacing anchor to guarantee last message is never covered */}
           <div ref={messagesEndRef} className="h-2 shrink-0" />
-        </div>
+        </motion.div>
       )}
 
       {/* Bottom Composer */}
-      <div className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-2 sm:p-2.5 flex flex-col gap-1.5 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] relative">
+      <motion.div
+        layoutId="chat-bottom-composer"
+        layout="position"
+        className="shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur-xl p-1 sm:p-1.5 flex flex-col gap-0.5 z-20 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))] relative"
+      >
+        {/* Floating Scroll-to-Bottom Indicator Pill */}
+        <AnimatePresence>
+          {showScrollToBottom && !showHistory && (
+            <motion.button
+              initial={{ opacity: 0, y: 10, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.9 }}
+              type="button"
+              onClick={() => {
+                isUserScrolledUpRef.current = false
+                setShowScrollToBottom(false)
+                if (scrollRef.current) {
+                  smoothScrollEngine.smoothScrollToBottom(scrollRef.current, 300)
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }
+              }}
+              className="absolute right-4 -top-11 z-30 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold font-mono shadow-[0_4px_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer border border-emerald-300/40 active:scale-95"
+            >
+              <ArrowDown size={14} className="animate-bounce" />
+              <span>Scroll to Latest Message</span>
+            </motion.button>
+          )}
+        </AnimatePresence>
         {/* Inline Gemini Live Voice Stream Bar */}
         <AnimatePresence>
           {isGeminiLiveBarOpen && (
@@ -2168,45 +2459,7 @@ export default function RightPanel({
           )}
         </AnimatePresence>
 
-        {/* Quick Agent Actions Bar (Maps, Booking, Live Voice) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-0.5 text-[10px] font-mono">
-          <span className="text-zinc-500 font-bold shrink-0">Actions:</span>
 
-          <button
-            type="button"
-            onClick={() => setInputVal('Directions from my location to ')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
-          >
-            <Navigation size={10} className="text-cyan-400" />
-            <span>Get Directions</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setInputVal('Reserve a table for 2 at an Italian restaurant tomorrow at 7:30pm')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
-          >
-            <CalendarDays size={10} className="text-amber-400" />
-            <span>Book Table</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setInputVal('Book a luxury hotel room for 2 guests this weekend')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
-          >
-            <Sparkles size={10} className="text-purple-400" />
-            <span>Book Hotel</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSendPrompt('Show my active bookings')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/15 text-zinc-300 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 shrink-0 transition-colors cursor-pointer"
-          >
-            <span>My Bookings</span>
-          </button>
-        </div>
 
         {/* Microphone Permission / Status Warning Banner */}
         {micError && (
@@ -2238,65 +2491,27 @@ export default function RightPanel({
           </div>
         )}
 
-        {/* Input Form at bottom */}
-        <form onSubmit={handleSubmit} className="flex items-center gap-1.5 sm:gap-2 relative">
-          <div className="relative flex-1 flex items-center min-w-0">
-            <input
-              type="text"
-              value={inputVal}
-              onChange={(e) => {
-                const nextVal = e.target.value
-                setInputVal(nextVal)
-                chatHistoryService.saveDraft(activeSessionId, nextVal)
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmit(e)
-                }
-              }}
-              placeholder={
-                listening
-                  ? 'Listening...'
-                  : speaking
-                    ? 'AI is speaking...'
-                    : 'Type message or voice prompt...'
-              }
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
-            />
-          </div>
-
-          {/* Microphone Button for Voice Input */}
-          <button
-            type="button"
-            onClick={listening ? stopListening : startListening}
-            title={listening ? 'Stop listening' : 'Voice input (Speak)'}
-            className={`p-2 min-h-9 min-w-9 sm:min-h-10 sm:min-w-10 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
+        {/* AI Prompt Box Typing Bar with Voice, Images, and Tools */}
+        <div className="relative w-full">
+          <PromptInputBox
+            placeholder={
               listening
-                ? 'bg-rose-950/60 border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.35)] animate-pulse'
-                : 'bg-white/5 border-white/10 text-zinc-400 hover:text-emerald-300 hover:border-emerald-500/30 hover:bg-emerald-500/10 active:scale-95'
-            }`}
-          >
-            {listening ? <Square size={14} className="fill-current" /> : <Mic size={16} />}
-          </button>
-
-          {/* Send Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            type="submit"
-            disabled={!inputVal.trim() || isSubmitting}
-            className={`p-2 min-h-9 min-w-9 sm:min-h-10 sm:min-w-10 flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer shrink-0 ${
-              inputVal.trim() && !isSubmitting
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
-                : 'bg-white/5 text-zinc-600 border-transparent cursor-not-allowed'
-            }`}
-            title="Send query"
-          >
-            <Send size={15} />
-          </motion.button>
-        </form>
-      </div>
+                ? 'Listening...'
+                : speaking
+                  ? 'AI is speaking...'
+                  : 'Type message, prompt, or attach images...'
+            }
+            isLoading={isSubmitting || !!activeStreamingId}
+            onSend={(promptText, attachedFiles) => {
+              if ((promptText && promptText.trim()) || (attachedFiles && attachedFiles.length > 0)) {
+                handleSendPrompt(promptText || '', attachedFiles)
+                setInputVal('')
+              }
+            }}
+            className="border-white/10 bg-zinc-900/90 rounded-2xl"
+          />
+        </div>
+      </motion.div>
     </div>
   )
 }

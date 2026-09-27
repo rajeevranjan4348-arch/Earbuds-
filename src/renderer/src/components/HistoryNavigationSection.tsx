@@ -47,11 +47,13 @@ export default function HistoryNavigationSection({
 
   const filteredSessions = useMemo(() => {
     if (!searchQuery.trim()) return sessions
-    const q = searchQuery.toLowerCase()
+    const q = searchQuery.toLowerCase().trim()
     return sessions.filter(
       (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.messages.some((m) => m.text.toLowerCase().includes(q))
+        (s.title || '').toLowerCase().includes(q) ||
+        (s.messages || []).some((m) =>
+          (m.text || m.content || m.transcript || '').toLowerCase().includes(q)
+        )
     )
   }, [sessions, searchQuery])
 
@@ -70,7 +72,7 @@ export default function HistoryNavigationSection({
             Interaction Logs
           </span>
           <span className="px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400 font-mono">
-            {sessions.length}
+            {filteredSessions.length} / {sessions.length}
           </span>
         </div>
 
@@ -93,9 +95,19 @@ export default function HistoryNavigationSection({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search past logs..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
+            placeholder="Filter conversations by keyword..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/40 transition-colors"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-white rounded-md transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -55,6 +55,26 @@ interface IrisProps {
 
 const glassPanel = 'bg-zinc-950/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-xl'
 
+const navTabsStaggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.02
+    }
+  }
+}
+
+const navTabStaggerItem = {
+  hidden: { opacity: 0, y: -6 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] }
+  }
+}
+
 const IRIS = ({
   isConnected,
   toggleConnection,
@@ -181,9 +201,14 @@ const IRIS = ({
             </div>
 
             {/* Desktop Tabs with Animated Sliding Pill */}
-            <div className="hidden md:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative">
+            <motion.div
+              variants={navTabsStaggerContainer}
+              initial="hidden"
+              animate="show"
+              className="hidden md:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative"
+            >
               {/* Command Center Mode Switcher */}
-              <div className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
+              <motion.div variants={navTabStaggerItem} className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
                 <motion.button
                   onClick={() => setActiveTab('DASHBOARD')}
                   whileHover={{ scale: 1.03 }}
@@ -198,13 +223,14 @@ const IRIS = ({
                   <RiLayoutGridLine size={14} className="text-emerald-400" />
                   <span>COMMAND</span>
                 </motion.button>
-              </div>
+              </motion.div>
 
               {tabs
                 .filter((tab) => tab.id !== 'DASHBOARD')
                 .map((tab) => (
                   <motion.button
                     key={tab.id}
+                    variants={navTabStaggerItem}
                     onClick={() => setActiveTab(tab.id)}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
@@ -225,7 +251,7 @@ const IRIS = ({
                     <span className="relative z-10">{tab.label}</span>
                   </motion.button>
                 ))}
-            </div>
+            </motion.div>
 
             <div className="flex items-center justify-end gap-2 md:gap-3 w-auto shrink-0">
               <div className="flex flex-col items-end leading-none">

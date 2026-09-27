@@ -1181,6 +1181,61 @@ class VoiceCommandProcessor {
     cleaned: string,
     _context: CommandProcessorContext
   ): Promise<CommandProcessResult | null> {
+    // Mobile Access Permissions
+    if (
+      cleaned.includes('mobile permission') ||
+      cleaned.includes('phone permission') ||
+      cleaned.includes('device permission') ||
+      cleaned.includes('mobile access permission') ||
+      cleaned.includes('access permission') ||
+      cleaned.includes('manage permission') ||
+      cleaned.includes('grant permission')
+    ) {
+      window.dispatchEvent(new CustomEvent('iris:open-mobile-permissions'))
+      return {
+        handled: true,
+        intent: 'android_control',
+        actionExecuted: 'OPEN_MOBILE_PERMISSIONS',
+        spokenResponse: 'Opening Mobile Access Permissions modal. You can manage capability grants and device security policies.'
+      }
+    }
+
+    // Persistent Auth State Manager
+    if (
+      cleaned.includes('persistent auth') ||
+      cleaned.includes('auth manager') ||
+      cleaned.includes('auth state') ||
+      cleaned.includes('session state') ||
+      cleaned.includes('check auth') ||
+      cleaned.includes('open auth')
+    ) {
+      window.dispatchEvent(new CustomEvent('iris:open-auth-manager'))
+      return {
+        handled: true,
+        intent: 'SECURITY_CONFIRMATION',
+        actionExecuted: 'OPEN_AUTH_MANAGER',
+        spokenResponse: 'Opening Persistent Auth State Manager. User session and tokens remain persistently mounted in local storage.'
+      }
+    }
+
+    // Microphone Listener Service & Neural Router
+    if (
+      cleaned.includes('microphone listener') ||
+      cleaned.includes('mic listener') ||
+      cleaned.includes('start mic listener') ||
+      cleaned.includes('open mic listener') ||
+      cleaned.includes('neural listener') ||
+      cleaned.includes('voice listener')
+    ) {
+      window.dispatchEvent(new CustomEvent('iris:open-mic-listener'))
+      return {
+        handled: true,
+        intent: 'VOICE_COMMAND',
+        actionExecuted: 'OPEN_MIC_LISTENER',
+        spokenResponse: 'Opening Microphone Listener and Neural OS Command Router. Voice commands will be captured and processed in real time.'
+      }
+    }
+
     // ADB Connect
     if (
       cleaned.includes('connect phone') ||

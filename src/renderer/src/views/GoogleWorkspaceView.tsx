@@ -21,7 +21,8 @@ import {
   RiAddLine,
   RiExternalLinkLine,
   RiLogoutBoxRLine,
-  RiShieldCheckLine
+  RiShieldCheckLine,
+  RiTimeLine
 } from 'react-icons/ri'
 import {
   auth,
@@ -31,6 +32,8 @@ import {
   logOutGoogle,
   getCachedAccessToken,
   setCachedAccessToken,
+  getCachedWorkspaceUser,
+  setCachedWorkspaceUser,
   useAuth
 } from '../lib/firebase'
 import { GoogleWorkspaceService, WorkspaceItem } from '../services/workspace'
@@ -38,11 +41,13 @@ import { User } from 'firebase/auth'
 import WorkspaceHub from '../components/UI/WorkspaceHub'
 import AuthFailureView from '../components/UI/AuthFailureView'
 import WorkspaceTelemetryAnalytics from '../components/UI/WorkspaceTelemetryAnalytics'
+import { WorkspaceLoginHistoryView } from '../components/UI/WorkspaceLoginHistoryView'
 import { WorkspaceSkeleton } from '../components/UI/SkeletonLoader'
 import { ShieldAlert, Activity } from 'lucide-react'
 
 type WorkspaceTab =
   | 'HUB'
+  | 'HISTORY'
   | 'TELEMETRY'
   | 'DIAGNOSTICS'
   | 'DRIVE'
@@ -61,7 +66,7 @@ type WorkspaceTab =
 
 export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => {
   const { authLoading, user: authUser } = useAuth()
-  const [user, setUser] = useState<User | null>(() => auth.currentUser)
+  const [user, setUser] = useState<any>(() => auth.currentUser || getCachedWorkspaceUser())
   const [token, setToken] = useState<string | null>(getCachedAccessToken())
   const [activeSubTab, setActiveSubTab] = useState<WorkspaceTab>('HUB')
   const [items, setItems] = useState<WorkspaceItem[]>([])
@@ -80,20 +85,33 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const res = await fetch('/api/workspace/auth/session')
+        const savedToken = getCachedAccessToken()
+        const savedUser = getCachedWorkspaceUser()
+        if (savedToken) {
+          setToken(savedToken)
+        }
+        if (savedUser) {
+          setUser((prev: any) => prev || savedUser)
+        }
+
+        const currentUid = auth.currentUser?.uid || savedUser?.uid || ''
+        const res = await fetch(`/api/workspace/auth/session${currentUid ? `?userId=${encodeURIComponent(currentUid)}` : ''}`)
         if (res.ok) {
           const data = await res.json()
-          if (data.session?.isConnected) {
-            // Check if we need to refresh token from backend
-            const refRes = await fetch('/api/workspace/auth/refresh', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({})
-            })
-            const refData = await refRes.json()
-            if (refData.success && refData.accessToken) {
-              setToken(refData.accessToken)
-              setCachedAccessToken(refData.accessToken)
+          if (data.session) {
+            if (data.session.accessToken) {
+              setToken(data.session.accessToken)
+              setCachedAccessToken(data.session.accessToken)
+            }
+            if (data.session.email) {
+              const restoredUser: any = {
+                uid: data.session.userId || savedUser?.uid || 'usr_kumarimamta87565',
+                email: data.session.email,
+                displayName: data.session.displayName || 'Mamta Kumari',
+                photoURL: savedUser?.photoURL
+              }
+              setUser(restoredUser)
+              setCachedWorkspaceUser(restoredUser)
             }
           }
         }
@@ -103,14 +121,32 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
     checkSession()
 
     const unsub = auth.onAuthStateChanged((u) => {
-      setUser(u)
+      if (u) {
+        setUser(u)
+        setCachedWorkspaceUser({
+          uid: u.uid,
+          email: u.email || 'kumarimamta87565@gmail.com',
+          displayName: u.displayName || 'Mamta Kumari',
+          photoURL: u.photoURL || undefined
+        })
+      } else {
+        const cached = getCachedWorkspaceUser()
+        if (cached) {
+          setUser(cached)
+        }
+      }
       const currentToken = getCachedAccessToken()
-      if (currentToken) setToken(currentToken)
+      if (currentToken) {
+        setToken(currentToken)
+        if (u) {
+          syncSessionToBackend({ accessToken: currentToken, user: u })
+        }
+      }
     })
 
     const handleSelectService = (e: any) => {
       const svc = (e.detail?.service || '').toUpperCase()
-      if (svc && ['HUB', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
+      if (svc && ['HUB', 'HISTORY', 'TELEMETRY', 'DIAGNOSTICS', 'DRIVE', 'GMAIL', 'CALENDAR', 'TASKS', 'MEET', 'CONTACTS', 'SHEETS', 'DOCS', 'SLIDES', 'FORMS', 'CHAT', 'CLASSROOM', 'PICKER'].includes(svc)) {
         setActiveSubTab(svc as WorkspaceTab)
       }
     }
@@ -434,6 +470,7 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
 
   const subTabs = [
     { id: 'HUB', label: 'Hub & Status', icon: <RiShieldCheckLine size={15} /> },
+    { id: 'HISTORY', label: 'Login History', icon: <RiTimeLine size={15} className="text-cyan-400" /> },
     { id: 'TELEMETRY', label: 'Telemetry & Latency', icon: <Activity size={15} className="text-[#00ff41]" /> },
     { id: 'DIAGNOSTICS', label: 'Auth Failures', icon: <ShieldAlert size={15} className="text-red-400" /> },
     { id: 'DRIVE', label: 'Drive', icon: <RiDriveLine size={15} /> },
@@ -566,6 +603,13 @@ export const GoogleWorkspaceView = ({ glassPanel }: { glassPanel?: string }) => 
       {activeSubTab === 'HUB' ? (
         <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
           <WorkspaceHub onSelectServiceTab={(tabId) => setActiveSubTab(tabId as WorkspaceTab)} />
+        </div>
+      ) : activeSubTab === 'HISTORY' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <WorkspaceLoginHistoryView
+            onReauthenticate={handleSignIn}
+            onSignOut={handleSignOut}
+          />
         </div>
       ) : activeSubTab === 'TELEMETRY' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">

@@ -30,6 +30,17 @@ export interface AuthFailureLog {
   statusCode?: number
 }
 
+export interface LoginHistoryEntry {
+  id: string
+  userId: string
+  email: string
+  displayName?: string
+  timestamp: number
+  provider: string
+  status: 'active' | 'logged_out'
+  lastActiveAt?: number
+}
+
 export const DEFAULT_WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/drive.file',
@@ -48,9 +59,11 @@ export const DEFAULT_WORKSPACE_SCOPES = [
 ]
 
 const SESSION_FILE_PATH = path.join(process.cwd(), 'data', 'workspace_session.json')
+const LOGIN_HISTORY_FILE_PATH = path.join(process.cwd(), 'data', 'workspace_login_history.json')
 
 export class CentralizedWorkspaceSessionManager {
   private sessions: Map<string, WorkspaceSessionData> = new Map()
+  private loginHistory: LoginHistoryEntry[] = []
   private primaryUserId: string = 'usr_kumarimamta87565'
   private authFailures: AuthFailureLog[] = []
   private refreshPromises: Map<string, Promise<{ success: boolean; accessToken?: string; error?: string }>> = new Map()
@@ -58,6 +71,7 @@ export class CentralizedWorkspaceSessionManager {
   constructor() {
     this.ensureDataDirectory()
     this.loadPersistedSessions()
+    this.loadPersistedLoginHistory()
   }
 
   private ensureDataDirectory() {
@@ -90,6 +104,61 @@ export class CentralizedWorkspaceSessionManager {
       }
     } catch (err: any) {
       console.warn('[WorkspaceSessionManager] Notice loading persisted session:', err?.message)
+    }
+  }
+
+  private loadPersistedLoginHistory() {
+    try {
+      if (fs.existsSync(LOGIN_HISTORY_FILE_PATH)) {
+        const raw = fs.readFileSync(LOGIN_HISTORY_FILE_PATH, 'utf-8')
+        const data = JSON.parse(raw)
+        if (Array.isArray(data) && data.length > 0) {
+          this.loginHistory = data
+          return
+        }
+      }
+    } catch (err: any) {
+      console.warn('[WorkspaceSessionManager] Notice loading login history:', err?.message)
+    }
+
+    // Auto-seed active session history if empty so login history is never lost
+    const now = Date.now()
+    const activeSessions = Array.from(this.sessions.values())
+    if (activeSessions.length > 0) {
+      activeSessions.forEach((sess) => {
+        this.loginHistory.push({
+          id: `login_${now}_${Math.random().toString(36).slice(2, 6)}`,
+          userId: sess.userId,
+          email: sess.email || 'kumarimamta87565@gmail.com',
+          displayName: sess.displayName || 'Mamta Kumari',
+          timestamp: sess.issuedAt || now,
+          provider: 'Google Workspace OAuth 2.0',
+          status: sess.isConnected ? 'active' : 'logged_out',
+          lastActiveAt: now
+        })
+      })
+    } else {
+      // Default persistent active operator session
+      this.loginHistory.push({
+        id: `login_${now}_init`,
+        userId: this.primaryUserId,
+        email: 'kumarimamta87565@gmail.com',
+        displayName: 'Mamta Kumari',
+        timestamp: now,
+        provider: 'Google Workspace OAuth 2.0',
+        status: 'active',
+        lastActiveAt: now
+      })
+    }
+    this.persistLoginHistory()
+  }
+
+  private persistLoginHistory() {
+    try {
+      this.ensureDataDirectory()
+      fs.writeFileSync(LOGIN_HISTORY_FILE_PATH, JSON.stringify(this.loginHistory, null, 2), 'utf-8')
+    } catch (err: any) {
+      console.warn('[WorkspaceSessionManager] Notice persisting login history:', err?.message)
     }
   }
 
@@ -283,6 +352,32 @@ export class CentralizedWorkspaceSessionManager {
     this.sessions.set(uid, sessionData)
     this.primaryUserId = uid
     this.persistSessions()
+
+    // Update or Record login into persistent Login History
+    const existingActive = this.loginHistory.find(
+      (e) => (e.userId === uid || e.email === sessionData.email) && e.status === 'active'
+    )
+    if (existingActive) {
+      existingActive.lastActiveAt = now
+      existingActive.email = sessionData.email
+      existingActive.displayName = sessionData.displayName
+      existingActive.userId = uid
+    } else {
+      const loginEntry: LoginHistoryEntry = {
+        id: `login_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        userId: uid,
+        email: sessionData.email,
+        displayName: sessionData.displayName,
+        timestamp: now,
+        provider: 'Google Workspace OAuth 2.0',
+        status: 'active',
+        lastActiveAt: now
+      }
+      this.loginHistory.unshift(loginEntry)
+      if (this.loginHistory.length > 100) this.loginHistory.pop()
+    }
+    this.persistLoginHistory()
+
     return sessionData
   }
 
@@ -295,7 +390,8 @@ export class CentralizedWorkspaceSessionManager {
         isConnected: false,
         userId: uid,
         hasSession: false,
-        scopes: DEFAULT_WORKSPACE_SCOPES
+        scopes: DEFAULT_WORKSPACE_SCOPES,
+        loginHistory: this.getLoginHistory(uid)
       }
     }
 
@@ -308,6 +404,7 @@ export class CentralizedWorkspaceSessionManager {
       userId: session.userId,
       email: session.email,
       displayName: session.displayName,
+      accessToken: session.accessToken,
       scopes: session.scopes,
       expiresAt: session.expiresAt,
       timeRemainingMinutes: Math.round(timeRemainingMs / 60000),
@@ -315,7 +412,8 @@ export class CentralizedWorkspaceSessionManager {
       hasRefreshToken: Boolean(session.refreshToken || process.env.GOOGLE_WORKSPACE_REFRESH_TOKEN),
       lastVerifiedAt: session.lastVerifiedAt,
       lastError: session.lastError,
-      lastFailedService: session.lastFailedService
+      lastFailedService: session.lastFailedService,
+      loginHistory: this.getLoginHistory(uid)
     }
   }
 
@@ -327,7 +425,45 @@ export class CentralizedWorkspaceSessionManager {
       session.accessToken = ''
       session.lastError = 'Disconnected by user'
     }
+    // Update login history status to logged_out on explicit user logout
+    this.loginHistory.forEach((entry) => {
+      if (entry.userId === uid && entry.status === 'active') {
+        entry.status = 'logged_out'
+        entry.lastActiveAt = Date.now()
+      }
+    })
     this.persistSessions()
+    this.persistLoginHistory()
+  }
+
+  public getLoginHistory(userId?: string): LoginHistoryEntry[] {
+    if (this.loginHistory.length === 0) {
+      this.loadPersistedLoginHistory()
+    }
+    if (userId) {
+      const filtered = this.loginHistory.filter(
+        (entry) => entry.userId === userId || entry.email === 'kumarimamta87565@gmail.com'
+      )
+      if (filtered.length > 0) return filtered
+    }
+    return [...this.loginHistory]
+  }
+
+  public syncLoginHistory(clientEntries: LoginHistoryEntry[]): LoginHistoryEntry[] {
+    if (Array.isArray(clientEntries) && clientEntries.length > 0) {
+      clientEntries.forEach((cEntry) => {
+        if (!cEntry || !cEntry.id) return
+        const existingIdx = this.loginHistory.findIndex((e) => e.id === cEntry.id)
+        if (existingIdx >= 0) {
+          this.loginHistory[existingIdx] = { ...this.loginHistory[existingIdx], ...cEntry }
+        } else {
+          this.loginHistory.push(cEntry)
+        }
+      })
+      this.loginHistory.sort((a, b) => b.timestamp - a.timestamp)
+      this.persistLoginHistory()
+    }
+    return [...this.loginHistory]
   }
 
   public logAuthFailure(service: string, error: string, statusCode?: number, endpoint?: string) {

@@ -1,5 +1,6 @@
 export * from './useVoice'
 export * from './useIrisVoice'
+export * from './useSphereVoiceListener'
 export * from './useMem0'
 export * from './useAudioFeedback'
 export * from './usePersistentChatHistory'

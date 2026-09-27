@@ -148,48 +148,50 @@ export default function Dashboard({
         <div
           className={`${
             mobileSection === 'core' ? 'flex' : 'hidden'
-          } lg:flex col-span-12 lg:col-span-6 relative flex-col justify-end items-center pb-2 lg:pb-4 min-h-[460px] sm:min-h-[520px] lg:min-h-0 h-full flex-1 w-full`}
+          } lg:flex col-span-12 lg:col-span-6 flex-col items-center justify-between pb-2 lg:pb-4 min-h-0 h-full flex-1 w-full overflow-hidden`}
         >
-          <AICore
-            isConnected={isConnected}
-            isSpeaking={isSpeaking}
-            isListening={isListening}
-            micLevel={micLevel}
-            onClick={() => {
-              toggleConnection()
-            }}
-          />
-
-          {/* Spacer to push controls to bottom while keeping 3D Orb visible in center */}
-          <div className="w-full flex-1 pointer-events-none min-h-[140px] sm:min-h-[200px]" />
-
-          {/* Real-time Voice Listening Wave & Speech Recognition Feedback */}
-          <div className="w-full max-w-xl mb-2 lg:mb-3 flex flex-col items-center gap-2 z-20 px-1 sm:px-0 relative pointer-events-auto">
-            <VoiceListeningWave
+          {/* Centered Flex Container Layout for AICore Orb */}
+          <div className="flex-1 w-full flex items-center justify-center min-h-0 relative">
+            <AICore
               isConnected={isConnected}
-              isListening={isListening}
               isSpeaking={isSpeaking}
-              isMuted={isMuted}
+              isListening={isListening}
               micLevel={micLevel}
-              frequencyData={frequencyData}
-              interimTranscript={interimTranscript}
-              lastFinalTranscript={lastFinalTranscript}
-              voiceStatus={voiceStatus}
-              statusMessage={statusMessage}
-              onToggleConnect={toggleConnection}
-              onToggleMic={handleMicToggle}
-              onStopSpeaking={stopSpeaking}
-              onSubmitPrompt={submitVoicePrompt}
+              onClick={() => {
+                toggleConnection()
+              }}
             />
           </div>
 
-          {/* Control Capsule */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] z-20 shrink-0"
-          >
+          {/* Bottom HUD & Controls */}
+          <div className="w-full flex flex-col items-center gap-2 shrink-0 z-20">
+            {/* Real-time Voice Listening Wave & Speech Recognition Feedback */}
+            <div className="w-full max-w-xl mb-1 lg:mb-2 flex flex-col items-center gap-2 px-1 sm:px-0 pointer-events-auto">
+              <VoiceListeningWave
+                isConnected={isConnected}
+                isListening={isListening}
+                isSpeaking={isSpeaking}
+                isMuted={isMuted}
+                micLevel={micLevel}
+                frequencyData={frequencyData}
+                interimTranscript={interimTranscript}
+                lastFinalTranscript={lastFinalTranscript}
+                voiceStatus={voiceStatus}
+                statusMessage={statusMessage}
+                onToggleConnect={toggleConnection}
+                onToggleMic={handleMicToggle}
+                onStopSpeaking={stopSpeaking}
+                onSubmitPrompt={submitVoicePrompt}
+              />
+            </div>
+
+            {/* Control Capsule */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 p-1 sm:p-1.5 rounded-4xl shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] shrink-0"
+            >
             <div className="relative flex items-center justify-center">
               <AnimatePresence>
                 {showVisionMenu && isConnected && (
@@ -208,10 +210,21 @@ export default function Dashboard({
                     <motion.button
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('iris:open-camera'))
+                        setShowVisionMenu(false)
+                      }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-pointer"
+                    >
+                      <Camera size={14} /> Scan / OCR
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={() => changeVisionMode('camera')}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-mono text-[10px] tracking-widest uppercase cursor-pointer ${visionMode === 'camera' ? 'bg-[#00ff41]/15 text-[#00ff41]' : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-100'}`}
                     >
-                      <Camera size={14} /> Lens
+                      <Camera size={14} /> Lens Stream
                     </motion.button>
                     <motion.button
                       whileHover={{ x: 2 }}
@@ -326,6 +339,7 @@ export default function Dashboard({
               )}
             </motion.button>
           </motion.div>
+          </div>
         </div>
 
         {/* Right Panel (Conversation Chat) */}

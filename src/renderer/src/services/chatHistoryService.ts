@@ -503,10 +503,25 @@ class ChatHistoryService {
   }
 
   public createNewSession(userId?: string): string {
+    const uid = userId || this.activeUserId || firebaseAuthService.getUserId()
     const newId = `session_${Date.now()}`
-    this.setActiveSessionId(newId, userId)
+    const now = Date.now()
+    const newSession: ChatSession = {
+      id: newId,
+      title: 'New Conversation',
+      createdAt: now,
+      updatedAt: now,
+      messages: []
+    }
+    const sessions = this.getSessions(uid)
+    if (!sessions.some((s) => s.id === newId)) {
+      sessions.unshift(newSession)
+      this.saveSessions(sessions, uid)
+    }
+    this.setActiveSessionId(newId, uid)
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('iris:new-chat', { detail: newId }))
+      window.dispatchEvent(new CustomEvent('iris:sessions-updated', { detail: sessions }))
     }, 0)
     return newId
   }

@@ -23,7 +23,8 @@ import {
   RiCloseLine,
   RiSparklingLine,
   RiTranslate,
-  RiUploadCloud2Line
+  RiUploadCloud2Line,
+  RiShieldCheckLine
 } from 'react-icons/ri'
 import { sendMessageToExistingAI } from '../services/VoiceRecognition'
 import { ocrService } from '../services/ocrService'
@@ -564,6 +565,28 @@ Signature: Équipe Iris Core`
               </div>
             </button>
 
+            {/* Mobile Access Permissions Entry Card */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('iris:open-mobile-permissions'))}
+              className="w-48 sm:w-55 h-96 sm:h-110 bg-black border-4 sm:border-8 border-cyan-500/40 hover:border-cyan-400 rounded-[2.5rem] sm:rounded-[3rem] relative flex flex-col p-2 group transition-all duration-500 shadow-2xl hover:shadow-[0_0_40px_rgba(6,182,212,0.3)] cursor-pointer"
+            >
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-16 sm:w-20 h-4 sm:h-5 bg-zinc-900 rounded-full z-20 group-hover:bg-cyan-900/50 transition-colors"></div>
+              <div className="flex-1 bg-gradient-to-b from-cyan-950/20 to-black rounded-[2rem] sm:rounded-[2.2rem] overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 relative text-center">
+                <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform mb-4 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+                  <RiShieldCheckLine size={32} />
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mb-1 tracking-widest uppercase z-10">
+                  PERMISSIONS
+                </h3>
+                <p className="text-[9px] font-mono text-cyan-400/80 mb-6 z-10">
+                  MOBILE ACCESS GATEWAY
+                </p>
+                <div className="px-4 py-1.5 border border-cyan-500 bg-cyan-500/20 text-cyan-300 font-bold text-[10px] tracking-widest rounded-full transition-all z-10 group-hover:bg-cyan-400 group-hover:text-black">
+                  MANAGE ACCESS
+                </div>
+              </div>
+            </button>
+
             {deviceHistory.map((dev, i) => (
               <button
                 key={i}
@@ -836,6 +859,20 @@ Signature: Équipe Iris Core`
           <span>UPTIME: LIVE</span>
           <span className="text-orange-500">TEMP: {telemetry.battery.temp}°C</span>
         </div>
+
+        {/* Mobile Access Permissions Quick Access Button */}
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('iris:open-mobile-permissions'))}
+          className="w-full flex items-center justify-between p-3.5 mb-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-2xl text-cyan-300 text-xs font-bold transition-all cursor-pointer shadow-lg active:scale-98"
+        >
+          <div className="flex items-center gap-2.5">
+            <RiShieldCheckLine size={18} className="text-cyan-400" />
+            <span>MOBILE PERMISSIONS</span>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+            MANAGE
+          </span>
+        </button>
 
         <h3 className="text-fuchsia-500 font-bold tracking-widest text-xs sm:text-sm text-center my-3 sm:my-6 drop-shadow-[0_0_10px_rgba(217,70,239,0.5)]">
           DEVICE TELEMETRY

@@ -40,6 +40,7 @@ import {
 } from '../../lib/firebase'
 import AuthFailureView from './AuthFailureView'
 import WorkspaceTelemetryAnalytics from './WorkspaceTelemetryAnalytics'
+import { WorkspaceLoginHistoryView } from './WorkspaceLoginHistoryView'
 import { RiPulseLine } from 'react-icons/ri'
 
 export interface AuthFailureLog {
@@ -215,7 +216,7 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   onSelectServiceTab,
   glassPanel = 'bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl'
 }) => {
-  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT' | 'TELEMETRY'>('SERVICES')
+  const [activeTab, setActiveTab] = useState<'SERVICES' | 'SCOPES' | 'TROUBLESHOOT' | 'TELEMETRY' | 'HISTORY'>('SERVICES')
   const [session, setSession] = useState<WorkspaceSessionData | null>(null)
   const [authLogs, setAuthLogs] = useState<AuthFailureLog[]>([])
   const [serviceHealth, setServiceHealth] = useState<Record<string, ServiceHealth>>({})
@@ -231,11 +232,15 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
   // Fetch session information
   const loadSession = useCallback(async () => {
     try {
-      const res = await fetch('/api/workspace/auth/session')
+      const currentUid = auth.currentUser?.uid || ''
+      const res = await fetch(`/api/workspace/auth/session${currentUid ? `?userId=${encodeURIComponent(currentUid)}` : ''}`)
       if (res.ok) {
         const data = await res.json()
         if (data.session) {
           setSession(data.session)
+          if (data.session.accessToken) {
+            setCachedAccessToken(data.session.accessToken)
+          }
         }
       }
     } catch (_err) {}
@@ -671,6 +676,18 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
           <span>Telemetry & AI Latency</span>
           <span className="w-1.5 h-1.5 rounded-full bg-[#00ff41] animate-ping" />
         </button>
+
+        <button
+          onClick={() => setActiveTab('HISTORY')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors cursor-pointer shrink-0 ${
+            activeTab === 'HISTORY'
+              ? 'border-cyan-500 text-cyan-400'
+              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <RiTimeLine size={15} />
+          <span>Login History & Sessions</span>
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -850,6 +867,16 @@ export const WorkspaceHub: React.FC<WorkspaceHubProps> = ({
         {activeTab === 'TELEMETRY' && (
           <div className="h-full w-full">
             <WorkspaceTelemetryAnalytics />
+          </div>
+        )}
+
+        {/* TAB 5: WORKSPACE LOGIN HISTORY & ACTIVE SESSION AUDIT */}
+        {activeTab === 'HISTORY' && (
+          <div className="h-full min-h-[480px]">
+            <WorkspaceLoginHistoryView
+              onReauthenticate={handleReAuthenticate}
+              onSignOut={handleDisconnect}
+            />
           </div>
         )}
       </div>
