@@ -843,6 +843,64 @@ export default function RightPanel({
     }
   }, [activeSessionId])
 
+  // Voice history bridge: saves Gemini Live turns into the exact same session used by text chat.
+  useEffect(() => {
+    const handleVoiceHistory = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (!detail?.text?.trim()) return
+
+      const role = detail.role === 'user' ? 'user' : 'assistant'
+      const messageId = detail.messageId || detail.id || `voice_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+      const message: Message = {
+        id: messageId,
+        messageId,
+        conversationId: activeSessionIdRef.current,
+        requestId: detail.requestId,
+        role,
+        mode: 'voice',
+        text: detail.text.trim(),
+        transcript: detail.text.trim(),
+        content: detail.text.trim(),
+        timestamp: detail.timestamp || Date.now(),
+        inputType: 'voice',
+        status: detail.status || 'success'
+      }
+
+      try {
+        chatHistoryService.addMessage(activeSessionIdRef.current, message)
+      } catch (error) {
+        console.warn('[IRIS] Voice history save failed:', error)
+      }
+
+      setChatHistory((prev) => {
+        const idx = prev.findIndex(
+          (m) =>
+            m.id === messageId ||
+            (m.messageId && m.messageId === messageId) ||
+            (m.role === message.role &&
+              m.text.trim().toLowerCase() === message.text.trim().toLowerCase() &&
+              Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 2500)
+        )
+
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = { ...updated[idx], ...message }
+          return updated
+        }
+
+        return [...prev, message].slice(-50)
+      })
+
+      if (role === 'assistant') {
+        setActiveStreamingId(null)
+        setIsSubmitting(false)
+      }
+    }
+
+    window.addEventListener('iris:voice-history', handleVoiceHistory)
+    return () => window.removeEventListener('iris:voice-history', handleVoiceHistory)
+  }, [])
+
   // 2. Real-time transcript stream listeners
   useEffect(() => {
     let isMounted = true
