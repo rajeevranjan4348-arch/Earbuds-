@@ -194,8 +194,8 @@ export class IrisAdvancedFeatureRuntime {
 
   private restore() {
     try {
-      if (typeof globalThis.localStorage === 'undefined') return
-      const raw = localStorage.getItem(STORAGE_KEY)
+      if (typeof (globalThis as any).localStorage === 'undefined') return
+      const raw = (globalThis as any).localStorage.getItem(STORAGE_KEY)
       if (!raw) return
       const tasks = JSON.parse(raw) as IrisQueuedTask[]
       for (const task of tasks) this.queue.set(task.id, task)
@@ -205,7 +205,7 @@ export class IrisAdvancedFeatureRuntime {
   private persist() {
     try {
       if (typeof globalThis.localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.listTasks().slice(0, MAX_QUEUE)))
+        (globalThis as any).localStorage.setItem(STORAGE_KEY, JSON.stringify(this.listTasks().slice(0, MAX_QUEUE)))
       }
     } catch { /* persistence is best effort */ }
   }
