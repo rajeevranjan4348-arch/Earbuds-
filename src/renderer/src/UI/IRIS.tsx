@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   RiLayoutGridLine,
   RiFolderOpenLine,
@@ -118,7 +118,7 @@ const IRIS = ({
     propSetIsCoreUiMinimal !== undefined ? propSetIsCoreUiMinimal : setInternalMinimal
 
   const [coreUiShortcutDisplay, setCoreUiShortcutDisplay] = useState('Ctrl+\\')
-  const [isVoiceLogOpen, setIsVoiceLogOpen] = useState(false)
+  const [isVoiceLogOpen, setIsVoiceLogOpen] = useState(false)\n  const reduceMotion = useReducedMotion()
 
   useEffect(() => {
     const handleOpenLog = () => setIsVoiceLogOpen(true)
@@ -158,8 +158,8 @@ const IRIS = ({
   return (
     <div className="flex flex-col h-full w-full max-w-full bg-black text-zinc-100 font-sans overflow-hidden select-none relative transform-gpu">
       <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-70" aria-hidden="true">
-        <motion.div className="absolute -top-32 left-[18%] h-72 w-72 rounded-full bg-emerald-500/[0.045] blur-3xl will-change-transform" animate={{ x: [0, 28, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} />
-        <motion.div className="absolute top-[34%] -right-40 h-80 w-80 rounded-full bg-cyan-400/[0.035] blur-3xl will-change-transform" animate={{ x: [0, -24, 0], y: [0, -20, 0], scale: [1, 1.06, 1] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute -top-32 left-[18%] h-72 w-72 rounded-full bg-emerald-500/[0.045] blur-3xl will-change-transform" animate={reduceMotion ? undefined : { x: [0, 28, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }} transition={reduceMotion ? { duration: 0 } : { duration: 12, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute top-[34%] -right-40 h-80 w-80 rounded-full bg-cyan-400/[0.035] blur-3xl will-change-transform" animate={reduceMotion ? undefined : { x: [0, -24, 0], y: [0, -20, 0], scale: [1, 1.06, 1] }} transition={reduceMotion ? { duration: 0 } : { duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
       </div>
       {/* Floating Minimal HUD Mode Pill with Restore Trigger */}
       <AnimatePresence>
@@ -367,7 +367,7 @@ const IRIS = ({
               initial={{ opacity: 0, y: 8, scale: 0.995 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.995 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.65 }}
+              transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.65 }}
               className="flex-1 min-h-full h-full w-full flex flex-col transform-gpu will-change-transform"
             >
               {activeTab === 'DASHBOARD' && (
