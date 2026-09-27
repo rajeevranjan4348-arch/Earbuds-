@@ -55,6 +55,26 @@ object AppController {
             ?.first
     }
 
+    /**
+     * Opens WhatsApp's native share composer with the supplied message prefilled.
+     * The user still chooses the chat and taps Send; Iris does not silently send messages.
+     */
+    fun shareTextToWhatsApp(context: Context, message: String): Boolean {
+        if (message.isBlank()) return false
+        return try {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, message)
+                setPackage("com.whatsapp")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun openApp(context: Context, appNameOrPackage: String): Boolean {
         val packageName = resolvePackage(context, appNameOrPackage) ?: return false
         return try {
