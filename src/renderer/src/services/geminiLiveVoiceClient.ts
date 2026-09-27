@@ -7,8 +7,6 @@
  * PCM audio playback, and supports immediate interruption (barge-in) and VAD.
  */
 
-import { chatHistoryService } from './chatHistoryService'
-
 export type LiveVoiceState =
   'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'interrupted' | 'error'
 
@@ -210,23 +208,23 @@ class GeminiLiveVoiceClient {
           })
         }
 
-        try {
-          const activeSessionId = chatHistoryService.getActiveSessionId()
-          chatHistoryService.addMessage(activeSessionId, {
-            id: turnMsgId,
-            messageId: turnMsgId,
-            conversationId: activeSessionId,
-            role: role === 'user' ? 'user' : 'assistant',
-            mode: 'voice',
-            text: turnText,
-            transcript: turnText,
-            content: turnText,
-            timestamp: Date.now(),
-            inputType: 'voice',
-            status: 'success'
-          })
-        } catch (_err) {
-          // Ignored
+        // Persist through the same renderer chat-history pipeline used by text chat.
+        // RightPanel owns the active session, so this event avoids a second persistence path.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('iris:voice-history', {
+              detail: {
+                id: turnMsgId,
+                messageId: turnMsgId,
+                role: role === 'user' ? 'user' : 'assistant',
+                text: turnText,
+                timestamp: Date.now(),
+                inputType: 'voice',
+                mode: 'voice',
+                status: 'success'
+              }
+            })
+          )
         }
 
         this.notify(this.state, { history: this.conversationHistory })
