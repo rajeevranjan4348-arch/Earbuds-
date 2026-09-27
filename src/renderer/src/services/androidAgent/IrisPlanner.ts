@@ -116,7 +116,7 @@ export class IrisPlanner {
       step.status = 'running'
 
       try {
-        const res = await androidToolRouter.executeIntent(plan.intent)
+        const res = await androidToolRouter.executeIntent({\n          ...plan.intent,\n          intent: step.action as any,\n          tool: step.tool || plan.intent.tool,\n          parameters: step.parameters || plan.intent.parameters\n        })
         if (res.success) {
           step.status = 'completed'
           step.result = res.output
