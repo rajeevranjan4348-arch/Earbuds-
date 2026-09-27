@@ -175,7 +175,8 @@ export class IrisAdvancedFeatureRuntime {
     const actions: string[] = []
     if (/\b(open|launch|start)\b/.test(lower)) actions.push('open_target')
     if (/\b(search|find|latest|news)\b/.test(lower)) actions.push('web_search')
-    if (/\b(send|message|call|post)\b/.test(lower)) actions.push('communication')
+    if (/\b(send|message|call|post|share)\b/.test(lower)) actions.push('communication')
+    if (/\b(whatsapp|wa)\b/.test(lower) && /\b(share|send|forward)\b/.test(lower)) actions.push('whatsapp_share')
     if (/\b(code|fix|github|repository|repo)\b/.test(lower)) actions.push('developer_task')
     if (/\b(remember|save)\b/.test(lower)) actions.push('memory_write')
     if (/\b(schedule|remind|every|tomorrow|at)\b/.test(lower)) actions.push('schedule')
