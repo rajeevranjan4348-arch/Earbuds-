@@ -131,8 +131,6 @@ export class PersistentAuthStateManager {
    */
   private hydrateFromStorage(): void {
     if (typeof window === 'undefined') {
-      this.currentUser = PRESET_OPERATOR_USERS[0]
-      this.currentSession = this.createDefaultSession(PRESET_OPERATOR_USERS[0])
       return
     }
 
@@ -192,7 +190,10 @@ export class PersistentAuthStateManager {
       }
 
       if (!restoredUser) {
-        restoredUser = PRESET_OPERATOR_USERS[0]
+        // No persisted authenticated identity: stay signed out until Firebase restores a real user.
+        this.currentUser = null
+        this.currentSession = null
+        return
       }
 
       this.currentUser = restoredUser
@@ -200,8 +201,8 @@ export class PersistentAuthStateManager {
       this.saveToStorage()
     } catch (err) {
       console.warn('[PersistentAuthManager] Hydration notice:', err)
-      this.currentUser = PRESET_OPERATOR_USERS[0]
-      this.currentSession = this.createDefaultSession(PRESET_OPERATOR_USERS[0])
+      this.currentUser = null
+      this.currentSession = null
     }
   }
 
@@ -210,7 +211,7 @@ export class PersistentAuthStateManager {
     return {
       sessionId: `sess_${now}_${Math.random().toString(36).slice(2, 7)}`,
       userId: user.uid,
-      accessToken: token || 'iris_live_jwt_' + Math.random().toString(36).slice(2, 10),
+      ...(token ? { accessToken: token } : {}),
       tokenType: 'Bearer',
       scopes: [
         'https://www.googleapis.com/auth/drive',
