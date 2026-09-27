@@ -208,7 +208,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     fun stopIrisBackgroundAgent() {
-        startService(IrisBackgroundService.stopIntent(this))
+        stopService(IrisBackgroundService.stopIntent(this))
     }
 
     // ============================================================
