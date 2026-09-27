@@ -29,6 +29,7 @@ import { paddleOcrEngine } from '../ocr'
 import { gstackRouter } from '../gstack'
 import { irisSystemIntegration } from '../system/IrisSystemIntegration'\nimport { irisAgentRuntime } from '../agents/IrisAgentRuntime'
 import { irisBackgroundSessionManager } from '../agents/IrisBackgroundSessionManager'
+import { irisAdvancedFeatureRuntime } from '../agents/IrisAdvancedFeatureRuntime'
 
 export interface UnifiedTool {
   name: string
@@ -916,6 +917,48 @@ export class ToolRegistry {
         if (args.action === 'stop') return { stopped: irisBackgroundSessionManager.stop(args.sessionId), sessionId: args.sessionId }
         if (args.action === 'stop_all') return { active: irisBackgroundSessionManager.stopAll() }
         return { active: irisBackgroundSessionManager.getActive(), sessions: irisBackgroundSessionManager.getAll() }
+      }
+    })
+
+    // 42. Advanced 20-feature Iris runtime
+    this.tools.set('iris_advanced_features', {
+      name: 'iris_advanced_features',
+      description: 'Unified control plane for Iris background execution, persistent queues, diagnostics, scheduling hooks, permissions, vision/voice adapters, project memory, rollback, research and developer workflows.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          action: { type: 'STRING', enum: ['features', 'enqueue', 'update', 'retry', 'recover', 'cancel', 'list', 'diagnose', 'parse_command', 'permission', 'health', 'checkpoint', 'rollback'], description: 'Advanced Iris runtime operation.' },
+          taskId: { type: 'STRING', description: 'Queued task ID.' },
+          command: { type: 'STRING', description: 'Natural-language command.' },
+          target: { type: 'STRING', enum: ['browser', 'server', 'android'], description: 'Execution target.' },
+          capability: { type: 'STRING', description: 'Permission capability name.' },
+          allowed: { type: 'BOOLEAN', description: 'Permission decision.' },
+          tool: { type: 'STRING', description: 'Tool health key.' },
+          ok: { type: 'BOOLEAN', description: 'Whether the tool health check succeeded.' },
+          latencyMs: { type: 'NUMBER', description: 'Measured tool latency.' },
+          value: { description: 'Checkpoint or update payload.' }
+        },
+        required: ['action']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 8000,
+      execute: async (args) => {
+        switch (args.action) {
+          case 'features': return irisAdvancedFeatureRuntime.getEnabledFeatures()
+          case 'enqueue': return irisAdvancedFeatureRuntime.enqueue(args.command || '', { target: args.target })
+          case 'update': return irisAdvancedFeatureRuntime.updateTask(args.taskId, args.value || {})
+          case 'retry': return irisAdvancedFeatureRuntime.retry(args.taskId)
+          case 'recover': return irisAdvancedFeatureRuntime.recover(args.taskId)
+          case 'cancel': return irisAdvancedFeatureRuntime.cancel(args.taskId)
+          case 'list': return irisAdvancedFeatureRuntime.listTasks()
+          case 'diagnose': return irisAdvancedFeatureRuntime.diagnose()
+          case 'parse_command': return irisAdvancedFeatureRuntime.parseCommand(args.command || '')
+          case 'permission': return irisAdvancedFeatureRuntime.setPermission(args.capability, Boolean(args.allowed))
+          case 'health': return args.tool ? irisAdvancedFeatureRuntime.recordToolHealth(args.tool, Boolean(args.ok), args.latencyMs) : irisAdvancedFeatureRuntime.getToolHealth()
+          case 'checkpoint': return irisAdvancedFeatureRuntime.saveCheckpoint(args.taskId, args.value)
+          case 'rollback': return irisAdvancedFeatureRuntime.rollback(args.taskId)
+          default: throw new Error('Unknown advanced Iris runtime action: ' + args.action)
+        }
       }
     })
 
