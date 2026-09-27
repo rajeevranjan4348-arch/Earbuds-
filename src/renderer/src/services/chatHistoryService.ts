@@ -577,14 +577,33 @@ class ChatHistoryService {
     for (const session of sessions) {
       if (session && session.id && !seen.has(session.id)) {
         seen.add(session.id)
-        // Deduplicate messages within session
+        // Deduplicate messages within a session by stable id AND semantic turn identity.
+        // Voice/text pipelines can emit the same turn with different generated ids.
         const msgSeen = new Set<string>()
+        const semanticSeen = new Map<string, number>()
         const cleanMessages: Message[] = []
         for (const msg of session.messages || []) {
-          if (msg && msg.id && !msgSeen.has(msg.id)) {
-            msgSeen.add(msg.id)
-            cleanMessages.push(msg)
+          if (!msg || !msg.id) continue
+
+          const role = msg.role === 'model' ? 'assistant' : msg.role
+          const text = String(msg.text || msg.content || '').replace(/\s+/g, ' ').trim().toLowerCase()
+          const timestamp = Number(msg.timestamp || 0)
+          const semanticKey = role + '::' + text
+
+          if (msgSeen.has(msg.id)) continue
+
+          const previousTimestamp = semanticSeen.get(semanticKey)
+          if (
+            text &&
+            previousTimestamp !== undefined &&
+            Math.abs(timestamp - previousTimestamp) < 2500
+          ) {
+            continue
           }
+
+          msgSeen.add(msg.id)
+          if (text) semanticSeen.set(semanticKey, timestamp)
+          cleanMessages.push(msg)
         }
         result.push({
           ...session,
