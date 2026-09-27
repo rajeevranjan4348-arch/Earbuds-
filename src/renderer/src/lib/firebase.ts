@@ -455,7 +455,9 @@ export const testFirestoreConnection = async () => {
     await getDocFromServer(doc(firestore, 'test', 'connection'))
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.")
+      console.warn("Firestore connection notice: Client is offline or establishing connection.")
+    } else if (error instanceof Error) {
+      console.warn("Firestore connection check notice:", error.message)
     }
   }
 }

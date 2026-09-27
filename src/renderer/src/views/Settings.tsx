@@ -35,6 +35,8 @@ import ThemeAppearanceSettings from '../components/UI/ThemeAppearanceSettings'
 import WakeWordControlCard from '../components/UI/WakeWordControlCard'
 import AndroidPermissionCenter from '../components/UI/AndroidPermissionCenter'
 import SynthesizedVoiceSettingsPanel from '../components/Voice/SynthesizedVoiceSettingsPanel'
+import { PWAInstallButton } from '../components/UI/PWAInstallButton'
+import { backgroundExecutionService, BackgroundSettings } from '../services/backgroundExecutionService'
 import { soundEffects, SoundType } from '../services/soundEffectsService'
 import {
   voiceSessionManager,
@@ -43,6 +45,7 @@ import {
   VoicePersonalityId,
   SupportedLanguage
 } from '../services/voice'
+import { RiPulseLine, RiShieldFlashLine, RiNotification4Line, RiVolumeUpLine, RiMic2Line } from 'react-icons/ri'
 
 interface SettingsProps {
   isSystemActive: boolean
@@ -50,6 +53,7 @@ interface SettingsProps {
 
 type TabType =
   | 'keys'
+  | 'background'
   | 'voice_synth'
   | 'theme'
   | 'ai'
@@ -92,6 +96,9 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
   const [voicePrivSettings, setVoicePrivSettings] = useState<VoicePrivacySettings>(
     voiceSettings.getSettings()
   )
+  const [bgSettings, setBgSettings] = useState<BackgroundSettings>(
+    backgroundExecutionService.getSettings()
+  )
 
   // Core settings & Mem0 state
   const [coreSettings, setCoreSettings] = useState<CoreSettings>(coreSettingsService.getSettings())
@@ -109,6 +116,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
       loadMemories(u.uid)
     })
     const unsubVoice = voiceSettings.subscribe((s) => setVoicePrivSettings(s))
+    const unsubBg = backgroundExecutionService.subscribe((s) => setBgSettings(s))
 
     loadMemories(firebaseAuthService.getUserId())
 
@@ -133,6 +141,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
       unsubSettings()
       unsubAuth()
       unsubVoice()
+      unsubBg()
     }
   }, [])
 
@@ -247,6 +256,7 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
 
   const tabConfigs = [
     { id: 'keys', label: 'API Keys', icon: <RiPlugLine size={18} /> },
+    { id: 'background', label: 'Background & PWA Engine', icon: <RiPulseLine size={18} className="text-emerald-400" /> },
     { id: 'voice_synth', label: 'AI Voice Synth & Cache', icon: <Volume2 size={18} /> },
     { id: 'theme', label: 'Theme & OS Sync', icon: <Palette size={18} /> },
     { id: 'ai', label: 'AI Interaction', icon: <Brain size={18} /> },
@@ -436,6 +446,155 @@ export default function SettingsView({ isSystemActive }: SettingsProps) {
                       powers both general V3 chat and deep mathematical/logical chain-of-thought
                       reasoning (R1).
                     </p>
+                  </div>
+                </GlassPanel>
+              </motion.div>
+            )}
+
+            {/* TAB: BACKGROUND & PWA ENGINE */}
+            {activeTab === 'background' && (
+              <motion.div
+                key="background"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <GlassPanel className="p-4 sm:p-8 flex flex-col gap-6">
+                  <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                    <span className={titleClass}>
+                      <RiPulseLine className="text-emerald-400 shrink-0" size={22} />
+                      Background Running Engine & PWA
+                    </span>
+                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full border ${
+                      bgSettings.enabled
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                    }`}>
+                      STATUS: {bgSettings.enabled ? 'ACTIVE' : 'DISABLED'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-zinc-400 -mt-2">
+                    Enable IRIS to execute tasks, process voice commands, and maintain real-time connections uninterrupted even when the browser tab is hidden, minimized, or running in background standalone mode.
+                  </p>
+
+                  {/* PWA App Installation Card */}
+                  <PWAInstallButton variant="card" />
+
+                  {/* Background Controls */}
+                  <div className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-4">
+                    <h4 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                      <RiShieldFlashLine className="text-emerald-400" />
+                      Background Service Preferences
+                    </h4>
+
+                    {/* Master Switch */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900/80 border border-white/10">
+                      <div>
+                        <span className="text-sm font-semibold text-zinc-200 block">
+                          Master Background Execution
+                        </span>
+                        <span className="text-xs text-zinc-400 block">
+                          Keep WebSocket, scheduled tasks, and voice pipelines running in background
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => backgroundExecutionService.saveSettings({ enabled: !bgSettings.enabled })}
+                        className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer ${
+                          bgSettings.enabled ? 'bg-emerald-500' : 'bg-zinc-800'
+                        }`}
+                      >
+                        <div
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
+                            bgSettings.enabled ? 'translate-x-6' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Detailed Toggles */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                      {/* Audio Anchor */}
+                      <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <RiVolumeUpLine className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs font-semibold text-zinc-200 block">Audio Keep-Alive Loop</span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Imperceptible audio anchor prevents browser tab throttling
+                            </span>
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={bgSettings.audioKeepAlive}
+                          onChange={() => backgroundExecutionService.saveSettings({ audioKeepAlive: !bgSettings.audioKeepAlive })}
+                          disabled={!bgSettings.enabled}
+                          className="accent-emerald-500 rounded cursor-pointer mt-1"
+                        />
+                      </div>
+
+                      {/* Device Wake Lock */}
+                      <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <RiShieldFlashLine className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs font-semibold text-zinc-200 block">CPU & Screen Wake Lock</span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Prevents operating system CPU sleep during voice sessions
+                            </span>
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={bgSettings.wakeLock}
+                          onChange={() => backgroundExecutionService.saveSettings({ wakeLock: !bgSettings.wakeLock })}
+                          disabled={!bgSettings.enabled}
+                          className="accent-emerald-500 rounded cursor-pointer mt-1"
+                        />
+                      </div>
+
+                      {/* Background Voice Input */}
+                      <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <RiMic2Line className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs font-semibold text-zinc-200 block">Background Speech Input</span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Maintains microphone listener when app is minimized
+                            </span>
+                          </div>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={bgSettings.wakeWordInBackground}
+                          onChange={() => backgroundExecutionService.saveSettings({ wakeWordInBackground: !bgSettings.wakeWordInBackground })}
+                          disabled={!bgSettings.enabled}
+                          className="accent-emerald-500 rounded cursor-pointer mt-1"
+                        />
+                      </div>
+
+                      {/* OS System Notifications */}
+                      <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5 flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <RiNotification4Line className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="text-xs font-semibold text-zinc-200 block">OS System Notifications</span>
+                            <span className="text-[11px] text-zinc-400 block">
+                              Receive desktop/mobile alerts when background tasks finish
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => backgroundExecutionService.requestNotificationPermission()}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0 cursor-pointer"
+                        >
+                          {bgSettings.notifications ? 'Active' : 'Request'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </GlassPanel>
               </motion.div>

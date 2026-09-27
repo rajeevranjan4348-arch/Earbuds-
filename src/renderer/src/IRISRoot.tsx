@@ -17,7 +17,6 @@ import { WakeWordDetectionOverlay } from './components/UI/WakeWordDetectionOverl
 import { workspacePersistenceService } from './services/workspacePersistenceService'
 import { ModuleViewSkeleton } from './components/UI/SkeletonLoader'
 import { AppControllerModal } from './components/UI/AppControllerModal'
-import { GlobalVoiceCommandHUD } from './components/UI/GlobalVoiceCommandHUD'
 import { appControlService } from './services/appControlService'
 import { Zap } from 'lucide-react'
 
@@ -498,21 +497,6 @@ const IndexRoot = () => {
         />
 
         {/* Global Voice Command Listener HUD */}
-        <GlobalVoiceCommandHUD
-          isConnected={isConnected}
-          isListening={isListening}
-          isSpeaking={isSpeaking}
-          isMuted={isMuted}
-          interimTranscript={interimTranscript}
-          lastFinalTranscript={lastFinalTranscript}
-          micLevel={micLevel}
-          statusMessage={statusMessage}
-          toggleConnection={toggleConnection}
-          toggleMute={toggleMute}
-          stopSpeaking={stopSpeaking}
-          submitVoicePrompt={submitVoicePrompt}
-          onOpenAppController={() => setIsAppControllerOpen(true)}
-        />
       </main>
     </div>
   )

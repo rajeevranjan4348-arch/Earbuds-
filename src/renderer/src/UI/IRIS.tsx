@@ -22,6 +22,8 @@ import RightPanel from '../components/UI/RightPanel'
 import DocumentStatusOverlay from '../components/UI/DocumentStatusOverlay'
 import VoiceCommandLogSidePanel from '../components/UI/VoiceCommandLogSidePanel'
 import { ModuleViewSkeleton } from '../components/UI/SkeletonLoader'
+import { BackgroundModeController } from '../components/UI/BackgroundModeController'
+import { PWAInstallButton } from '../components/UI/PWAInstallButton'
 
 const NotesView = lazy(() => import('../views/Notes'))
 const GalleryView = lazy(() => import('../views/Gallery'))
@@ -261,6 +263,9 @@ const IRIS = ({
             </motion.div>
 
             <div className="flex items-center justify-end gap-2 md:gap-3 w-auto shrink-0">
+              <PWAInstallButton />
+              <BackgroundModeController />
+
               <div
                 onClick={toggleConnection}
                 className="flex items-center gap-2 md:gap-3 cursor-pointer p-1.5 rounded-xl hover:bg-zinc-900/80 transition"

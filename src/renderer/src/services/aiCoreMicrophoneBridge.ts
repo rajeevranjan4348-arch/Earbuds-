@@ -760,7 +760,26 @@ export const irisVoice = new IrisVoicePipeline({
   },
 
   onError(err) {
-    console.error('[IRIS Voice Error]:', err)
+    const errMsg = err?.message || String(err || '')
+    const isPermissionError =
+      err?.name === 'NotAllowedError' ||
+      err?.name === 'PermissionDeniedError' ||
+      errMsg.toLowerCase().includes('permission') ||
+      errMsg.toLowerCase().includes('denied') ||
+      errMsg.toLowerCase().includes('blocked')
+
+    if (isPermissionError) {
+      console.warn('[IRIS Voice Notice]: Microphone permission required or blocked:', errMsg)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('iris:mic-permission-denied', {
+            detail: { message: errMsg }
+          })
+        )
+      }
+    } else {
+      console.warn('[IRIS Voice Error]:', errMsg)
+    }
   }
 })
 

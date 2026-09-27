@@ -97,7 +97,16 @@ export function useIrisVoice(options: UseIrisVoiceOptions = {}) {
       }
     })
 
+    const handleMicDenied = (e: any) => {
+      setIsConnected(false)
+      setVoiceStatus('idle')
+      setStatusMessage(e?.detail?.message || 'Microphone access blocked. Enable microphone in browser settings.')
+    }
+
+    window.addEventListener('iris:mic-permission-denied', handleMicDenied)
+
     return () => {
+      window.removeEventListener('iris:mic-permission-denied', handleMicDenied)
       unsubLive()
       aiRealtimeVoice.stopAIListening()
       voiceService.stop()
