@@ -335,7 +335,11 @@ class ChatHistoryService {
         (m) =>
           (m.messageId && m.messageId === normalizedMsg.messageId) ||
           m.id === normalizedMsg.id ||
-          (normalizedMsg.requestId && m.requestId === normalizedMsg.requestId && m.role === normalizedMsg.role)
+          (normalizedMsg.requestId && m.requestId === normalizedMsg.requestId && m.role === normalizedMsg.role) ||
+          // Guard against duplicate UI/event dispatches that generate a new message id.
+          (m.role === normalizedMsg.role &&
+            m.text.trim().toLowerCase() === normalizedMsg.text.trim().toLowerCase() &&
+            Math.abs((m.timestamp || 0) - (normalizedMsg.timestamp || 0)) < 2000)
       )
       let nextMsgs: Message[]
 
