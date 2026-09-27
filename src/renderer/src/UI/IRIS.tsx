@@ -151,7 +151,11 @@ const IRIS = ({
   ]
 
   return (
-    <div className="flex flex-col h-full w-full max-w-full bg-black text-zinc-100 font-sans overflow-hidden select-none relative">
+    <div className="flex flex-col h-full w-full max-w-full bg-black text-zinc-100 font-sans overflow-hidden select-none relative transform-gpu">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-70" aria-hidden="true">
+        <motion.div className="absolute -top-32 left-[18%] h-72 w-72 rounded-full bg-emerald-500/[0.045] blur-3xl will-change-transform" animate={{ x: [0, 28, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.div className="absolute top-[34%] -right-40 h-80 w-80 rounded-full bg-cyan-400/[0.035] blur-3xl will-change-transform" animate={{ x: [0, -24, 0], y: [0, -20, 0], scale: [1, 1.06, 1] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
+      </div>
       {/* Floating Minimal HUD Mode Pill with Restore Trigger */}
       <AnimatePresence>
         {isCoreUiMinimal && (
@@ -185,7 +189,7 @@ const IRIS = ({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="h-14 md:h-16 w-full flex items-center justify-between px-3 md:px-6 bg-black border-b border-white/5 z-50 shrink-0 overflow-hidden"
+            className="h-14 md:h-16 w-full flex items-center justify-between px-3 md:px-6 bg-black/90 border-b border-white/5 z-50 shrink-0 overflow-hidden backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.22)]"
           >
             <div
               onClick={() => setActiveTab('DASHBOARD')}
@@ -205,14 +209,14 @@ const IRIS = ({
               variants={navTabsStaggerContainer}
               initial="hidden"
               animate="show"
-              className="hidden md:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-white/5 backdrop-blur-md shadow-2xl relative"
+              className="hidden md:flex items-center gap-1.5 bg-zinc-950/75 p-1 rounded-xl border border-white/[0.07] backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.35)] relative transform-gpu"
             >
               {/* Command Center Mode Switcher */}
               <motion.div variants={navTabStaggerItem} className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
                 <motion.button
                   onClick={() => setActiveTab('DASHBOARD')}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.035, y: -1 }}
+                  whileTap={{ scale: 0.96, y: 0 }}
                   className={`relative cursor-pointer px-3 py-1.5 text-[11px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 border transition-all ${
                     activeTab === 'DASHBOARD'
                       ? 'border-emerald-500/70 bg-emerald-950/60 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
@@ -232,9 +236,9 @@ const IRIS = ({
                     key={tab.id}
                     variants={navTabStaggerItem}
                     onClick={() => setActiveTab(tab.id)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-colors duration-200 ${
+                    whileHover={{ scale: 1.025, y: -1 }}
+                    whileTap={{ scale: 0.97, y: 0 }}
+                    className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-[color,background-color,border-color,box-shadow] duration-200 ease-out ${
                       activeTab === tab.id
                         ? 'text-emerald-400'
                         : 'text-zinc-500 hover:text-zinc-200'
@@ -322,7 +326,7 @@ const IRIS = ({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   whileTap={{ scale: 0.95 }}
-                  className={`relative cursor-pointer shrink-0 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 transition-colors duration-200 ${
+                  className={`relative cursor-pointer shrink-0 px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 transition-[color,background-color,border-color,box-shadow] duration-200 ease-out ${
                     activeTab === tab.id ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-200'
                   }`}
                 >
@@ -341,7 +345,7 @@ const IRIS = ({
         )}
       </AnimatePresence>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-950 via-black to-black scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-zinc-950 via-black to-black scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent flex flex-col overscroll-contain">
         <div className="relative flex-1 min-h-full h-full w-full p-1 sm:p-3 lg:p-4 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
@@ -349,8 +353,8 @@ const IRIS = ({
               initial={{ opacity: 0, y: 8, scale: 0.995 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.995 }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 min-h-full h-full w-full flex flex-col"
+              transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.65 }}
+              className="flex-1 min-h-full h-full w-full flex flex-col transform-gpu will-change-transform"
             >
               {activeTab === 'DASHBOARD' && (
                 <DashboardView
