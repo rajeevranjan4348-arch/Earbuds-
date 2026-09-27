@@ -27,7 +27,7 @@ import {
 } from '../youtube'
 import { paddleOcrEngine } from '../ocr'
 import { gstackRouter } from '../gstack'
-import { irisSystemIntegration } from '../system/IrisSystemIntegration'
+import { irisSystemIntegration } from '../system/IrisSystemIntegration'\nimport { irisAgentRuntime } from '../agents/IrisAgentRuntime'
 
 export interface UnifiedTool {
   name: string
@@ -894,7 +894,7 @@ export class ToolRegistry {
       execute: async (args) => gstackRouter.executeSkill('ship_workflow', args)
     })
 
-    // 38. gstack: Decision Ledger
+    // 39. Unified Iris Agent Runtime: task planning / timeline\n    this.tools.set('iris_agent_task', {\n      name: 'iris_agent_task',\n      description: 'Creates or plans a unified Iris task and exposes its execution timeline without changing the UI.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          action: { type: 'STRING', enum: ['create', 'plan', 'status', 'list', 'cancel'], description: 'Task lifecycle action.' },\n          taskId: { type: 'STRING', description: 'Existing Iris task ID.' },\n          input: { type: 'STRING', description: 'Natural-language task to plan.' }\n        },\n        required: ['action']\n      },\n      permissionLevel: 'standard',\n      timeoutMs: 5000,\n      execute: async (args) => {\n        if (args.action === 'create') return irisAgentRuntime.createTask(args.input || '')\n        if (args.action === 'plan') return irisAgentRuntime.planTask(args.taskId)\n        if (args.action === 'status') return irisAgentRuntime.getTask(args.taskId) || { status: 'not_found' }\n        if (args.action === 'list') return irisAgentRuntime.getTasks()\n        irisAgentRuntime.cancel(args.taskId)\n        return { status: 'cancelled', taskId: args.taskId }\n      }\n    })\n\n    // 40. Global Iris Kill Switch / Resume\n    this.tools.set('iris_runtime_control', {\n      name: 'iris_runtime_control',\n      description: 'Globally stops or resumes active Iris autonomous workflows and exposes active task state.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          action: { type: 'STRING', enum: ['stop_all', 'resume', 'active_tasks'], description: 'Runtime control action.' },\n          reason: { type: 'STRING', description: 'Reason for stopping active tasks.' }\n        },\n        required: ['action']\n      },\n      permissionLevel: 'public',\n      timeoutMs: 3000,\n      execute: async (args) => {\n        if (args.action === 'stop_all') {\n          irisAgentRuntime.emergencyStop(args.reason || 'User initiated emergency halt')\n          return { status: 'stopped', activeTasks: 0 }\n        }\n        if (args.action === 'resume') {\n          irisAgentRuntime.resume()\n          return { status: 'resumed' }\n        }\n        return { status: 'active', tasks: irisAgentRuntime.getActiveTasks() }\n      }\n    })\n\n    // 41. gstack: Decision Ledger
     this.tools.set('gstack_decision_log', {
       name: 'gstack_decision_log',
       description: 'Records or queries architectural decisions (ADRs) with rationale, alternatives considered, and secret interception.',
