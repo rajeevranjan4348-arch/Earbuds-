@@ -6,6 +6,7 @@
  *
  * Reuses the existing IrisAgentRuntime and accepts the ToolRegistry caller as a dependency.
  * Sensitive Android actions never bypass explicit permission.
+ * CI verification is required before this change is considered shipped.
  */
 
 import { irisAgentRuntime, type IrisPlanStep } from './IrisAgentRuntime'
