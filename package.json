@@ -60,7 +60,8 @@
     "recharts": "^3.10.1",
     "remark-gfm": "^4.0.1",
     "three": "^0.184.0",
-    "ws": "^8.21.3"
+    "ws": "^8.21.3",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
