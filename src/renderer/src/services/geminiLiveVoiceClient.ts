@@ -30,7 +30,7 @@ class GeminiLiveVoiceClient {
   private micProcessor: ScriptProcessorNode | null = null
   private activeSources: AudioBufferSourceNode[] = []
   private nextPlayTime: number = 0
-  private voiceName: VoiceOption = 'Zephyr'
+  private voiceName: VoiceOption = 'Charon'
   private conversationHistory: LiveVoiceMessage[] = []
   private listeners: Set<(state: LiveVoiceState, payload?: any) => void> = new Set()
   private audioLevelListeners: Set<(level: number) => void> = new Set()
