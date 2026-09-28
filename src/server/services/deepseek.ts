@@ -60,9 +60,7 @@ export class DeepSeekService {
       return process.env.VITE_DEEPSEEK_API_KEY.trim()
     }
 
-    // Default developer fallback key
-    return 'sk-1734e30535fd4ca9b3fbe54cfb8e8ca8'
-  }
+    throw new Error('DeepSeek API key is not configured. Set DEEPSEEK_API_KEY on the server.')  }
 
   public isConfigured(): boolean {
     loadEnv()
