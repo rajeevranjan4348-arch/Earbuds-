@@ -234,7 +234,7 @@ class AgentClientService {
    */
   public async fetchRecentTasks(): Promise<TaskMemoryData[]> {
     try {
-      const res = await fetch(irisApiUrl('/api/agent/tasks')
+      const res = await fetch(irisApiUrl('/api/agent/tasks'))
       const data = await res.json()
       return data.tasks || []
     } catch (_e) {
@@ -269,7 +269,7 @@ class AgentClientService {
   public async fetchBrainTasks(userId?: string): Promise<any[]> {
     try {
       const url = userId ? `/api/brain/tasks?userId=${encodeURIComponent(userId)}` : '/api/brain/tasks'
-      const res = await fetch(url)
+      const res = await fetch(irisApiUrl(url))
       const data = await res.json()
       return data.graphs || []
     } catch (_e) {
@@ -282,7 +282,7 @@ class AgentClientService {
    */
   public async fetchBrainTask(graphId: string): Promise<any> {
     try {
-      const res = await fetch(irisApiUrl(`/api/brain/task/${encodeURIComponent(graphId)}`)
+      const res = await fetch(irisApiUrl(`/api/brain/task/${encodeURIComponent(graphId)}`))
       const data = await res.json()
       return data.graph || null
     } catch (_e) {
