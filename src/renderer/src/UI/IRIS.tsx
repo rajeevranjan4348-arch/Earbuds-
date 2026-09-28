@@ -3,7 +3,6 @@ import { motion, AnimatePresence, MotionConfig, useReducedMotion } from 'framer-
 import {
   RiLayoutGridLine,
   RiFolderOpenLine,
-  RiPhoneLine,
   RiSettings4Line,
   RiImageLine,
   RiGoogleFill,
