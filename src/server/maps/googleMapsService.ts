@@ -4,8 +4,7 @@
  * Supports primary custom key with automatic fallback to GHP demo key.
  */
 
-const PRIMARY_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDwkI0b4rxHK22fKRtKwsJniLNI_pJjveM'
-const FALLBACK_KEY = 'AIzaSyBpZJtNMY11VDNpQ905P_6RccN_83R0J6A'
+const PRIMARY_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || ''
 
 export interface PlaceResult {
   placeId: string
