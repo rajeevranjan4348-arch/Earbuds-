@@ -18,6 +18,7 @@ export type IrisTaskStatus =
   | 'failed'
   | 'cancelled'
   | 'recovering'
+  | 'awaiting_external'
 
 export type IrisPermissionLevel = 'public' | 'standard' | 'sensitive' | 'admin'
 
@@ -227,7 +228,7 @@ export class IrisAgentRuntime {
     action: (step: IrisPlanStep, signal: AbortSignal) => Promise<T>,
     options: {
       requirePermission?: (step: IrisPlanStep) => Promise<boolean> | boolean
-      verify?: (step: IrisPlanStep, result: T) => Promise<boolean> | boolean
+      verify?: (step: IrisPlanStep, result: T) => Promise<boolean | 'pending'> | boolean | 'pending'
       recover?: (step: IrisPlanStep, error: unknown) => Promise<boolean> | boolean
     } = {}
   ): Promise<T[]> {
@@ -320,6 +321,22 @@ export class IrisAgentRuntime {
         })
 
         const verified = options.verify ? await options.verify(step, result) : true
+        if (verified === 'pending') {
+          task.status = 'awaiting_external'
+          task.error = undefined
+          this.saveTask(task)
+          this.emit({
+            taskId,
+            type: 'verification',
+            status: task.status,
+            message: 'External adapter must report completion before this task can finish',
+            timestamp: now(),
+            data: { stepId: step.id, tool: step.tool }
+          })
+          results.push(result)
+          return results
+        }
+
         if (!verified) {
           task.status = 'failed'
           task.error = 'Action verification failed'
@@ -420,7 +437,7 @@ export class IrisAgentRuntime {
 
   getActiveTasks() {
     return this.getTasks().filter((task) =>
-      ['queued', 'planning', 'awaiting_permission', 'executing', 'verifying', 'recovering'].includes(task.status)
+      ['queued', 'planning', 'awaiting_permission', 'executing', 'verifying', 'recovering', 'awaiting_external'].includes(task.status)
     )
   }
 
