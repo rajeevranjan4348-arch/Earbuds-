@@ -9,6 +9,13 @@
   # Public backend origin; never place API secrets in VITE_* variables.
   VITE_API_BASE_URL = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app"
 
+# Keep the web app static while forwarding its backend API to the Node server.
+[[redirects]]
+  from = "/api/*"
+  to = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app/api/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
