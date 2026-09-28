@@ -36,6 +36,10 @@ class GeminiLiveVoiceClient {
   private audioLevelListeners: Set<(level: number) => void> = new Set()
   private isMuted: boolean = false
   private reconnectTimer: any = null
+  // Conversational turn policy: tolerate natural pauses and topic changes without
+  // prematurely ending the user's thought or producing a refusal filler.
+  private lastUserSpeechAt = 0
+  private userTurnActive = false
 
   public getState(): LiveVoiceState {
     return this.state
@@ -189,6 +193,10 @@ class GeminiLiveVoiceClient {
       // 3. Transcript notification
       if (msg.type === 'transcript') {
         const role = msg.role === 'user' ? 'user' : 'assistant'
+        if (role === 'user') {
+          this.lastUserSpeechAt = Date.now()
+          this.userTurnActive = true
+        }
         const existing = this.conversationHistory[this.conversationHistory.length - 1]
         let turnMsgId: string
         let turnText: string
@@ -243,7 +251,10 @@ class GeminiLiveVoiceClient {
 
       // 5. Turn complete
       if (msg.type === 'turn_complete') {
-        // Model finished generating this turn
+        // Gemini has completed the current turn. Return to passive listening;
+        // a short pause is not treated as the end of the user's next thought.
+        this.userTurnActive = false
+        this.notify('listening')
       }
     } catch (err) {
       console.warn('[Gemini Live Message Parse Error]', err)
@@ -615,6 +626,8 @@ class GeminiLiveVoiceClient {
     })
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.userTurnActive = true
+      this.lastUserSpeechAt = Date.now()
       this.ws.send(JSON.stringify({ type: 'text', text: trimmed }))
       this.notify('processing', { prompt: trimmed })
     }
