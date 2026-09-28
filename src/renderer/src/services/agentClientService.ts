@@ -4,6 +4,8 @@
  * handling step traces, confirmations, and synthesized voice/display responses.
  */
 
+import { irisApiUrl } from './platformCapabilities'
+
 export interface PlanStepItem {
   stepId: string
   stepIndex: number
@@ -112,7 +114,7 @@ class AgentClientService {
     contextMemory?: Record<string, any>
   ): Promise<{ success: boolean; task: TaskMemoryData; spokenResponse: string; displayText: string }> {
     try {
-      const response = await fetch('/api/agent/execute', {
+      const response = await fetch(irisApiUrl('/api/agent/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,7 +191,7 @@ class AgentClientService {
     notes?: string
   ): Promise<{ success: boolean; task: TaskMemoryData }> {
     try {
-      const response = await fetch(`/api/agent/task/${encodeURIComponent(taskId)}/confirm`, {
+      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approved, notes })
@@ -211,7 +213,7 @@ class AgentClientService {
    */
   public async cancelTask(taskId: string, reason?: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/agent/task/${encodeURIComponent(taskId)}/cancel`, {
+      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -232,7 +234,7 @@ class AgentClientService {
    */
   public async fetchRecentTasks(): Promise<TaskMemoryData[]> {
     try {
-      const res = await fetch('/api/agent/tasks')
+      const res = await fetch(irisApiUrl('/api/agent/tasks')
       const data = await res.json()
       return data.tasks || []
     } catch (_e) {
@@ -249,7 +251,7 @@ class AgentClientService {
     context?: Record<string, any>
   ): Promise<any> {
     try {
-      const res = await fetch('/api/brain/execute', {
+      const res = await fetch(irisApiUrl('/api/brain/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, userId, context })
@@ -280,7 +282,7 @@ class AgentClientService {
    */
   public async fetchBrainTask(graphId: string): Promise<any> {
     try {
-      const res = await fetch(`/api/brain/task/${encodeURIComponent(graphId)}`)
+      const res = await fetch(irisApiUrl(`/api/brain/task/${encodeURIComponent(graphId)}`)
       const data = await res.json()
       return data.graph || null
     } catch (_e) {
@@ -293,7 +295,7 @@ class AgentClientService {
    */
   public async resumeBrainTasks(): Promise<{ success: boolean; resumedCount: number }> {
     try {
-      const res = await fetch('/api/brain/resume', { method: 'POST' })
+      const res = await fetch(irisApiUrl('/api/brain/resume', { method: 'POST' })
       return await res.json()
     } catch (_e) {
       return { success: false, resumedCount: 0 }
@@ -309,7 +311,7 @@ class AgentClientService {
     context?: Record<string, any>
   ): Promise<any> {
     try {
-      const res = await fetch('/api/orchestrator/execute', {
+      const res = await fetch(irisApiUrl('/api/orchestrator/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, userId, context })
@@ -329,7 +331,7 @@ class AgentClientService {
     options?: { userId?: string; topK?: number; minSimilarity?: number }
   ): Promise<any[]> {
     try {
-      const res = await fetch('/api/memory/vector/query', {
+      const res = await fetch(irisApiUrl('/api/memory/vector/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, ...options })
@@ -346,7 +348,7 @@ class AgentClientService {
    */
   public async fetchRegisteredAgents(): Promise<any[]> {
     try {
-      const res = await fetch('/api/agents/registry')
+      const res = await fetch(irisApiUrl('/api/agents/registry')
       const data = await res.json()
       return data.agents || []
     } catch (_e) {
