@@ -1,5 +1,5 @@
 import { useState, useEffect, Suspense, lazy } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { motion, AnimatePresence, MotionConfig, useReducedMotion } from 'framer-motion'
 import {
   RiLayoutGridLine,
   RiFolderOpenLine,
@@ -71,13 +71,17 @@ const navTabsStaggerContainer = {
 }
 
 const navTabStaggerItem = {
-  hidden: { opacity: 0, y: -6 },
+  hidden: { opacity: 0, y: -6, scale: 0.985 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] }
+    scale: 1,
+    transition: { type: 'spring', stiffness: 420, damping: 30, mass: 0.55 }
   }
 }
+
+const smoothSpring = { type: 'spring', stiffness: 360, damping: 30, mass: 0.62 } as const
+const microSpring = { type: 'spring', stiffness: 520, damping: 28, mass: 0.42 } as const
 
 const IRIS = ({
   isConnected,
@@ -157,7 +161,8 @@ const IRIS = ({
   ]
 
   return (
-    <div className="flex flex-col h-full w-full max-w-full bg-black text-zinc-100 font-sans overflow-hidden select-none relative transform-gpu">
+    <MotionConfig transition={reduceMotion ? { duration: 0.01 } : smoothSpring}>
+      <div className="flex flex-col h-full w-full max-w-full bg-black text-zinc-100 font-sans overflow-hidden select-none relative transform-gpu">
       <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-70" aria-hidden="true">
         <motion.div className="absolute -top-32 left-[18%] h-72 w-72 rounded-full bg-emerald-500/[0.045] blur-3xl will-change-transform" animate={reduceMotion ? undefined : { x: [0, 28, 0], y: [0, 18, 0], scale: [1, 1.08, 1] }} transition={reduceMotion ? { duration: 0 } : { duration: 12, repeat: Infinity, ease: 'easeInOut' }} />
         <motion.div className="absolute top-[34%] -right-40 h-80 w-80 rounded-full bg-cyan-400/[0.035] blur-3xl will-change-transform" animate={reduceMotion ? undefined : { x: [0, -24, 0], y: [0, -20, 0], scale: [1, 1.06, 1] }} transition={reduceMotion ? { duration: 0 } : { duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
@@ -221,8 +226,9 @@ const IRIS = ({
               <motion.div variants={navTabStaggerItem} className="flex items-center gap-1 mr-1 border-r border-white/10 pr-1.5">
                 <motion.button
                   onClick={() => setActiveTab('DASHBOARD')}
-                  whileHover={{ scale: 1.035, y: -1 }}
-                  whileTap={{ scale: 0.96, y: 0 }}
+                  whileHover={reduceMotion ? undefined : { scale: 1.035, y: -1 }}
+                  transition={reduceMotion ? { duration: 0.01 } : microSpring}
+                  whileTap={reduceMotion ? undefined : { scale: 0.965, y: 0 }}
                   className={`relative cursor-pointer px-3 py-1.5 text-[11px] font-mono font-bold tracking-wider uppercase rounded-lg flex items-center gap-1.5 border transition-all ${
                     activeTab === 'DASHBOARD'
                       ? 'border-emerald-500/70 bg-emerald-950/60 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)]'
@@ -242,8 +248,9 @@ const IRIS = ({
                     key={tab.id}
                     variants={navTabStaggerItem}
                     onClick={() => setActiveTab(tab.id)}
-                    whileHover={{ scale: 1.025, y: -1 }}
-                    whileTap={{ scale: 0.97, y: 0 }}
+                    whileHover={reduceMotion ? undefined : { scale: 1.025, y: -1 }}
+                    transition={reduceMotion ? { duration: 0.01 } : microSpring}
+                    whileTap={reduceMotion ? undefined : { scale: 0.97, y: 0 }}
                     className={`relative cursor-pointer px-4 py-1.5 text-[11px] font-bold tracking-widest uppercase rounded-lg flex items-center gap-2 transition-[color,background-color,border-color,box-shadow] duration-200 ease-out ${
                       activeTab === tab.id
                         ? 'text-emerald-400'
@@ -254,7 +261,7 @@ const IRIS = ({
                       <motion.div
                         layoutId="activeTabBadge"
                         className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.15)]"
-                        transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                        transition={reduceMotion ? { duration: 0.01 } : microSpring}
                       />
                     )}
                     <span className="relative z-10">{tab.icon}</span>
@@ -317,9 +324,10 @@ const IRIS = ({
       <AnimatePresence>
         {!isCoreUiMinimal && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0, y: -4 }}
+            animate={{ height: 'auto', opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: -4 }}
+            transition={reduceMotion ? { duration: 0.01 } : smoothSpring}
             className="md:hidden flex items-center gap-1 px-2.5 py-1.5 bg-zinc-950/95 border-b border-white/5 overflow-x-auto no-scrollbar shrink-0 z-40"
           >
             <motion.button
@@ -368,7 +376,7 @@ const IRIS = ({
               initial={{ opacity: 0, y: 8, scale: 0.995 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.995 }}
-              transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 380, damping: 34, mass: 0.65 }}
+              transition={reduceMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 320, damping: 30, mass: 0.62 }}
               className="flex-1 min-h-full h-full w-full flex flex-col transform-gpu will-change-transform"
             >
               {activeTab === 'DASHBOARD' && (
@@ -442,7 +450,8 @@ const IRIS = ({
           }
         }}
       />
-    </div>
+      </div>
+    </MotionConfig>
   )
 }
 
