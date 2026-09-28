@@ -41,7 +41,7 @@ export const IRIS_SYSTEM_INTEGRATIONS: IntegrationSource[] = [
   { id: 'research', repositories: ['K-Dense-AI/scientific-agent-skills'], capability: 'research', adapter: 'src/server/research', enabled: true, notes: 'Structured scientific research and citations.' },
   { id: 'diagram', repositories: ['cathrynlavery/diagram-design'], capability: 'diagram', adapter: 'src/server/research/diagramGenerator.ts', enabled: true, notes: 'Functional diagram generation only; no UI import.' },
   { id: 'image', repositories: ['black-forest-labs/flux'], capability: 'image', adapter: 'src/server/image/fluxEngine.ts', enabled: true, notes: 'Server-side image generation; credentials stay server-side.' },
-  { id: 'agents', repositories: ['msitarzewski/agency-agents'], capability: 'specialized_agents', adapter: 'src/server/agents/agencyAgents.ts', enabled: true, notes: 'Role definitions run inside the existing orchestrator.' }
+  { id: 'agents', repositories: ['msitarzewski/agency-agents'], capability: 'specialized_agents', adapter: 'src/server/agents/agencyAgents.ts', enabled: true, notes: 'Role definitions run inside the existing orchestrator.' },
   { id: 'skill_optimization', repositories: ['microsoft/SkillOpt'], capability: 'specialized_agents', adapter: 'src/server/skills/skillOptAdapter.ts', enabled: true, notes: 'Optional validation-gated natural-language skill optimization through the installed SkillOpt CLI; no SkillOpt UI or Python runtime copied into Iris.' }
 ]
 
