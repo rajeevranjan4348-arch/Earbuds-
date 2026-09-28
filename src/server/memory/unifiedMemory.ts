@@ -6,6 +6,7 @@
 
 import { privacyAlign } from '../security/privacyAlign'
 import type { MemoryBlock, UnifiedMemoryEntry, MemoryQueryOptions } from './types'
+import { cogneeMemory } from './cogneeMemory'
 
 export class UnifiedMemoryEngine {
   // In-memory persistent state per user
@@ -204,6 +205,86 @@ export class UnifiedMemoryEngine {
     }
 
     return context
+  }
+
+
+  /**
+   * Persist to Cognee when configured, while always keeping Iris's local
+   * memory path available as a fast, failure-safe fallback.
+   */
+  public async rememberWithCognee(
+    userId: string,
+    content: string,
+    options: {
+      namespace?: string
+      category?: 'core' | 'fact' | 'instruction' | 'preference' | 'experience'
+      importance?: number
+      tags?: string[]
+      metadata?: Record<string, any>
+    } = {}
+  ): Promise<{ local: UnifiedMemoryEntry; cognee?: any; cogneeConfigured: boolean }> {
+    const local = this.addMemory(userId, content, options)
+
+    if (!cogneeMemory.isConfigured()) {
+      return { local, cogneeConfigured: false }
+    }
+
+    try {
+      const cognee = await cogneeMemory.remember(userId, content, {
+        namespace: options.namespace,
+        category: options.category,
+        tags: options.tags
+      })
+      return { local, cognee, cogneeConfigured: true }
+    } catch (error) {
+      // Cognee is an enhancement layer; a remote outage must not break Iris memory.
+      return {
+        local,
+        cogneeConfigured: true,
+        cognee: {
+          synced: false,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      }
+    }
+  }
+
+  /**
+   * Recall from Cognee first when configured, then merge with Iris's local
+   * relevance-scored memory. This keeps the existing memory contract intact.
+   */
+  public async searchWithCognee(
+    userId: string,
+    query: string,
+    options: MemoryQueryOptions = {}
+  ): Promise<{ memories: UnifiedMemoryEntry[]; cognee: any[]; cogneeConfigured: boolean }> {
+    const memories = this.queryMemories(userId, query, options)
+
+    if (!cogneeMemory.isConfigured()) {
+      return { memories, cognee: [], cogneeConfigured: false }
+    }
+
+    try {
+      const cognee = await cogneeMemory.recall(userId, query, {
+        topK: options.limit || 5
+      })
+      return { memories, cognee, cogneeConfigured: true }
+    } catch (error) {
+      return {
+        memories,
+        cognee: [
+          {
+            source: 'cognee',
+            error: error instanceof Error ? error.message : String(error)
+          }
+        ],
+        cogneeConfigured: true
+      }
+    }
+  }
+
+  public getCogneeStatus() {
+    return cogneeMemory.getStatus()
   }
 
   /**
