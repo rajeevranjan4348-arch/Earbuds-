@@ -31,6 +31,8 @@ import { irisSystemIntegration } from '../system/IrisSystemIntegration'
 import { irisAgentRuntime } from '../agents/IrisAgentRuntime'
 import { irisAdvancedFeatureRuntime } from '../agents/IrisAdvancedFeatureRuntime'
 import { irisBackgroundSessionManager } from '../agents/IrisBackgroundSessionManager'
+import { irisJarvisExecutionLoop } from '../agents/IrisJarvisExecutionLoop'
+import { unifiedMemory } from '../memory/unifiedMemory'
 
 export interface UnifiedTool {
   name: string
@@ -608,6 +610,63 @@ export class ToolRegistry {
       }
     })
 
+    // 25. Unified Memory write/search tools
+    this.tools.set('memory_store', {
+      name: 'memory_store',
+      description: 'Stores a sanitized durable memory entry in Iris unified memory.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          userId: { type: 'STRING' },
+          content: { type: 'STRING' },
+          namespace: { type: 'STRING' },
+          category: { type: 'STRING', enum: ['core', 'fact', 'instruction', 'preference', 'experience'] },
+          importance: { type: 'NUMBER' },
+          tags: { type: 'ARRAY', items: { type: 'STRING' } }
+        },
+        required: ['content']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 5000,
+      execute: async (args) => unifiedMemory.addMemory(args.userId || 'default', args.content, { namespace: args.namespace, category: args.category, importance: args.importance, tags: args.tags })
+    })
+
+    this.tools.set('memory_search', {
+      name: 'memory_search',
+      description: 'Queries Iris unified memory using relevance, recency and importance scoring.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          userId: { type: 'STRING' },
+          query: { type: 'STRING' },
+          namespace: { type: 'STRING' },
+          limit: { type: 'NUMBER' }
+        },
+        required: ['query']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 5000,
+      execute: async (args) => unifiedMemory.queryMemories(args.userId || 'default', args.query, { namespace: args.namespace, limit: args.limit || 5 })
+    })
+
+    // 26. Jarvis execution loop
+    this.tools.set('iris_jarvis_execute', {
+      name: 'iris_jarvis_execute',
+      description: 'Runs the unified Jarvis Understand -> Plan -> Permission -> Execute -> Verify -> Recover loop.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          command: { type: 'STRING' },
+          userId: { type: 'STRING' },
+          approveSensitive: { type: 'BOOLEAN' }
+        },
+        required: ['command']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 45000,
+      execute: async (args) => irisJarvisExecutionLoop.execute(args.command, { userId: args.userId, approveSensitive: args.approveSensitive === true })
+    })
+
     // 25. Android Companion Hub
     this.tools.set('android_companion_hub', {
       name: 'android_companion_hub',
@@ -670,13 +729,16 @@ export class ToolRegistry {
       permissionLevel: 'standard',
       timeoutMs: 10000,
       execute: async (args) => {
+        const title = args.title || 'Proactive Background Task'
+        if (args.action === 'get_queue' || args.action === 'resume_tasks') return irisAdvancedFeatureRuntime.listTasks()
+        const task = irisAdvancedFeatureRuntime.enqueue(title, { target: 'server' })
         return {
           action: args.action,
-          title: args.title || 'Proactive Background Task',
+          title,
           priority: args.priority || 'STANDARD',
           scheduledAt: args.dueTime || new Date().toISOString(),
-          status: 'queued',
-          message: `Proactive task scheduled successfully: ${args.title || args.action}`
+          status: task.status,
+          taskId: task.id
         }
       }
     })
