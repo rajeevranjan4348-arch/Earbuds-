@@ -30,17 +30,19 @@ export class NvidiaChatService {
   ]
 
   getApiKey(): string {
-    return (
-      process.env.NVIDIA_API_KEY ||
-      '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'
-    )
+    const key = process.env.NVIDIA_API_KEY?.trim()
+    if (!key) {
+      throw new Error('NVIDIA API key is not configured. Set NVIDIA_API_KEY on the server.')
+    }
+    return key
   }
 
   getDeepseekApiKey(): string {
-    return (
-      process.env.DEEPSEEK_API_KEY ||
-      'sk-1734e30535fd4ca9b3fbe54cfb8e8ca8'
-    )
+    const key = process.env.DEEPSEEK_API_KEY?.trim()
+    if (!key) {
+      throw new Error('DeepSeek API key is not configured. Set DEEPSEEK_API_KEY on the server.')
+    }
+    return key
   }
 
   /**
