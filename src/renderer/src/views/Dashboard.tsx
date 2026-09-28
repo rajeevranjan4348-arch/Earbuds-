@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import {
   Camera,
   Mic,
@@ -60,6 +60,7 @@ export default function Dashboard({
   const [internalVisionMode, setInternalVisionMode] = useState<'off' | 'camera' | 'screen'>('off')
   const [showVisionMenu, setShowVisionMenu] = useState(false)
   const [mobileSection, setMobileSection] = useState<'core' | 'chat' | 'telemetry'>('core')
+  const reduceMotion = useReducedMotion()
 
   const visionMode = propVisionMode !== undefined ? propVisionMode : internalVisionMode
   const setVisionMode = propSetVisionMode !== undefined ? propSetVisionMode : setInternalVisionMode
@@ -73,6 +74,30 @@ export default function Dashboard({
     <div className="h-full w-full bg-transparent flex flex-col relative selection:bg-[#00ff41]/30 min-h-0 flex-1 overflow-hidden">
       <div className="absolute top-[10%] left-[-5%] w-[40vw] h-[40vw] bg-[#00ff41] rounded-full mix-blend-screen blur-[180px] opacity-[0.03] pointer-events-none z-0"></div>
       <div className="absolute bottom-[10%] right-[-5%] w-[30vw] h-[30vw] bg-[#00ff41] rounded-full mix-blend-screen blur-[150px] opacity-[0.03] pointer-events-none z-0"></div>
+
+      {/* Ambient motion layer — decorative only; AICore sphere is untouched. */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]" aria-hidden="true">
+        <motion.div
+          className="absolute left-1/2 top-[42%] w-[260px] h-[260px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-400/10"
+          animate={reduceMotion ? undefined : { scale: [0.94, 1.05, 0.94], opacity: [0.25, 0.55, 0.25] }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute left-1/2 top-[42%] w-[350px] h-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/[0.07]"
+          animate={reduceMotion ? undefined : { scale: [1.04, 0.94, 1.04], opacity: [0.15, 0.4, 0.15] }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.7 }}
+        />
+        <motion.div
+          className="absolute left-[8%] right-[8%] top-1/2 h-px bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent"
+          animate={reduceMotion ? undefined : { y: [-90, 90, -90], opacity: [0, 0.8, 0] }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div
+          className="absolute top-[18%] right-[18%] w-1.5 h-1.5 rounded-full bg-emerald-300/50"
+          animate={reduceMotion ? undefined : { y: [0, 24, 0], x: [0, -12, 0], opacity: [0.25, 0.8, 0.25] }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
 
       {/* Mobile Sub-Panel Switcher (< lg) */}
       <div className="lg:hidden flex items-center justify-between px-3 py-1.5 bg-black/60 backdrop-blur-md border-b border-white/5 z-30 shrink-0">
