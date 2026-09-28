@@ -45,11 +45,7 @@ export interface DirectionsResult {
 
 class GoogleMapsService {
   private getKeys(): string[] {
-    const keys = [PRIMARY_KEY]
-    if (FALLBACK_KEY && !keys.includes(FALLBACK_KEY)) {
-      keys.push(FALLBACK_KEY)
-    }
-    return keys
+    return PRIMARY_KEY ? [PRIMARY_KEY] : []
   }
 
   private async fetchWithKeyFallback(urlBuilder: (key: string) => string): Promise<any> {
