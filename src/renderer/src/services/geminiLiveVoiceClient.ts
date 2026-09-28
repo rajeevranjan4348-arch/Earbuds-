@@ -7,6 +7,8 @@
  * PCM audio playback, and supports immediate interruption (barge-in) and VAD.
  */
 
+import { irisApiUrl } from './platformCapabilities'
+
 export type LiveVoiceState =
   'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'interrupted' | 'error'
 
@@ -128,9 +130,11 @@ class GeminiLiveVoiceClient {
 
     this.notify('connecting', { message: 'Connecting to Gemini Live WebSocket...' })
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ai/live-ws?voice=${this.voiceName}`
+    const apiBase = irisApiUrl('').replace(/\/$/, '')
+    const wsOrigin = apiBase
+      ? apiBase.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')
+      : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host
+    const wsUrl = `${wsOrigin}/api/ai/live-ws?voice=${this.voiceName}`
 
     return new Promise((resolve) => {
       try {
@@ -569,7 +573,7 @@ class GeminiLiveVoiceClient {
     }
 
     try {
-      const response = await fetch('/api/ai/voice/conversation', {
+      const response = await fetch(irisApiUrl('/api/ai/voice/conversation'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
