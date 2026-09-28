@@ -33,6 +33,7 @@ import { irisAdvancedFeatureRuntime } from '../agents/IrisAdvancedFeatureRuntime
 import { irisBackgroundSessionManager } from '../agents/IrisBackgroundSessionManager'
 import { irisJarvisExecutionLoop } from '../agents/IrisJarvisExecutionLoop'
 import { unifiedMemory } from '../memory/unifiedMemory'
+import { cogneeMemory } from '../memory/cogneeMemory'
 
 export interface UnifiedTool {
   name: string
@@ -630,7 +631,7 @@ export class ToolRegistry {
       },
       permissionLevel: 'standard',
       timeoutMs: 5000,
-      execute: async (args) => unifiedMemory.addMemory(args.userId || 'default', args.content, { namespace: args.namespace, category: args.category, importance: args.importance, tags: args.tags })
+      execute: async (args) => unifiedMemory.rememberWithCognee(args.userId || 'default', args.content, { namespace: args.namespace, category: args.category, importance: args.importance, tags: args.tags })
     })
 
     this.tools.set('memory_search', {
@@ -648,7 +649,17 @@ export class ToolRegistry {
       },
       permissionLevel: 'standard',
       timeoutMs: 5000,
-      execute: async (args) => unifiedMemory.queryMemories(args.userId || 'default', args.query, { namespace: args.namespace, limit: args.limit || 5 })
+      execute: async (args) => unifiedMemory.searchWithCognee(args.userId || 'default', args.query, { namespace: args.namespace, limit: args.limit || 5 })
+    })
+
+    // 25b. Cognee graph/vector memory status
+    this.tools.set('cognee_memory_status', {
+      name: 'cognee_memory_status',
+      description: 'Reports whether the optional Cognee graph/vector memory backend is configured.',
+      parameters: { type: 'OBJECT', properties: {} },
+      permissionLevel: 'standard',
+      timeoutMs: 3000,
+      execute: async () => cogneeMemory.getStatus()
     })
 
     // 26. Jarvis execution loop
