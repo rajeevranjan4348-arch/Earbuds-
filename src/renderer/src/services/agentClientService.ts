@@ -114,7 +114,7 @@ class AgentClientService {
     contextMemory?: Record<string, any>
   ): Promise<{ success: boolean; task: TaskMemoryData; spokenResponse: string; displayText: string }> {
     try {
-      const response = await fetch(irisApiUrl('/api/agent/execute', {
+      const response = await fetch(irisApiUrl('/api/agent/execute'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -191,7 +191,7 @@ class AgentClientService {
     notes?: string
   ): Promise<{ success: boolean; task: TaskMemoryData }> {
     try {
-      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/confirm`, {
+      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/confirm`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approved, notes })
@@ -213,7 +213,7 @@ class AgentClientService {
    */
   public async cancelTask(taskId: string, reason?: string): Promise<boolean> {
     try {
-      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/cancel`, {
+      const response = await fetch(irisApiUrl(`/api/agent/task/${encodeURIComponent(taskId)}/cancel`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason })
@@ -251,7 +251,7 @@ class AgentClientService {
     context?: Record<string, any>
   ): Promise<any> {
     try {
-      const res = await fetch(irisApiUrl('/api/brain/execute', {
+      const res = await fetch(irisApiUrl('/api/brain/execute'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, userId, context })
@@ -295,7 +295,7 @@ class AgentClientService {
    */
   public async resumeBrainTasks(): Promise<{ success: boolean; resumedCount: number }> {
     try {
-      const res = await fetch(irisApiUrl('/api/brain/resume', { method: 'POST' })
+      const res = await fetch(irisApiUrl('/api/brain/resume'), { method: 'POST' })
       return await res.json()
     } catch (_e) {
       return { success: false, resumedCount: 0 }
@@ -311,7 +311,7 @@ class AgentClientService {
     context?: Record<string, any>
   ): Promise<any> {
     try {
-      const res = await fetch(irisApiUrl('/api/orchestrator/execute', {
+      const res = await fetch(irisApiUrl('/api/orchestrator/execute'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, userId, context })
@@ -331,7 +331,7 @@ class AgentClientService {
     options?: { userId?: string; topK?: number; minSimilarity?: number }
   ): Promise<any[]> {
     try {
-      const res = await fetch(irisApiUrl('/api/memory/vector/query', {
+      const res = await fetch(irisApiUrl('/api/memory/vector/query'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, ...options })
