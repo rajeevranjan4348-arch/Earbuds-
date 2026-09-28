@@ -35,13 +35,7 @@ export default defineConfig({
         orientation: 'portrait-primary',
         prefer_related_applications: false,
         categories: ['productivity', 'utilities', 'communication'],
-        shortcuts: [
-          {
-            name: 'Open IRIS AI',
-            short_name: 'Open IRIS',
-            description: 'Open the IRIS AI workspace',
-            url: '/?source=pwa-shortcut',
-            icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+                icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
           },
           {
             name: 'Open Voice Mode',
