@@ -70,7 +70,9 @@ export class ToolRegistry {
         description: toolDef.description,
         parameters: toolDef.parameters,
         permissionLevel:
-          toolDef.name.includes('tap') || toolDef.name.includes('type') ? 'sensitive' : 'standard',
+          ['android_share_text_to_whatsapp', 'android_launch_app', 'android_tap', 'android_type', 'android_swipe', 'android_press_key'].includes(toolDef.name)
+            ? 'sensitive'
+            : 'standard',
         timeoutMs: 10000,
         execute: async (args) => {
           // Standard dispatch representation
@@ -689,7 +691,7 @@ export class ToolRegistry {
         },
         required: ['category', 'action']
       },
-      permissionLevel: 'standard',
+      permissionLevel: 'sensitive',
       timeoutMs: 10000,
       execute: async (args) => {
         return {
@@ -1087,6 +1089,13 @@ export class ToolRegistry {
     }
 
     const safeArgs = irisSystemIntegration.prepareToolArguments(name, args || {})
+    const permissionApproved = safeArgs.__permissionApproved === true || safeArgs.confirmed === true
+    delete safeArgs.__permissionApproved
+
+    if ((tool.permissionLevel === 'sensitive' || tool.permissionLevel === 'admin') && !permissionApproved) {
+      throw new Error('Permission required for sensitive tool: ' + name)
+    }
+
     return irisSystemIntegration.executeWithRecovery(
       `tool:${name}`,
       () => tool.execute(safeArgs),
