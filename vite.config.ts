@@ -23,12 +23,34 @@ export default defineConfig({
         id: '/',
         name: 'IRIS AI - Voice Operating System',
         short_name: 'IRIS AI',
+        lang: 'en',
+        dir: 'ltr',
         description: 'Voice-first autonomous AI operating layer running seamlessly across browser, desktop, and background execution.',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',
-        start_url: '/',
+        display_override: ['window-controls-overlay', 'standalone'],
+        start_url: '/?source=pwa',
         scope: '/',
+        orientation: 'portrait-primary',
+        prefer_related_applications: false,
+        categories: ['productivity', 'utilities', 'communication'],
+        shortcuts: [
+          {
+            name: 'Open IRIS AI',
+            short_name: 'Open IRIS',
+            description: 'Open the IRIS AI workspace',
+            url: '/?source=pwa-shortcut',
+            icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+          },
+          {
+            name: 'Open Voice Mode',
+            short_name: 'Voice Mode',
+            description: 'Open IRIS voice mode',
+            url: '/?source=pwa-voice',
+            icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
+          }
+        ],
         icons: [
           {
             src: '/pwa-192x192.png',
