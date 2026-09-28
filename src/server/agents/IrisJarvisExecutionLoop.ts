@@ -4,17 +4,18 @@
  * UI-agnostic control plane:
  * Understand -> Plan -> Permission -> Execute -> Verify -> Recover -> Respond
  *
- * Reuses the existing IrisAgentRuntime and ToolRegistry.
+ * Reuses the existing IrisAgentRuntime and accepts the ToolRegistry caller as a dependency.
  * Sensitive Android actions never bypass explicit permission.
  */
 
 import { irisAgentRuntime, type IrisPlanStep } from './IrisAgentRuntime'
-import { toolRegistry } from '../tools/toolRegistry'
 
 export interface JarvisExecutionOptions {
   userId?: string
   approveSensitive?: boolean
 }
+
+export type JarvisToolCaller = (name: string, args: Record<string, any>) => Promise<any>
 
 function extractAndroidTarget(command: string): string {
   const match = command.match(/\b(?:open|launch|start)\s+(?:the\s+)?([a-z0-9][a-z0-9 ._-]{1,60}?)(?:\s+(?:app|please|now))?(?:[.!?]|$)/i)
@@ -57,7 +58,7 @@ function verifyResult(result: any): true | 'pending' | false {
 }
 
 export class IrisJarvisExecutionLoop {
-  async execute(command: string, options: JarvisExecutionOptions = {}) {
+  async execute(command: string, options: JarvisExecutionOptions = {}, callTool: JarvisToolCaller) {
     const normalized = command.trim()
     if (!normalized) throw new Error('Jarvis command cannot be empty')
 
@@ -68,7 +69,7 @@ export class IrisJarvisExecutionLoop {
       task.id,
       async (step) => {
         if (!step.tool) return { status: 'model_response_required', command: normalized }
-        return toolRegistry.callTool(step.tool, buildToolArgs(step, normalized, options.userId || 'default'))
+        return callTool(step.tool, buildToolArgs(step, normalized, options.userId || 'default'))
       },
       {
         requirePermission: async (step) => {
