@@ -2512,71 +2512,48 @@ export async function handleApiRequest(
     }
 
     if (pathname === '/api/android/capabilities' && req.method === 'GET') {
+      const bridgeRequired = [
+        'microphone', 'camera', 'location', 'notifications', 'accessibility',
+        'bluetooth', 'contacts', 'calendar', 'files', 'media_control',
+        'calls', 'messaging', 'wifi', 'mobile_data', 'battery', 'alarms', 'web_browser'
+      ]
       return sendJson(res, 200, {
         success: true,
-        capabilities: {
-          microphone: 'available',
-          camera: 'available',
-          location: 'available',
-          notifications: 'available',
-          accessibility: 'available',
-          bluetooth: 'available',
-          contacts: 'available',
-          calendar: 'available',
-          files: 'available',
-          media_control: 'available',
-          calls: 'available',
-          messaging: 'available',
-          wifi: 'available',
-          mobile_data: 'available',
-          battery: 'available',
-          alarms: 'available',
-          web_browser: 'available'
-        }
+        connected: false,
+        status: 'awaiting_bridge',
+        message: 'Android companion capabilities require a connected and permission-approved Android bridge.',
+        capabilities: Object.fromEntries(bridgeRequired.map((name) => [name, 'bridge_required']))
       })
     }
 
     if (pathname === '/api/android/telemetry' && req.method === 'GET') {
       return sendJson(res, 200, {
         success: true,
-        telemetry: {
-          manufacturer: 'Google',
-          model: 'Pixel 9 Pro (IRIS Neural Agent)',
-          androidVersion: 'Android 15',
-          sdkVersion: 35,
-          battery: { level: 88, isCharging: false, temperature: '29.4°C' },
-          network: { wifiConnected: true, networkType: 'WIFI', wifiSsid: 'IRIS-HyperNet-5G' },
-          bluetooth: { isEnabled: true, earbudsConnected: true, earbudsName: 'Pixel Buds Pro (ANC Active)' },
-          storage: { usedGb: '64.2 GB', totalGb: '256.0 GB', percentUsed: 25.1 },
-          accessibilityReady: true
-        }
+        connected: false,
+        status: 'awaiting_bridge',
+        telemetry: null,
+        message: 'No live Android telemetry is connected. No simulated device data is returned.'
       })
     }
 
     if (pathname === '/api/android/notifications' && req.method === 'GET') {
       return sendJson(res, 200, {
         success: true,
-        notifications: [
-          { id: '1', app: 'WhatsApp', title: 'Rahul', text: 'Hey, are you free for a quick sync?', time: 'Just now' },
-          { id: '2', app: 'Gmail', title: 'Google Calendar', text: 'Reminder: Project Review at 4:00 PM', time: '10m ago' },
-          { id: '3', app: 'Battery', title: 'System', text: 'Battery at 88% - Excellent health', time: '25m ago' }
-        ]
+        connected: false,
+        status: 'awaiting_bridge',
+        notifications: [],
+        message: 'Notifications require a connected Android companion bridge.'
       })
     }
 
     if (pathname === '/api/android/contacts' && (req.method === 'GET' || req.method === 'POST')) {
-      const body = req.method === 'POST' ? await parseBody(req) : {}
-      const query = (body.query || '').toLowerCase()
-      const contacts = [
-        { name: 'Rahul Sharma', phone: '+91 98765 43210', email: 'rahul.sharma@example.com' },
-        { name: 'Mom', phone: '+91 98765 11223', email: 'mom@family.internal' },
-        { name: 'Priya Patel', phone: '+91 98765 99887', email: 'priya.patel@example.com' },
-        { name: 'Alex Rivera', phone: '+1 (555) 234-5678', email: 'alex.rivera@tech.internal' }
-      ]
-      const filtered = query
-        ? contacts.filter((c) => c.name.toLowerCase().includes(query) || c.phone.includes(query))
-        : contacts
-      return sendJson(res, 200, { success: true, contacts: filtered })
+      return sendJson(res, 200, {
+        success: true,
+        connected: false,
+        status: 'awaiting_bridge',
+        contacts: [],
+        message: 'Contacts require a connected and permission-approved Android companion bridge.'
+      })
     }
 
     // 12. Unified MCP Layer Endpoints (androir-mcp #17 + Agent Search #18 + Ruflo #08)
