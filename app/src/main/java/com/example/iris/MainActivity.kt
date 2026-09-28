@@ -43,7 +43,10 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -63,10 +66,16 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     companion object {
+        private const val WEB_PERMISSION_REQUEST = 701
         private const val TAG = "IrisOCR"
-        // Production Cloud Run deployment endpoint for IRIS AI
         const val DEFAULT_BACKEND_URL = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app"
-        // Local emulator fallback
+        const val EMULATOR_BACKEND_URL = "http://10.0.2.2:3000"
+    }
+
+    companion object {
+        private const val WEB_PERMISSION_REQUEST = 701
+        private const val TAG = "IrisOCR"
+        const val DEFAULT_BACKEND_URL = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app"
         const val EMULATOR_BACKEND_URL = "http://10.0.2.2:3000"
     }
 
@@ -150,6 +159,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // Initialize Text-To-Speech engine for voice feedback
         tts = TextToSpeech(this, this)
 
+        // IRIS is one web app with a native Android capability layer.
+        // The browser/PWA runs the same UI, while this shell exposes only
+        // explicitly implemented native capabilities to the web layer.
+        setupIrisWebApp()
+
         /*
          * KEEP YOUR EXISTING UI.
          *
@@ -162,6 +176,166 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
          * ocrButton.setOnClickListener { openGalleryOCR() }
          * cameraButton.setOnClickListener { openCameraOCR() }
          */
+    }
+
+    private fun setupIrisWebApp() {
+        webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.allowFileAccess = false
+            settings.allowContentAccess = true
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                    return false
+                }
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: android.webkit.PermissionRequest) {
+                    runOnUiThread {
+                        val resources = request.resources.toSet()
+                        val permissions = mutableListOf<String>()
+                        if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE in resources) {
+                            permissions += android.Manifest.permission.RECORD_AUDIO
+                        }
+                        if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE in resources) {
+                            permissions += android.Manifest.permission.CAMERA
+                        }
+
+                        if (permissions.isEmpty()) {
+                            request.deny()
+                            return@runOnUiThread
+                        }
+
+                        val missing = permissions.filter {
+                            androidx.core.content.ContextCompat.checkSelfPermission(
+                                this@MainActivity,
+                                it
+                            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                        }
+
+                        if (missing.isEmpty()) {
+                            request.grant(resources.toTypedArray())
+                        } else {
+                            pendingWebPermissionRequest = request
+                            androidx.core.app.ActivityCompat.requestPermissions(
+                                this@MainActivity,
+                                missing.toTypedArray(),
+                                WEB_PERMISSION_REQUEST
+                            )
+                        }
+                    }
+                }
+            }
+
+            addJavascriptInterface(IrisWebBridge(this@MainActivity), "IrisAndroid")
+        }
+
+        setContentView(webView)
+
+        val webUrl = intent.getStringExtra("iris_web_url")
+            ?: BuildConfig.IRIS_WEB_APP_URL
+        webView?.loadUrl(webUrl)
+    }
+
+    private var pendingWebPermissionRequest: android.webkit.PermissionRequest? = null
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != WEB_PERMISSION_REQUEST) return
+
+        val request = pendingWebPermissionRequest
+        pendingWebPermissionRequest = null
+        if (request == null) return
+
+        val granted = grantResults.isNotEmpty() && grantResults.all {
+            it == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (granted) {
+            request.grant(request.resources)
+        } else {
+            request.deny()
+        }
+    }
+
+    @android.webkit.JavascriptInterface
+    class IrisWebBridge(private val activity: MainActivity) {
+        @android.webkit.JavascriptInterface
+        fun getPlatform(): String = "android"
+
+        @android.webkit.JavascriptInterface
+        fun getBackendUrl(): String = activity.backendBaseUrl
+
+        @android.webkit.JavascriptInterface
+        fun getCapabilities(): String = JSONObject().apply {
+            put("chat", true)
+            put("voice", true)
+            put("pwa", false)
+            put("camera", true)
+            put("gallery", true)
+            put("ocr", true)
+            put("app_control", true)
+            put("accessibility", true)
+            put("background_agent", true)
+            put("android_settings", true)
+            put("device_actions", true)
+            put("native_tts", true)
+            put("whatsapp_share", true)
+        }.toString()
+
+        @android.webkit.JavascriptInterface
+        fun openApp(appName: String): Boolean =
+            AppController.openApp(activity, appName)
+
+        @android.webkit.JavascriptInterface
+        fun openAccessibilitySettings(): Boolean =
+            AppController.openAccessibilitySettings(activity)
+
+        @android.webkit.JavascriptInterface
+        fun openAppSettings(): Boolean =
+            AppController.openAppSettings(activity, activity.packageName)
+
+        @android.webkit.JavascriptInterface
+        fun back(): Boolean = AppController.back()
+
+        @android.webkit.JavascriptInterface
+        fun home(): Boolean = AppController.home()
+
+        @android.webkit.JavascriptInterface
+        fun recents(): Boolean = AppController.recents()
+
+        @android.webkit.JavascriptInterface
+        fun openCameraOCR() {
+            activity.runOnUiThread { activity.openCameraOCR() }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun openGalleryOCR() {
+            activity.runOnUiThread { activity.openGalleryOCR() }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun startBackgroundAgent() {
+            activity.runOnUiThread { activity.startIrisBackgroundAgent() }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun stopBackgroundAgent() {
+            activity.runOnUiThread { activity.stopIrisBackgroundAgent() }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun speak(text: String) {
+            activity.runOnUiThread { activity.speakOut(text) }
+        }
+
+        @android.webkit.JavascriptInterface
+        fun shareTextToWhatsApp(message: String): Boolean =
+            AppController.shareTextToWhatsApp(activity, message)
     }
 
     override fun onDestroy() {
