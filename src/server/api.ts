@@ -2138,7 +2138,7 @@ export async function handleApiRequest(
     // 2. Mem0 Memory Endpoints
     if (pathname === '/api/memory/add' && req.method === 'POST') {
       const { text, userId, metadata, category } = await parseBody(req)
-      const uid = userId || 'usr_kumarimamta87565'
+      const uid = userId || 'local_guest'
 
       if (!text || typeof text !== 'string') {
         return sendJson(res, 400, { error: 'Missing text' })
@@ -2178,7 +2178,7 @@ export async function handleApiRequest(
 
     if (pathname === '/api/memory/search' && req.method === 'POST') {
       const { query, userId, limit = 5 } = await parseBody(req)
-      const uid = userId || 'usr_kumarimamta87565'
+      const uid = userId || 'local_guest'
 
       const client = getMem0()
       if (client) {
@@ -2214,7 +2214,7 @@ export async function handleApiRequest(
     }
 
     if (pathname === '/api/memory/all') {
-      const uid = (url.split('userId=')[1] || '').split('&')[0] || 'usr_kumarimamta87565'
+      const uid = (url.split('userId=')[1] || '').split('&')[0] || 'local_guest'
 
       const client = getMem0()
       if (client) {
@@ -2233,7 +2233,7 @@ export async function handleApiRequest(
 
     if (pathname === '/api/memory/update' && req.method === 'POST') {
       const { id, text, userId } = await parseBody(req)
-      const uid = userId || 'usr_kumarimamta87565'
+      const uid = userId || 'local_guest'
 
       const client = getMem0()
       if (client && id) {
@@ -2257,7 +2257,7 @@ export async function handleApiRequest(
 
     if (pathname === '/api/memory/delete' && req.method === 'POST') {
       const { id, userId } = await parseBody(req)
-      const uid = userId || 'usr_kumarimamta87565'
+      const uid = userId || 'local_guest'
 
       const client = getMem0()
       if (client && id) {
@@ -2276,7 +2276,7 @@ export async function handleApiRequest(
 
     if (pathname === '/api/memory/clear' && req.method === 'POST') {
       const { userId } = await parseBody(req)
-      const uid = userId || 'usr_kumarimamta87565'
+      const uid = userId || 'local_guest'
 
       const client = getMem0()
       if (client) {
