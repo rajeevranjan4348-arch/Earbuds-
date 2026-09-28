@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             addJavascriptInterface(IrisWebBridge(this@MainActivity), "IrisAndroid")
         }
 
-        setContentView(webView)
+        setContentView(webView ?: return)
 
         val webUrl = intent.getStringExtra("iris_web_url")
             ?: DEFAULT_WEB_APP_URL
