@@ -664,7 +664,7 @@ export class ToolRegistry {
       },
       permissionLevel: 'standard',
       timeoutMs: 45000,
-      execute: async (args) => irisJarvisExecutionLoop.execute(args.command, { userId: args.userId, approveSensitive: args.approveSensitive === true })
+      execute: async (args) => irisJarvisExecutionLoop.execute(args.command, { userId: args.userId, approveSensitive: args.approveSensitive === true }, (name, toolArgs) => this.callTool(name, toolArgs))
     })
 
     // 25. Android Companion Hub
