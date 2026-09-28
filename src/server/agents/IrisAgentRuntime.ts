@@ -399,7 +399,7 @@ export class IrisAgentRuntime {
     this.stopped = true
     for (const controller of this.activeExecutions.values()) controller.abort()
     for (const task of this.tasks.values()) {
-      if (task.status === 'executing' || task.status === 'planning' || task.status === 'awaiting_permission') {
+      if (task.status === 'executing' || task.status === 'planning' || task.status === 'awaiting_permission' || task.status === 'awaiting_external') {
         task.status = 'cancelled'
         task.error = reason
         task.updatedAt = now()
