@@ -67,6 +67,11 @@ const sendJson = (res: ServerResponse, status: number, payload: unknown): void =
   res.end(body)
 }
 
+function isLoopbackRequest(req: IncomingMessage): boolean {
+  const address = req.socket.remoteAddress || ''
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1'
+}
+
 function readBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolvePromise) => {
     const chunks: Buffer[] = []
@@ -128,6 +133,14 @@ export function createIrisServer(options: IrisServerOptions): Server {
       // ---- Runtime configuration (never returns key material) ----
       if (url.startsWith('/api/keys')) {
         if (req.method === 'POST') {
+          // Runtime secrets are only mutable from the local machine. Remote/public
+          // callers must use deployment environment variables instead.
+          if (!isLoopbackRequest(req)) {
+            return sendJson(res, 403, {
+              success: false,
+              error: 'Runtime key updates are restricted to local server access.'
+            })
+          }
           const body = await readBody(req)
           applyRuntimeKeys(body || {})
           return sendJson(res, 200, { success: true, configured: getRuntimeKeyStatus() })
