@@ -34,6 +34,7 @@ import { irisBackgroundSessionManager } from '../agents/IrisBackgroundSessionMan
 import { irisJarvisExecutionLoop } from '../agents/IrisJarvisExecutionLoop'
 import { unifiedMemory } from '../memory/unifiedMemory'
 import { cogneeMemory } from '../memory/cogneeMemory'
+import { skillOptAdapter } from '../skills/skillOptAdapter'
 
 export interface UnifiedTool {
   name: string
@@ -1083,6 +1084,53 @@ export class ToolRegistry {
       execute: async (args) => gstackRouter.executeSkill('decision_ledger', args)
     })
   }
+
+    // 43. Microsoft SkillOpt — self-optimizing agent skill bridge
+    this.tools.set('skillopt_status', {
+      name: 'skillopt_status',
+      description: 'Checks whether the optional Microsoft SkillOpt runtime is available for this Iris environment.',
+      parameters: { type: 'OBJECT', properties: {} },
+      permissionLevel: 'standard',
+      timeoutMs: 3000,
+      execute: async () => skillOptAdapter.getStatus()
+    })
+
+    this.tools.set('skillopt_train', {
+      name: 'skillopt_train',
+      description: 'Runs Microsoft SkillOpt training against a local skill/config using bounded edits and the validation gate.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          config: { type: 'STRING', description: 'Relative SkillOpt config path in the workspace.' },
+          numEpochs: { type: 'NUMBER' },
+          batchSize: { type: 'NUMBER' },
+          seed: { type: 'NUMBER' },
+          useGate: { type: 'BOOLEAN' },
+          outRoot: { type: 'STRING', description: 'Relative output directory.' }
+        },
+        required: ['config']
+      },
+      permissionLevel: 'sensitive',
+      timeoutMs: 900000,
+      execute: async (args) => skillOptAdapter.train(args)
+    })
+
+    this.tools.set('skillopt_eval', {
+      name: 'skillopt_eval',
+      description: 'Evaluates a SkillOpt skill document on a configured validation/test split.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          config: { type: 'STRING', description: 'Relative SkillOpt config path in the workspace.' },
+          skill: { type: 'STRING', description: 'Relative skill Markdown path in the workspace.' },
+          split: { type: 'STRING', enum: ['train', 'valid_seen', 'valid_unseen', 'all'] }
+        },
+        required: ['config', 'skill']
+      },
+      permissionLevel: 'standard',
+      timeoutMs: 600000,
+      execute: async (args) => skillOptAdapter.evaluate(args)
+    })
 
   public getToolDefinitions() {
     return Array.from(this.tools.values()).map((t) => ({
