@@ -5,6 +5,9 @@
   "description": "IRIS is not another chatbot you type at. It is an intelligent Voice-First Operating Layer that gives you complete, hands-free authority over your digital environment. It lives on your desktop, watches your workflow, and executes your intent instantly.",
   "author": "Harsh Pandey",
   "homepage": "https://irisxhq.vercel.app",
+  "engines": {
+    "node": ">=20.19.0 <23"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "dev:electron": "electron-vite dev",
