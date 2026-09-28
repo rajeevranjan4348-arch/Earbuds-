@@ -70,6 +70,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         private const val TAG = "IrisOCR"
         const val DEFAULT_BACKEND_URL = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app"
         const val EMULATOR_BACKEND_URL = "http://10.0.2.2:3000"
+        // The Android shell loads the same deployable web app as the browser/PWA.
+        // Override with the intent extra "iris_web_url" for staging/local testing.
+        const val DEFAULT_WEB_APP_URL = "https://irisxx.netlify.app"
     }
 
     companion object {
@@ -234,7 +237,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         setContentView(webView)
 
         val webUrl = intent.getStringExtra("iris_web_url")
-            ?: BuildConfig.IRIS_WEB_APP_URL
+            ?: DEFAULT_WEB_APP_URL
         webView?.loadUrl(webUrl)
     }
 
