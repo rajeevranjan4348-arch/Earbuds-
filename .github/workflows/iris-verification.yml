@@ -16,16 +16,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: "20.x"
           package-manager-cache: false
+
       - name: Install dependencies
         run: npm install
-      - name: Typecheck
-        run: npm run typecheck
+
       - name: Web build
         run: npm run build
+
       - name: Server build
         run: npm run build:server
+
+      - name: Typecheck
+        run: npm run typecheck
