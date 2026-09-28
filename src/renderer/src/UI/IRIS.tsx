@@ -156,7 +156,6 @@ const IRIS = ({
     { id: 'MAPS', label: 'Maps', icon: <RiCompass3Line size={16} /> },
     { id: 'NOTES', label: 'Notes', icon: <RiFolderOpenLine size={16} /> },
     { id: 'GALLERY', label: 'Gallery', icon: <RiImageLine size={16} /> },
-    { id: 'PHONE', label: 'Mobile', icon: <RiPhoneLine size={16} /> },
     { id: 'SETTINGS', label: 'Settings', icon: <RiSettings4Line size={16} /> }
   ]
 
