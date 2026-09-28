@@ -25,6 +25,7 @@ export type IrisAdvancedFeatureId =
   | 'naturalAndroidAutomation'
   | 'researchModeV2'
   | 'irisDeveloperMode'
+  | 'selfImprovingSkills'
 
 export interface IrisAdvancedFeature {
   id: IrisAdvancedFeatureId
@@ -73,7 +74,8 @@ const FEATURES: IrisAdvancedFeature[] = [
   ['taskTimeline', 'ready', 'Command → plan → tool → result → verification lifecycle events.'],
   ['naturalAndroidAutomation', 'ready', 'Permission-aware app/UI automation through existing Android controller adapters.'],
   ['researchModeV2', 'ready', 'Fresh multi-source research with citation and contradiction-check hooks.'],
-  ['irisDeveloperMode', 'ready', 'Repository analysis, diagnostics, patch, verification and GitHub workflow contract.']
+  ['irisDeveloperMode', 'ready', 'Repository analysis, diagnostics, patch, verification and GitHub workflow contract.'],
+  ['selfImprovingSkills', 'ready', 'Microsoft SkillOpt-compatible bounded skill optimization with validation-gated updates through an optional local runner.']
 ].map(([id, status, description]) => ({ id: id as IrisAdvancedFeatureId, enabled: true, status: status as IrisAdvancedFeature['status'], description }))
 
 export class IrisAdvancedFeatureRuntime {
