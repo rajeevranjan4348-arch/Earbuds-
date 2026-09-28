@@ -348,7 +348,7 @@ class AgentClientService {
    */
   public async fetchRegisteredAgents(): Promise<any[]> {
     try {
-      const res = await fetch(irisApiUrl('/api/agents/registry')
+      const res = await fetch(irisApiUrl('/api/agents/registry'))
       const data = await res.json()
       return data.agents || []
     } catch (_e) {
