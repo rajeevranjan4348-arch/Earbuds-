@@ -35,16 +35,6 @@ export default defineConfig({
         orientation: 'portrait-primary',
         prefer_related_applications: false,
         categories: ['productivity', 'utilities', 'communication'],
-                icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
-          },
-          {
-            name: 'Open Voice Mode',
-            short_name: 'Voice Mode',
-            description: 'Open IRIS voice mode',
-            url: '/?source=pwa-voice',
-            icons: [{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' }]
-          }
-        ],
         icons: [
           {
             src: '/pwa-192x192.png',
