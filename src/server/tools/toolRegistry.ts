@@ -1083,7 +1083,6 @@ export class ToolRegistry {
       timeoutMs: 10000,
       execute: async (args) => gstackRouter.executeSkill('decision_ledger', args)
     })
-  }
 
     // 43. Microsoft SkillOpt — self-optimizing agent skill bridge
     this.tools.set('skillopt_status', {
@@ -1131,6 +1130,7 @@ export class ToolRegistry {
       timeoutMs: 600000,
       execute: async (args) => skillOptAdapter.evaluate(args)
     })
+  }
 
   public getToolDefinitions() {
     return Array.from(this.tools.values()).map((t) => ({
