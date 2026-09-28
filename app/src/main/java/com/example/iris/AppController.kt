@@ -114,10 +114,10 @@ object AppController {
         false
     }
 
-    fun back() = IrisAccessibilityService.performGlobalBack()
-    fun home() = IrisAccessibilityService.performGlobalHome()
-    fun recents() = IrisAccessibilityService.performGlobalRecents()
-    fun tapText(text: String) = IrisAccessibilityService.tapText(text)
-    fun scrollForward() = IrisAccessibilityService.scrollForward()
-    fun scrollBackward() = IrisAccessibilityService.scrollBackward()
+    fun back(): Boolean = IrisAccessibilityService.instance?.performBack() == true
+    fun home(): Boolean = IrisAccessibilityService.instance?.performHome() == true
+    fun recents(): Boolean = IrisAccessibilityService.instance?.performRecents() == true
+    fun tapText(text: String): Boolean = IrisAccessibilityService.instance?.clickText(text) == true
+    fun scrollForward(): Boolean = IrisAccessibilityService.instance?.scroll(IrisAccessibilityService.Direction.DOWN) == true
+    fun scrollBackward(): Boolean = IrisAccessibilityService.instance?.scroll(IrisAccessibilityService.Direction.UP) == true
 }
