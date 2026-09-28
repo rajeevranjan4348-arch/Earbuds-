@@ -22,8 +22,3 @@
   status = 200
 
 # Keep the web app static while forwarding its backend API to the Node server.
-[[redirects]]
-  from = "/api/*"
-  to = "https://ais-dev-v6qls647mkdck4kaertlpk-368786169701.asia-southeast1.run.app/api/:splat"
-  status = 200
-  force = true
