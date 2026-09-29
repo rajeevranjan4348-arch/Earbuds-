@@ -1,3 +1,6 @@
+import java.util.Base64
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -29,7 +32,7 @@ android {
             ) {
                 val keystoreFile = project.layout.buildDirectory.file("iris-release.jks").get().asFile
                 keystoreFile.parentFile?.mkdirs()
-                keystoreFile.writeBytes(java.util.Base64.getDecoder().decode(keystoreBase64))
+                keystoreFile.writeBytes(Base64.getDecoder().decode(keystoreBase64))
                 storeFile = keystoreFile
                 storePassword = keystorePassword
                 keyAlias = keyAliasEnv
@@ -59,7 +62,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 dependencies {
@@ -70,4 +78,4 @@ dependencies {
     implementation("com.google.mlkit:text-recognition:16.0.1")
 }
 
-// Iris APK CI: keep the native Android build independent from the web build.
+// Iris APK CI: native Android build stays independent from the web build.
