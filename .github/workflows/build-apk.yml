@@ -9,6 +9,7 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/build-apk.yml"
+      - "src/renderer/**"
   pull_request:
     branches: ["main"]
     paths:
