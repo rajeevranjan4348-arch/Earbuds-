@@ -162,7 +162,7 @@ object IrisActionEngine {
 
             is IrisAction.Scroll -> {
                 IrisAccessibilityService.instance
-                    ?.scroll(action.direction)
+                    ?.scroll(IrisAccessibilityService.Direction.valueOf(action.direction.name))
 
                 nextDelayed()
             }
