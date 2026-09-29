@@ -24,11 +24,11 @@ class IrisBackgroundService : Service() {
         private const val CHANNEL_ID = "iris_background_agent"
         private const val NOTIFICATION_ID = 7401
 
-        fun startIntent(service: Service): Intent =
-            Intent(service, IrisBackgroundService::class.java).setAction(ACTION_START)
+        fun startIntent(context: android.content.Context): Intent =
+            Intent(context, IrisBackgroundService::class.java).setAction(ACTION_START)
 
-        fun stopIntent(service: Service): Intent =
-            Intent(service, IrisBackgroundService::class.java).setAction(ACTION_STOP)
+        fun stopIntent(context: android.content.Context): Intent =
+            Intent(context, IrisBackgroundService::class.java).setAction(ACTION_STOP)
     }
 
     override fun onCreate() {
