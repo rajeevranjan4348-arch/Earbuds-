@@ -117,27 +117,43 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      {/* Dynamic Audio Reactivity Wave Rings when Listening */}
+      {/* Dynamic Audio Reactivity Wave Rings & Multi-Color Halo when Listening */}
       <AnimatePresence>
         {isListening && (
           <>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{
-                scale: 1 + audioLevel * 0.9,
-                opacity: 0.35 + audioLevel * 0.45
+                scale: 1 + audioLevel * 1.5,
+                opacity: 0.35 + audioLevel * 0.55,
+                backgroundColor:
+                  audioLevel > 0.75
+                    ? 'rgba(244, 63, 94, 0.45)'
+                    : audioLevel > 0.40
+                      ? 'rgba(245, 158, 11, 0.45)'
+                      : audioLevel > 0.18
+                        ? 'rgba(6, 182, 212, 0.45)'
+                        : 'rgba(16, 185, 129, 0.45)'
               }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-              className="absolute inset-0 rounded-xl bg-emerald-500/30 blur-sm pointer-events-none"
+              className="absolute inset-0 rounded-2xl blur-md pointer-events-none"
             />
             <motion.div
               animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.3, 0.6, 0.3]
+                scale: [1, 1.25 + audioLevel * 0.6, 1],
+                opacity: [0.3, 0.7, 0.3],
+                borderColor:
+                  audioLevel > 0.75
+                    ? '#f43f5e'
+                    : audioLevel > 0.40
+                      ? '#f59e0b'
+                      : audioLevel > 0.18
+                        ? '#06b6d4'
+                        : '#34d399'
               }}
-              transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
-              className="absolute -inset-1 rounded-2xl border border-emerald-400/40 pointer-events-none"
+              transition={{ repeat: Infinity, duration: Math.max(0.6, 1.6 - audioLevel * 1.0), ease: 'easeInOut' }}
+              className="absolute -inset-1.5 rounded-2xl border-2 pointer-events-none"
             />
           </>
         )}
@@ -153,9 +169,15 @@ export const MicrophoneInputButton: React.FC<MicrophoneInputButtonProps> = ({
         onMouseLeave={handleMouseUp}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className={`relative flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer select-none z-10 ${buttonPaddings[size]} ${
+        className={`relative flex items-center justify-center rounded-xl border transition-all duration-150 cursor-pointer select-none z-10 ${buttonPaddings[size]} ${
           isListening
-            ? 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] font-bold'
+            ? audioLevel > 0.75
+              ? 'bg-rose-500 text-white border-rose-300 shadow-[0_0_25px_rgba(244,63,94,0.8)] font-bold'
+              : audioLevel > 0.40
+                ? 'bg-amber-400 text-black border-amber-300 shadow-[0_0_22px_rgba(245,158,11,0.7)] font-bold'
+                : audioLevel > 0.18
+                  ? 'bg-cyan-400 text-black border-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.6)] font-bold'
+                  : 'bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] font-bold'
             : isProcessing
               ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40 animate-pulse'
               : isDenied

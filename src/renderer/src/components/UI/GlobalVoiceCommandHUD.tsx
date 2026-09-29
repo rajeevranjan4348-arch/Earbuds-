@@ -110,14 +110,20 @@ export const GlobalVoiceCommandHUD: React.FC<GlobalVoiceCommandHUDProps> = ({
         {/* Master Microphone Button */}
         <button
           onClick={toggleConnection}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl font-mono text-xs font-bold transition-all duration-150 cursor-pointer ${
             !isConnected
               ? 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/10'
               : isSpeaking
                 ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)]'
                 : isMuted
                   ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/40'
-                  : 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]'
+                  : micLevel > 0.65
+                    ? 'bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.7)]'
+                    : micLevel > 0.35
+                      ? 'bg-amber-400 text-black shadow-[0_0_18px_rgba(245,158,11,0.6)]'
+                      : micLevel > 0.15
+                        ? 'bg-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+                        : 'bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.5)]'
           }`}
           title={isConnected ? 'Disconnect Microphone' : 'Connect Microphone & Listen for Commands'}
         >
@@ -138,33 +144,34 @@ export const GlobalVoiceCommandHUD: React.FC<GlobalVoiceCommandHUDProps> = ({
                 ? 'IRIS Speaking'
                 : isMuted
                   ? 'Mic Muted'
-                  : 'Listening...'}
+                  : micLevel > 0.65
+                    ? 'Loud Input!'
+                    : 'Listening...'}
           </span>
         </button>
 
-        {/* Real-time Visualizer Waves when connected */}
+        {/* Real-time Visualizer Waves with Volume-Driven Spectrum Colors */}
         {isConnected && !isMuted && (
-          <div className="flex items-center gap-0.5 px-2 py-1">
-            <span
-              className="w-1 bg-emerald-400 rounded-full transition-all duration-75"
-              style={{ height: `${Math.max(6, (levelPercent / 100) * 22)}px` }}
-            />
-            <span
-              className="w-1 bg-emerald-400 rounded-full transition-all duration-75"
-              style={{ height: `${Math.max(8, (levelPercent / 100) * 28)}px` }}
-            />
-            <span
-              className="w-1 bg-emerald-400 rounded-full transition-all duration-75"
-              style={{ height: `${Math.max(12, (levelPercent / 100) * 32)}px` }}
-            />
-            <span
-              className="w-1 bg-emerald-400 rounded-full transition-all duration-75"
-              style={{ height: `${Math.max(8, (levelPercent / 100) * 24)}px` }}
-            />
-            <span
-              className="w-1 bg-emerald-400 rounded-full transition-all duration-75"
-              style={{ height: `${Math.max(6, (levelPercent / 100) * 18)}px` }}
-            />
+          <div className="flex items-end gap-0.5 px-2 py-1 h-7">
+            {[22, 28, 32, 24, 18].map((maxH, idx) => {
+              const barBg =
+                micLevel > 0.65
+                  ? 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+                  : micLevel > 0.35
+                    ? 'bg-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.7)]'
+                    : micLevel > 0.15
+                      ? 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]'
+                      : 'bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+              const factor = [0.8, 1.1, 1.3, 0.9, 0.7][idx]
+              const barH = Math.max(5, (levelPercent / 100) * maxH * factor)
+              return (
+                <span
+                  key={idx}
+                  className={`w-1 rounded-full ${barBg} transition-all duration-75`}
+                  style={{ height: `${barH}px` }}
+                />
+              )
+            })}
           </div>
         )}
 

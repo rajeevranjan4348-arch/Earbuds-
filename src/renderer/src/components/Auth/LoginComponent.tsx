@@ -72,6 +72,8 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({
         message = 'Password should be at least 6 characters.'
       } else if (err.code === 'auth/invalid-email') {
         message = 'Please provide a valid email address.'
+      } else if (err.code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
+        message = 'Network request failed. Operating in local mode with persistent cached profile.'
       }
       setErrorMsg(message)
     } finally {
@@ -100,7 +102,9 @@ export const LoginComponent: React.FC<LoginComponentProps> = ({
       }
     } catch (err: any) {
       console.error('[LoginComponent] Google sign in failed:', err)
-      if (err.code !== 'auth/popup-closed-by-user') {
+      if (err.code === 'auth/network-request-failed' || err.message?.includes('network-request-failed')) {
+        setErrorMsg('Network request failed contacting auth server. Active persistent profile remains loaded.')
+      } else if (err.code !== 'auth/popup-closed-by-user') {
         setErrorMsg(err.message || 'Google authentication could not be completed.')
       }
     } finally {

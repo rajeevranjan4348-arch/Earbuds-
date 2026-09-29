@@ -338,6 +338,25 @@ export async function handleApiRequest(
       })
     }
 
+    // 1b. Android APK Download endpoint
+    if (pathname === '/api/download/apk' || pathname === '/api/download/android-apk') {
+      const fs = await import('fs')
+      const path = await import('path')
+      const apkPath = path.resolve('public/downloads/iris.apk')
+      if (fs.existsSync(apkPath)) {
+        const stat = fs.statSync(apkPath)
+        res.writeHead(200, {
+          'Content-Type': 'application/vnd.android.package-archive',
+          'Content-Length': stat.size,
+          'Content-Disposition': 'attachment; filename="IRIS-AI.apk"',
+          'Cache-Control': 'no-cache'
+        })
+        const stream = fs.createReadStream(apkPath)
+        stream.pipe(res)
+        return
+      }
+    }
+
     // ============================================================
     // JARVIS CENTRAL AGENT, DIAGNOSTICS & PERMISSION API LAYER
     // ============================================================

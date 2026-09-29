@@ -184,15 +184,23 @@ export const GeminiLiveVoiceBar: React.FC<GeminiLiveVoiceBarProps> = ({
           )}
         </div>
 
-        {/* Real-time Decibel Bars */}
-        <div className="flex items-end gap-1 h-4 px-2 py-0.5 bg-black/60 rounded-full border border-emerald-500/20 shrink-0">
+        {/* Real-time Decibel Bars with Volume-Based Color Shift */}
+        <div className="flex items-end gap-1 h-4 px-2 py-0.5 bg-black/60 rounded-full border border-white/10 shrink-0">
           {[0.6, 1.2, 0.8, 1.5, 1.0, 1.3, 0.7, 1.1].map((factor, idx) => {
-            const level = Math.max(0.15, audioLevel || 0.2)
+            const level = Math.max(0.12, audioLevel || 0.15)
             const barH = Math.max(3, Math.min(14, level * 20 * factor))
+            const barBg =
+              level > 0.65
+                ? 'bg-rose-400'
+                : level > 0.35
+                ? 'bg-amber-400'
+                : level > 0.18
+                ? 'bg-cyan-400'
+                : 'bg-emerald-400'
             return (
               <span
                 key={idx}
-                className="w-1 rounded-full bg-emerald-400 transition-all duration-75"
+                className={`w-1 rounded-full ${barBg} transition-all duration-75`}
                 style={{ height: `${barH}px` }}
               />
             )

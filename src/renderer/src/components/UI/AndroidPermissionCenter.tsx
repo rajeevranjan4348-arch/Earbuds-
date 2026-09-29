@@ -21,10 +21,13 @@ import {
   RiExternalLinkLine,
   RiRefreshLine,
   RiShieldCheckLine,
-  RiSettings4Line
+  RiSettings4Line,
+  RiDownload2Line
 } from 'react-icons/ri'
+import { FaAndroid } from 'react-icons/fa6'
 import { permissionManager } from '../../services/androidAgent/PermissionManager'
 import { PermissionName, PermissionState } from '../../services/androidAgent/types'
+import { AndroidApkDownloadModal } from './AndroidApkDownloadModal'
 
 interface PermissionItemDef {
   id: PermissionName
@@ -106,6 +109,7 @@ export const AndroidPermissionCenter: React.FC<{ className?: string }> = ({ clas
   )
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const [actionNotice, setActionNotice] = useState<string | null>(null)
+  const [showApkModal, setShowApkModal] = useState<boolean>(false)
 
   const refreshLiveState = useCallback(async () => {
     setIsRefreshing(true)
@@ -185,15 +189,30 @@ export const AndroidPermissionCenter: React.FC<{ className?: string }> = ({ clas
           </div>
         </div>
 
-        <button
-          onClick={refreshLiveState}
-          disabled={isRefreshing}
-          className="self-start sm:self-center px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-        >
-          <RiRefreshLine size={14} className={isRefreshing ? 'animate-spin' : ''} />
-          Sync Live State
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            onClick={() => setShowApkModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold text-emerald-400 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+          >
+            <FaAndroid size={14} />
+            <span>Download APK</span>
+          </button>
+
+          <button
+            onClick={refreshLiveState}
+            disabled={isRefreshing}
+            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-zinc-300 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <RiRefreshLine size={14} className={isRefreshing ? 'animate-spin' : ''} />
+            Sync Live State
+          </button>
+        </div>
       </div>
+
+      <AndroidApkDownloadModal
+        isOpen={showApkModal}
+        onClose={() => setShowApkModal(false)}
+      />
 
       {actionNotice && (
         <motion.div

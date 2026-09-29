@@ -24,10 +24,12 @@ import {
   RiSparklingLine,
   RiTranslate,
   RiUploadCloud2Line,
-  RiShieldCheckLine
+  RiShieldCheckLine,
+  RiDownload2Line
 } from 'react-icons/ri'
 import { sendMessageToExistingAI } from '../services/VoiceRecognition'
 import { ocrService } from '../services/ocrService'
+import { AndroidApkDownloadModal } from '../components/UI/AndroidApkDownloadModal'
 
 const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
   const [ip, setIp] = useState(() => localStorage.getItem('iris_adb_ip') || '')
@@ -37,6 +39,7 @@ const PhoneView = ({ glassPanel }: { glassPanel?: string }) => {
   const [errorMsg, setErrorMsg] = useState('')
   const [deviceHistory, setDeviceHistory] = useState<any[]>([])
   const [copied, setCopied] = useState(false)
+  const [showApkModal, setShowApkModal] = useState(false)
 
   // OCR Vision Bridge State
   const [showOcrModal, setShowOcrModal] = useState(false)
@@ -860,6 +863,34 @@ Signature: Équipe Iris Core`
           <span className="text-orange-500">TEMP: {telemetry.battery.temp}°C</span>
         </div>
 
+        {/* Download Android APK Banner Card */}
+        <div className="p-3.5 mb-3 rounded-2xl bg-gradient-to-br from-emerald-950/60 to-zinc-950/80 border border-emerald-500/30 flex flex-col gap-2.5 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FaAndroid className="text-emerald-400 w-5 h-5" />
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">IRIS ANDROID APK</h4>
+                <p className="text-[10px] text-zinc-400 font-mono">v1.0.0 • com.example.iris</p>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-semibold border border-emerald-500/30">
+              .APK
+            </span>
+          </div>
+
+          <p className="text-[11px] text-zinc-300 leading-snug">
+            Download the native Android APK package for hardware control, background agent, OCR, and hands-free voice authority.
+          </p>
+
+          <button
+            onClick={() => setShowApkModal(true)}
+            className="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer active:scale-98"
+          >
+            <RiDownload2Line className="w-4 h-4" />
+            <span>DOWNLOAD ANDROID APK</span>
+          </button>
+        </div>
+
         {/* Mobile Access Permissions Quick Access Button */}
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('iris:open-mobile-permissions'))}
@@ -873,6 +904,11 @@ Signature: Équipe Iris Core`
             MANAGE
           </span>
         </button>
+
+        <AndroidApkDownloadModal
+          isOpen={showApkModal}
+          onClose={() => setShowApkModal(false)}
+        />
 
         <h3 className="text-fuchsia-500 font-bold tracking-widest text-xs sm:text-sm text-center my-3 sm:my-6 drop-shadow-[0_0_10px_rgba(217,70,239,0.5)]">
           DEVICE TELEMETRY

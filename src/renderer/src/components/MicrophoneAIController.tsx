@@ -21,10 +21,19 @@ export default function MicrophoneAIController({
   const [processing, setProcessing] = useState(false);
   const [denied, setDenied] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [audioLevel, setAudioLevel] = useState(0);
 
   const recognitionRef = useRef<any>(null);
   const processingRef = useRef(false);
   const mountedRef = useRef(true);
+
+  useEffect(() => {
+    microphoneHandler.configure({
+      onAudioLevel: (lvl) => {
+        if (mountedRef.current) setAudioLevel(lvl);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -247,6 +256,25 @@ export default function MicrophoneAIController({
 
   return (
     <div className="relative inline-flex items-center justify-center">
+      {/* Dynamic Volume-Reactive Pulsing Outer Halo when Listening */}
+      {listening && (
+        <div
+          className="absolute inset-0 rounded-2xl blur-md pointer-events-none transition-all duration-100"
+          style={{
+            transform: `scale(${1 + audioLevel * 1.4})`,
+            opacity: 0.35 + audioLevel * 0.55,
+            backgroundColor:
+              audioLevel > 0.75
+                ? 'rgba(244, 63, 94, 0.5)'
+                : audioLevel > 0.40
+                ? 'rgba(245, 158, 11, 0.5)'
+                : audioLevel > 0.18
+                ? 'rgba(6, 182, 212, 0.5)'
+                : 'rgba(16, 185, 129, 0.5)'
+          }}
+        />
+      )}
+
       <button
         type="button"
         onClick={toggleMic}
@@ -260,13 +288,19 @@ export default function MicrophoneAIController({
             ? "IRIS is listening... Click to stop"
             : "Click to speak with IRIS AI Core"
         }
-        className={`relative inline-flex items-center justify-center rounded-xl border transition-all duration-200 cursor-pointer select-none focus:outline-none ${sizeClasses[size]} ${
+        className={`relative inline-flex items-center justify-center rounded-xl border transition-all duration-150 cursor-pointer select-none focus:outline-none z-10 ${sizeClasses[size]} ${
           denied
             ? "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20"
             : processing
             ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400 animate-pulse cursor-wait"
             : listening
-            ? "bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] font-bold animate-pulse"
+            ? audioLevel > 0.75
+              ? "bg-rose-500 text-white border-rose-300 shadow-[0_0_25px_rgba(244,63,94,0.8)] font-bold"
+              : audioLevel > 0.40
+              ? "bg-amber-400 text-black border-amber-300 shadow-[0_0_22px_rgba(245,158,11,0.7)] font-bold"
+              : audioLevel > 0.18
+              ? "bg-cyan-400 text-black border-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.6)] font-bold"
+              : "bg-emerald-500 text-black border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)] font-bold"
             : "bg-white/5 border-white/10 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-white/10 active:scale-95"
         } ${className}`}
       >

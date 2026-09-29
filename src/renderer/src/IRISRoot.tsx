@@ -8,6 +8,7 @@ import { gestureRecognitionService } from './services/gestureRecognitionService'
 import { soundEffects } from './services/soundEffectsService'
 import { LauncherModal, launchManager } from './launcher'
 import { VoiceCommandToastHUD } from './components/UI/VoiceCommandToastHUD'
+import { GlobalVoiceCommandHUD } from './components/UI/GlobalVoiceCommandHUD'
 import { AgentPermissionDialog } from './components/AgentPermissionDialog'
 import { CameraPreviewModal } from './components/UI/CameraPreviewModal'
 import { MobileAccessPermissionsModal } from './components/UI/MobileAccessPermissionsModal'
@@ -214,6 +215,12 @@ const IndexRoot = () => {
       }
     }
 
+    const handleRunVoiceCmd = (e: any) => {
+      if (e.detail?.text) {
+        submitVoicePrompt(e.detail.text)
+      }
+    }
+
     window.addEventListener('iris:navigate', handleNavEvent)
     window.addEventListener('iris:vision-mode', handleVisionEvent)
     window.addEventListener('iris:open-camera', handleCameraModalEvent)
@@ -222,6 +229,7 @@ const IndexRoot = () => {
     window.addEventListener('iris:open-mic-listener', handleMicListenerEvent)
     window.addEventListener('iris:open-app-controller', handleAppControllerOpen)
     window.addEventListener('iris:toggle-app-controller', handleAppControllerToggle)
+    window.addEventListener('iris:run-voice-command', handleRunVoiceCmd)
     window.addEventListener('keydown', handleKeyNav)
 
     return () => {
@@ -233,9 +241,10 @@ const IndexRoot = () => {
       window.removeEventListener('iris:open-mic-listener', handleMicListenerEvent)
       window.removeEventListener('iris:open-app-controller', handleAppControllerOpen)
       window.removeEventListener('iris:toggle-app-controller', handleAppControllerToggle)
+      window.removeEventListener('iris:run-voice-command', handleRunVoiceCmd)
       window.removeEventListener('keydown', handleKeyNav)
     }
-  }, [])
+  }, [submitVoicePrompt])
 
   // Register all system shortcut action handlers
   useEffect(() => {
@@ -497,6 +506,21 @@ const IndexRoot = () => {
         />
 
         {/* Global Voice Command Listener HUD */}
+        <GlobalVoiceCommandHUD
+          isConnected={isConnected}
+          isListening={isListening}
+          isSpeaking={isSpeaking}
+          isMuted={isMuted}
+          interimTranscript={interimTranscript}
+          lastFinalTranscript={lastFinalTranscript}
+          micLevel={micLevel}
+          statusMessage={statusMessage}
+          toggleConnection={toggleConnection}
+          toggleMute={toggleMute}
+          stopSpeaking={stopSpeaking}
+          submitVoicePrompt={submitVoicePrompt}
+          onOpenAppController={() => setIsAppControllerOpen(true)}
+        />
       </main>
     </div>
   )

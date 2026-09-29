@@ -74,6 +74,7 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
   const smoothedLvlRef = useRef<number>(0)
   const phaseRef = useRef<number>(0)
   const particlesRef = useRef<Particle[]>([])
+  const lastDecibelCalcTimeRef = useRef<number>(0)
 
   // Setup internal Web Audio Analyser if stream is provided directly
   useEffect(() => {
@@ -158,11 +159,26 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       }
     }
     if (isListening) {
+      const volColor =
+        audioLevel > 0.65
+          ? '#f43f5e'
+          : audioLevel > 0.35
+          ? '#f59e0b'
+          : audioLevel > 0.15
+          ? '#06b6d4'
+          : accentColor || '#00ff41'
       return {
-        primary: accentColor || '#00ff41',
-        glow: accentColor ? `${accentColor}40` : 'rgba(0, 255, 65, 0.45)',
-        label: 'LISTENING',
-        border: 'border-emerald-500/30'
+        primary: volColor,
+        glow: `${volColor}55`,
+        label: audioLevel > 0.65 ? 'PEAK INPUT' : 'LISTENING',
+        border:
+          audioLevel > 0.65
+            ? 'border-rose-500/50'
+            : audioLevel > 0.35
+            ? 'border-amber-500/40'
+            : audioLevel > 0.15
+            ? 'border-cyan-500/40'
+            : 'border-emerald-500/30'
       }
     }
     return {
@@ -220,8 +236,6 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       }
     }
 
-    let lastDecibelCalcTime = 0
-
     const render = () => {
       if (document.hidden) {
         animFrameRef.current = requestAnimationFrame(render)
@@ -255,13 +269,16 @@ export const RealtimeAudioVisualizer: React.FC<RealtimeAudioVisualizerProps> = (
       smoothedLvlRef.current += (targetVol - smoothedLvlRef.current) * 0.2
       const lvl = smoothedLvlRef.current
 
-      // Update decibels every 100ms
+      // Update decibels every 200ms
       const now = performance.now()
-      if (now - lastDecibelCalcTime > 100) {
-        lastDecibelCalcTime = now
+      if (now - lastDecibelCalcTimeRef.current > 200) {
+        lastDecibelCalcTimeRef.current = now
         const computedDb = Math.round(lvl > 0.01 ? 20 * Math.log10(lvl) : -60)
-        setDecibels(computedDb)
-        setPeakLevel((prev) => Math.max(lvl, prev * 0.94))
+        setDecibels((prev) => (Math.abs(prev - computedDb) >= 2 ? computedDb : prev))
+        setPeakLevel((prev) => {
+          const nextPeak = Math.max(lvl, prev * 0.94)
+          return Math.abs(prev - nextPeak) > 0.05 ? nextPeak : prev
+        })
       }
 
       const motionFactor = prefersReducedMotion ? 0.35 : 1.0

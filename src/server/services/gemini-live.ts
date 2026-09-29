@@ -54,7 +54,6 @@ export interface AudioStreamSession {
 
 export class GeminiLiveService {
   private client: GoogleGenAI | null = null
-  private clientKey = ''
   private activeSessions: Map<string, AudioStreamSession> = new Map()
   private wss: WebSocketServer | null = null
   private isAttached = false
@@ -64,27 +63,13 @@ export class GeminiLiveService {
    */
   public getClient(): GoogleGenAI | null {
     loadEnv()
-    const key = String(
+    const key =
       process.env.GEMINI_API_KEY ||
       process.env.VITE_GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY ||
-      ''
-    )
-      .trim()
-      .replace(/^['"`]+|['"`]+$/g, '')
-      .trim()
+      process.env.GOOGLE_API_KEY
+    if (!key) return null
 
-    if (!key) {
-      this.client = null
-      this.clientKey = ''
-      return null
-    }
-
-    // Rebuild the client when the configured key changes so a revoked/old
-    // runtime key cannot remain cached for the lifetime of the process.
-    if (this.client && this.clientKey === key) return this.client
-
-    try {
+    if (!this.client) {
       this.client = new GoogleGenAI({
         apiKey: key,
         httpOptions: {
@@ -93,14 +78,8 @@ export class GeminiLiveService {
           }
         }
       })
-      this.clientKey = key
-      return this.client
-    } catch (err) {
-      this.client = null
-      this.clientKey = ''
-      console.warn('[Gemini Live] SDK initialization warning:', err)
-      return null
     }
+    return this.client
   }
 
   /**
@@ -513,7 +492,7 @@ export class GeminiLiveService {
 
     const systemPrompt =
       'You are JARVIS / IRIS. Use a natural human-like male speaking style: warm, calm, confident, slightly deep, conversational, with realistic pauses and varied emphasis. Avoid robotic, monotone, overly dramatic, or exaggerated delivery. ' +
-      `You are JARVIS / IRIS, an intelligent, conversational, real-time voice assistant. Listen patiently and respond only after the user's thought is complete. Natural pauses, corrections, filler words, and mid-topic additions are normal conversation, not a reason to interrupt. If the user changes topic, follow the latest clear intent. Do not use generic refusal phrases such as 'sorry, I can't help with that'; only decline when the specific request genuinely requires an applicable safety or privacy boundary. For ordinary topics, answer normally. Provide direct, natural spoken answers that sound good aloud. Keep replies concise and articulate.`
+      "You are JARVIS / IRIS, an intelligent, conversational, real-time voice assistant. Listen patiently and respond only after the user's thought is complete. Natural pauses, corrections, filler words, and mid-topic additions are normal conversation, not a reason to interrupt. If the user changes topic, follow the latest clear intent. Do not use generic refusal phrases such as \"sorry, I can't help with that\"; only decline when the specific request genuinely requires an applicable safety or privacy boundary. For ordinary topics, answer normally. Provide direct, natural spoken answers that sound good aloud. Keep replies concise and articulate."
 
     const fullPrompt = historyContext
       ? `System: ${systemPrompt}\n\nRecent Turns:\n${historyContext}\n\nUser: ${prompt}\nJARVIS:`

@@ -12,7 +12,12 @@ declare global {
  * burning a 15s connection timeout on every request.
  */
 export const isDatabaseConfigured = (): boolean =>
-  Boolean(process.env.SQL_HOST && process.env.SQL_DB_NAME)
+  Boolean(
+    process.env.SQL_HOST &&
+      process.env.SQL_HOST.trim() !== '' &&
+      process.env.SQL_DB_NAME &&
+      process.env.SQL_USER
+  )
 
 export const createPool = () => {
   if (!global._postgresPool) {
@@ -22,11 +27,14 @@ export const createPool = () => {
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DB_NAME,
       max: 10,
-      connectionTimeoutMillis: 15000
+      connectionTimeoutMillis: 3000
     })
 
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err)
+      // Quiet handler for idle pool connection drops
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[Cloud SQL Pool] Connection closed or unavailable:', err.message)
+      }
     })
   }
   return global._postgresPool

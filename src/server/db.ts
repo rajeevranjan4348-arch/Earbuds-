@@ -40,10 +40,10 @@ const memoryWorkspaceItems: LocalWorkspaceItem[] = []
 let memoryIdCounter = 1
 let isCloudSqlDisabled = false
 
-function handleCloudSqlError(opName: string, error: any) {
+function handleCloudSqlError(opName: string, _error: any) {
   if (!isCloudSqlDisabled) {
     console.log(
-      `[Cloud SQL] Database offline during ${opName} (${error?.message || error}). Local memory store active.`
+      `[Cloud SQL] Database connection unavailable during ${opName}. In-memory local fallback active.`
     )
     isCloudSqlDisabled = true
   }

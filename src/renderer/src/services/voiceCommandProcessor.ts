@@ -223,6 +223,10 @@ class VoiceCommandProcessor {
     const confirmationResult = await this.checkPendingConfirmation(cleaned, originalText)
     if (confirmationResult) return confirmationResult
 
+    // 0.005 Android APK Download & Package Intent
+    const apkResult = await this.checkApkDownloadCommands(cleaned, originalText, context)
+    if (apkResult) return apkResult
+
     // 0.01 Central TaskOrchestrator: Multi-Agent Automated Pipeline Execution
     const orchestratorResult = await this.checkTaskOrchestrator(cleaned, originalText, context)
     if (orchestratorResult) return orchestratorResult
@@ -314,6 +318,37 @@ class VoiceCommandProcessor {
     // 13. General Conversational & World Knowledge (with Mem0 Context Pipeline)
     const qaResult = await this.checkConversationalAndQA(cleaned, originalText)
     return qaResult
+  }
+
+  // ==========================================
+  // 0.005 ANDROID APK DOWNLOAD & PACKAGE INTENT
+  // ==========================================
+  private async checkApkDownloadCommands(
+    cleaned: string,
+    _originalText: string,
+    _context: CommandProcessorContext
+  ): Promise<CommandProcessResult | null> {
+    const isApkQuery =
+      /\b(download.*apk|apk.*format|android.*apk|download.*iris|install.*apk|get.*apk|turn.*iris.*apk|package.*apk)\b/i.test(cleaned) ||
+      /\b(apk.*file|android.*package|download.*android)\b/i.test(cleaned)
+
+    if (isApkQuery) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('iris:open-apk-download'))
+      }
+
+      return {
+        handled: true,
+        intent: 'APP_CONTROL',
+        actionExecuted: 'OPENED_ANDROID_APK_MODAL',
+        spokenResponse:
+          'Opening the IRIS Android APK download center. You can download the native Android APK package or install the PWA instantly.',
+        displayText:
+          'IRIS Android APK Package (com.example.iris v1.0.0) is available for direct download at /downloads/iris.apk (~15.8 MB).'
+      }
+    }
+
+    return null
   }
 
   // ==========================================

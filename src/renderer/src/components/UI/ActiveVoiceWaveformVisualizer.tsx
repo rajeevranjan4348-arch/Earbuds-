@@ -83,6 +83,7 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
   const phaseRef = useRef<number>(0)
   const smoothedLevelRef = useRef<number>(0)
   const peakDecibelRef = useRef<number>(-60)
+  const lastTelemetryTimeRef = useRef<number>(0)
 
   // Web Audio Analyser fallback if direct stream is provided
   const internalAudioCtxRef = useRef<AudioContext | null>(null)
@@ -178,40 +179,53 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
       smoothedLevelRef.current += (effectiveLevel - smoothedLevelRef.current) * 0.22
       const level = smoothedLevelRef.current
 
-      // Calculate Decibels (dBFS)
-      const currentDb = level > 0.001 ? Math.round(20 * Math.log10(level)) : -60
-      setDecibels(currentDb)
-      if (currentDb > peakDecibelRef.current) {
-        peakDecibelRef.current = currentDb
-      } else {
-        peakDecibelRef.current = Math.max(-60, peakDecibelRef.current - 0.5)
-      }
+      // Throttle telemetry HUD state updates (at most once every 180ms)
+      const now = performance.now()
+      if (now - lastTelemetryTimeRef.current > 180) {
+        lastTelemetryTimeRef.current = now
 
-      // Voice Activity Detection Confidence
-      const confidence = isMuted ? 0 : Math.min(100, Math.round(level * 140))
-      setVadConfidence(confidence)
+        const currentDb = level > 0.001 ? Math.round(20 * Math.log10(level)) : -60
+        setDecibels((prev) => (Math.abs(prev - currentDb) >= 2 ? currentDb : prev))
 
-      // Dominant Frequency Peak
-      if (freqArray && freqArray.length > 0) {
-        let maxVal = 0
-        let maxIdx = 0
-        for (let i = 2; i < Math.min(64, freqArray.length); i++) {
-          if (freqArray[i] > maxVal) {
-            maxVal = freqArray[i]
-            maxIdx = i
-          }
+        if (currentDb > peakDecibelRef.current) {
+          peakDecibelRef.current = currentDb
+        } else {
+          peakDecibelRef.current = Math.max(-60, peakDecibelRef.current - 0.5)
         }
-        const nyquist = 24000
-        const binHz = nyquist / freqArray.length
-        setDominantFreq(Math.round(maxIdx * binHz))
+
+        const confidence = isMuted ? 0 : Math.min(100, Math.round(level * 140))
+        setVadConfidence((prev) => (Math.abs(prev - confidence) >= 5 ? confidence : prev))
+
+        if (freqArray && freqArray.length > 0) {
+          let maxVal = 0
+          let maxIdx = 0
+          for (let i = 2; i < Math.min(64, freqArray.length); i++) {
+            if (freqArray[i] > maxVal) {
+              maxVal = freqArray[i]
+              maxIdx = i
+            }
+          }
+          const nyquist = 24000
+          const binHz = nyquist / freqArray.length
+          const domHz = Math.round(maxIdx * binHz)
+          setDominantFreq((prev) => (Math.abs(prev - domHz) >= 40 ? domHz : prev))
+        }
       }
 
       phaseRef.current += 0.04 + level * 0.08
       const phase = phaseRef.current
 
-      // Active Color Scheme
-      const primaryColor = isSpeaking ? '#22d3ee' : isMuted ? '#ef4444' : accentColor
-      const secondaryColor = isSpeaking ? '#818cf8' : '#10b981'
+      // Volume-driven color spectrum interpolation for active listening feedback
+      const getVolumeColor = (lvl: number) => {
+        if (lvl < 0.15) return '#00ff41' // Calm emerald
+        if (lvl < 0.40) return '#06b6d4' // Electric cyan
+        if (lvl < 0.70) return '#f59e0b' // Amber yellow
+        return '#f43f5e' // Vibrant pink/red
+      }
+
+      const activeVolColor = getVolumeColor(level)
+      const primaryColor = isSpeaking ? '#22d3ee' : isMuted ? '#ef4444' : activeVolColor
+      const secondaryColor = isSpeaking ? '#818cf8' : level > 0.4 ? '#38bdf8' : '#10b981'
 
       // ==========================================
       // MODE 1: OSCILLOSCOPE MULTI-BAND SINE WAVE
@@ -645,8 +659,32 @@ export const ActiveVoiceWaveformVisualizer: React.FC<ActiveVoiceWaveformVisualiz
         )}
       </AnimatePresence>
 
-      {/* Main Real-time Waveform Canvas Container */}
-      <div className="w-full relative overflow-hidden rounded-2xl bg-black/60 border border-white/5">
+      {/* Main Real-time Waveform Canvas Container with Volume-Reactive Halo */}
+      <div
+        className="w-full relative overflow-hidden rounded-2xl bg-black/60 border transition-all duration-100"
+        style={{
+          borderColor: isMuted
+            ? 'rgba(239, 68, 68, 0.3)'
+            : isSpeaking
+            ? 'rgba(6, 182, 212, 0.5)'
+            : isListening
+            ? decibels > -18
+              ? 'rgba(244, 63, 94, 0.6)'
+              : decibels > -32
+              ? 'rgba(245, 158, 11, 0.5)'
+              : 'rgba(0, 255, 65, 0.4)'
+            : 'rgba(255, 255, 255, 0.08)',
+          boxShadow: isListening && !isMuted
+            ? `0 0 ${Math.max(10, Math.min(45, (decibels + 60) * 0.8))}px ${
+                decibels > -18
+                  ? 'rgba(244, 63, 94, 0.35)'
+                  : decibels > -32
+                  ? 'rgba(245, 158, 11, 0.3)'
+                  : 'rgba(0, 255, 65, 0.25)'
+              }`
+            : 'none'
+        }}
+      >
         <canvas
           ref={canvasRef}
           style={{ width: '100%', height: `${height}px` }}

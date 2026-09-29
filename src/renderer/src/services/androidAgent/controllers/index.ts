@@ -8,7 +8,7 @@ import { confirmationEngine } from '../ConfirmationEngine'
 import { deviceCapabilityDiscovery } from '../DeviceCapabilityDiscovery'
 import { verificationEngine } from '../VerificationEngine'
 import { memoryService } from '../../memoryService'
-import { firebaseAuthService } from '../../services/firebaseAuth'
+import { firebaseAuthService } from '../../firebaseAuth'
 import { ocrService } from '../../ocrService'
 import { resolve_app } from '../../launcher'
 
