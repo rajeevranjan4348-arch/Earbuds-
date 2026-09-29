@@ -30,7 +30,6 @@ import {
   Eye,
   Settings
 } from 'lucide-react'
-import { getAiInstance } from '../services/gemini'
 import Editor, { useMonaco } from '@monaco-editor/react'
 import { useTheme } from '../contexts/ThemeContext'
 import ReactMarkdown from 'react-markdown'
@@ -290,7 +289,6 @@ console.log(calculateStats(10, 20));`,
   const terminalInputRef = useRef<HTMLInputElement>(null)
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
-  const chatRef = useRef<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const monaco = useMonaco()
 
@@ -439,36 +437,6 @@ console.log(calculateStats(10, 20));`,
   useEffect(() => {
     setEditorTheme(isDarkMode ? 'vs-dark' : 'light')
   }, [isDarkMode])
-
-  useEffect(() => {
-    const ai = getAiInstance()
-
-    const historyMessages = messages.filter((m, idx) => {
-      if (idx === 0 && m.role === 'model' && m.text.includes('I am your AI Coding Assistant')) {
-        return false
-      }
-      return m.text
-    })
-
-    const history = historyMessages.map((m) => ({
-      role: m.role,
-      parts: [{ text: m.text }]
-    }))
-
-    try {
-      chatRef.current = ai.chats.create({
-        model: 'gemini-3.1-pro-preview',
-        history: history.length > 0 ? history : undefined,
-        config: {
-          systemInstruction:
-            'You are an expert AI software engineer and code generator. When asked to write code, provide a brief explanation, but ALWAYS include the complete, working code in a markdown code block with language specifier (e.g. ```html, ```javascript, ```python). If the user asks for a web component, provide a clean HTML file with embedded CSS/JS so it previews immediately.',
-          tools: [{ googleSearch: {} }]
-        }
-      })
-    } catch (err) {
-      console.error('Failed creating AI chat session:', err)
-    }
-  }, [currentProjectId])
 
   useEffect(() => {
     if (monaco) {
@@ -648,19 +616,35 @@ console.log(calculateStats(10, 20));`,
     setMessages((prev) => [...prev, { role: 'user', text: userPrompt }])
 
     try {
-      if (!chatRef.current) {
-        const ai = getAiInstance()
-        chatRef.current = ai.chats.create({
-          model: 'gemini-3.1-pro-preview',
-          config: {
-            systemInstruction:
-              'You are an expert AI software engineer. Provide code in clean markdown code blocks.'
-          }
+      const conversationHistory = messages
+        .filter((m) => m.text && !(m.role === 'model' && m.text.includes('I am your AI Coding Assistant')))
+        .slice(-20)
+        .map((m) => ({
+          role: m.role === 'model' ? 'assistant' : 'user',
+          text: m.text
+        }))
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: userPrompt,
+          conversationHistory,
+          source: 'coder',
+          agentRole: 'coder',
+          systemInstruction:
+            'You are IRIS AI Engineer, an expert software engineer and code generator. When asked to write code, provide a brief explanation, but ALWAYS include complete, working code in markdown code blocks with a language specifier. For web components, prefer a self-contained HTML file with embedded CSS and JS so it can preview immediately. Preserve the user\'s existing UI unless explicitly asked to change it.'
         })
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || payload?.error) {
+        throw new Error(payload?.error || payload?.message || `AI request failed (HTTP ${response.status})`)
       }
 
-      const res = await chatRef.current.sendMessage({ message: userPrompt })
-      const aiResponse = res.text || 'I have completed your request.'
+      const aiResponse = payload?.text || payload?.rawText || 'I have completed your request.'
 
       setMessages((prev) => [...prev, { role: 'model', text: aiResponse }])
       extractCode(aiResponse)
