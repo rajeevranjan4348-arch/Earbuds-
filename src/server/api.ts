@@ -169,7 +169,7 @@ function handleMem0Error(operation: string, err: any): void {
 let geminiClient: GoogleGenAI | null = null
 function getGemini(): GoogleGenAI | null {
   if (geminiClient) return geminiClient
-  const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY
+  const key = process.env.GEMINI_API_KEY
   if (!key) return null
   try {
     geminiClient = new GoogleGenAI({ apiKey: key })
