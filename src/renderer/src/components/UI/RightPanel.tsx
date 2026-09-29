@@ -15,9 +15,6 @@ import {
   Mic,
   Square,
   VolumeX,
-  AlertTriangle,
-  RotateCcw,
-  Volume2,
   Radio,
   Cpu,
   Terminal,
@@ -49,7 +46,6 @@ import { irisIndexedDBCache } from '../../services/irisIndexedDBCache'
 import { offlineAiResponseEngine } from '../../services/offlineAiResponseEngine'
 import { geminiLiveVoiceClient, VoiceOption } from '../../services/geminiLiveVoiceClient'
 import { voiceSessionManager, voiceSettings } from '../../services/voice'
-import MicrophoneInputButton from './MicrophoneInputButton'
 import { VoiceCommandLogSidePanel } from './VoiceCommandLogSidePanel'
 import { IntentResolver, launchManager } from '../../launcher'
 import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
@@ -220,18 +216,7 @@ const ChatMessageItem = memo(
               </div>
             </div>
           ) : (
-            <div className="text-xs sm:text-sm leading-relaxed space-y-2">
-              {isFallbackOrError && (
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-amber-500/20 text-amber-300 text-[11px] font-medium">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle size={13} className="text-amber-400 shrink-0" />
-                    <span>AI Execution Notice</span>
-                  </div>
-                  <span className="text-[10px] text-amber-400/70 font-mono">Status: Handled</span>
-                </div>
-              )}
-
-              <ReactMarkdown
+            <div className="text-xs sm:text-sm leading-relaxed space-y-2"><ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
                   img: ({ node, ...props }) => (
@@ -370,44 +355,7 @@ const ChatMessageItem = memo(
                     )
                   })}
                 </div>
-              )}
-
-              {!isUser && !isStreaming && rawContent && (
-                <div className="pt-2 mt-1 border-t border-white/5 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => voiceService.speak(rawContent)}
-                    className="px-2 py-0.5 rounded-md bg-white/5 hover:bg-emerald-500/15 text-zinc-400 hover:text-emerald-300 border border-white/5 hover:border-emerald-500/30 text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
-                    title="Speak answer with voice"
-                  >
-                    <Volume2 size={11} />
-                    <span>Speak</span>
-                  </button>
-                  {((msg as any).provider || (msg as any).model) && (
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      {(msg as any).provider === 'nvidia_kimi_k3'
-                        ? 'NVIDIA Kimi-k3'
-                        : (msg as any).model || ''}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {isFallbackOrError && (
-                <div className="pt-2 mt-1 border-t border-amber-500/15 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onRetry(msg)}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[11px] font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title="Retry prompt"
-                  >
-                    <RotateCcw size={11} />
-                    <span>Retry Prompt</span>
-                  </button>
-                  <span className="text-[10px] text-zinc-500 italic">Fallback active</span>
-                </div>
-              )}
-            </div>
+              )}</div>
           )}
           {isStreaming && (
             <span className="inline-block w-1.5 h-4 ml-1 bg-emerald-400 rounded-full animate-pulse align-middle"></span>
