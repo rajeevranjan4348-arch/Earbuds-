@@ -54,6 +54,7 @@ export interface AudioStreamSession {
 
 export class GeminiLiveService {
   private client: GoogleGenAI | null = null
+  private clientKey = ''
   private activeSessions: Map<string, AudioStreamSession> = new Map()
   private wss: WebSocketServer | null = null
   private isAttached = false
@@ -63,13 +64,27 @@ export class GeminiLiveService {
    */
   public getClient(): GoogleGenAI | null {
     loadEnv()
-    const key =
+    const key = String(
       process.env.GEMINI_API_KEY ||
       process.env.VITE_GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY
-    if (!key) return null
+      process.env.GOOGLE_API_KEY ||
+      ''
+    )
+      .trim()
+      .replace(/^['"`]+|['"`]+$/g, '')
+      .trim()
 
-    if (!this.client) {
+    if (!key) {
+      this.client = null
+      this.clientKey = ''
+      return null
+    }
+
+    // Rebuild the client when the configured key changes so a revoked/old
+    // runtime key cannot remain cached for the lifetime of the process.
+    if (this.client && this.clientKey === key) return this.client
+
+    try {
       this.client = new GoogleGenAI({
         apiKey: key,
         httpOptions: {
@@ -78,8 +93,14 @@ export class GeminiLiveService {
           }
         }
       })
+      this.clientKey = key
+      return this.client
+    } catch (err) {
+      this.client = null
+      this.clientKey = ''
+      console.warn('[Gemini Live] SDK initialization warning:', err)
+      return null
     }
-    return this.client
   }
 
   /**
