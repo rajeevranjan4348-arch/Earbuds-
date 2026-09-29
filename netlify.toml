@@ -20,5 +20,3 @@
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Keep the web app static while forwarding its backend API to the Node server.
