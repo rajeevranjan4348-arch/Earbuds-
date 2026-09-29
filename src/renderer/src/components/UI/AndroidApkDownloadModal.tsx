@@ -30,15 +30,37 @@ export const AndroidApkDownloadModal: React.FC<AndroidApkDownloadModalProps> = (
 
   const apkUrl = `${window.location.origin}/downloads/iris.apk`
   const directApkUrl = `${window.location.origin}/downloads/iris.apk`
+  const publicWebUrl = 'https://iirisx.netlify.app'
 
-  const handleDownload = (target: 'release' | 'debug' = 'release') => {
+  const handleDownload = async (target: 'release' | 'debug' = 'release') => {
     soundEffects.play('pop')
     setDownloadStarted(true)
 
-    // Trigger download
+    const targetUrl = target === 'debug' ? '/downloads/iris-debug.apk' : '/downloads/iris.apk'
+    const fileName = target === 'debug' ? 'IRIS-AI-debug.apk' : 'IRIS-AI.apk'
+
+    try {
+      // First try fetching as blob so browser handles direct save seamlessly without 403 navigation errors
+      const res = await fetch(targetUrl)
+      if (res.ok) {
+        const blob = await res.blob()
+        const blobUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
+        return
+      }
+    } catch (_err) {
+      // Fallback to standard anchor download
+    }
+
     const link = document.createElement('a')
-    link.href = target === 'debug' ? '/downloads/iris-debug.apk' : '/downloads/iris.apk'
-    link.download = target === 'debug' ? 'IRIS-AI-debug.apk' : 'IRIS-AI.apk'
+    link.href = targetUrl
+    link.download = fileName
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -203,6 +225,33 @@ export const AndroidApkDownloadModal: React.FC<AndroidApkDownloadModalProps> = (
                 {copiedLink ? <RiCheckLine className="text-emerald-400" /> : <RiFileCopyLine />}
                 <span>{copiedLink ? 'Copied' : 'Copy'}</span>
               </button>
+            </div>
+
+            {/* Public Mobile Access (Bypasses Google Cloud Run 403) */}
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-3 flex flex-col gap-2 text-xs">
+              <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <RiSmartphoneLine className="w-4 h-4" />
+                  <span>Public Mobile Web App (No Google 403)</span>
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+                  Global Access
+                </span>
+              </div>
+              <p className="text-zinc-300 text-[11px] leading-relaxed">
+                Google Cloud Run dev URLs require Google project authorization. To open on any phone or share publicly without login:
+              </p>
+              <div className="flex items-center justify-between gap-2 bg-black/40 rounded-xl p-2 border border-emerald-500/20">
+                <span className="font-mono text-[11px] text-emerald-300 truncate">https://iirisx.netlify.app</span>
+                <a
+                  href="https://iirisx.netlify.app"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[10px] transition shrink-0"
+                >
+                  Open Link
+                </a>
+              </div>
             </div>
           </div>
         )}

@@ -171,6 +171,13 @@ SHA-256-Digest: ${crypto.createHash('sha256').update(manifestContent).digest('ba
     fs.mkdirSync(downloadDir, { recursive: true })
   }
 
+  const distDownloadDir = path.resolve('dist/downloads')
+  try {
+    if (!fs.existsSync(distDownloadDir)) {
+      fs.mkdirSync(distDownloadDir, { recursive: true })
+    }
+  } catch (_e) {}
+
   const gradleOutputDir = path.resolve('app/build/outputs/apk/debug')
   if (!fs.existsSync(gradleOutputDir)) {
     fs.mkdirSync(gradleOutputDir, { recursive: true })
@@ -184,6 +191,13 @@ SHA-256-Digest: ${crypto.createHash('sha256').update(manifestContent).digest('ba
   fs.writeFileSync(targetApk, apkBuffer)
   fs.writeFileSync(targetDebugApk, apkBuffer)
   fs.writeFileSync(targetGradleDebugApk, apkBuffer)
+
+  try {
+    if (fs.existsSync(distDownloadDir)) {
+      fs.writeFileSync(path.join(distDownloadDir, 'iris.apk'), apkBuffer)
+      fs.writeFileSync(path.join(distDownloadDir, 'iris-debug.apk'), apkBuffer)
+    }
+  } catch (_e) {}
 
   console.log(`[APK Generator] Successfully generated Android APK:`)
   console.log(`  -> ${targetApk} (${apkBuffer.length} bytes)`)
