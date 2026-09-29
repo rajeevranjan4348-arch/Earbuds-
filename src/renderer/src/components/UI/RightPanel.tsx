@@ -56,6 +56,7 @@ import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
 import { normalizeAIResponse } from '../../services/aiResponseNormalizer'
 import { getAiInstance } from '../../services/gemini'
 import { smoothScrollEngine } from '../../services/smoothScrollEngine'
+import { irisApiUrl } from '../../services/platformCapabilities'
 import { PromptInputBox } from '@/components/ui/ai-prompt-box'
 import { Plan } from '@/components/ui/agent-plan'
 import { Brain, ChevronRight } from 'lucide-react'
@@ -2022,7 +2023,7 @@ export default function RightPanel({
           }
           setChatHistory((prev) => [...prev, placeholderMsg].slice(-50))
 
-          const response = await fetch('/api/ai/chat', {
+          const response = await fetch(irisApiUrl('/api/ai/chat'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
