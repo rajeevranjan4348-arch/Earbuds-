@@ -274,7 +274,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
     }
 
-    @android.webkit.JavascriptInterface
     class IrisWebBridge(private val activity: MainActivity) {
         @android.webkit.JavascriptInterface
         fun getPlatform(): String = "android"
