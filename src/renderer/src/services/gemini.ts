@@ -7,8 +7,7 @@ export function getAiInstance(): GoogleGenAI {
     const apiKey =
       localStorage.getItem('gemini_api_key') ||
       localStorage.getItem('VITE_GEMINI_API_KEY') ||
-      import.meta.env.VITE_GEMINI_API_KEY ||
-      'AIzaSyDemoKey'
+      import.meta.env.VITE_GEMINI_API_KEY
 
     aiInstance = new GoogleGenAI({ apiKey })
   }
@@ -53,7 +52,13 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
     const ai = getAiInstance()
     const arrayBuffer = await audioBlob.arrayBuffer()
-    const base64Audio = Buffer.from(arrayBuffer).toString('base64')
+    const bytes = new Uint8Array(arrayBuffer)
+    let binary = ''
+    const chunkSize = 0x8000
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)))
+    }
+    const base64Audio = window.btoa(binary)
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.5-transcribe',
