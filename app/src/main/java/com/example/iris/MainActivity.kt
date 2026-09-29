@@ -229,9 +229,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         setContentView(webView ?: return)
 
-        val webUrl = intent.getStringExtra("iris_web_url")
-            ?: DEFAULT_WEB_APP_URL
+        val requestedUrl = intent.getStringExtra("iris_web_url")
+        val webUrl = if (requestedUrl != null && isAllowedWebAppUrl(requestedUrl)) {
+            requestedUrl
+        } else {
+            DEFAULT_WEB_APP_URL
+        }
         webView?.loadUrl(webUrl)
+    }
+
+    private fun isAllowedWebAppUrl(rawUrl: String): Boolean {
+        return try {
+            val uri = Uri.parse(rawUrl)
+            val scheme = uri.scheme?.lowercase()
+            val host = uri.host?.lowercase()
+            scheme == "https" && host == "irisxx.netlify.app" ||
+                scheme == "http" && host == "10.0.2.2"
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private var pendingWebPermissionRequest: android.webkit.PermissionRequest? = null
