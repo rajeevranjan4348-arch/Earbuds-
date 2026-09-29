@@ -58,6 +58,7 @@ A voice-first neural execution system powered by **Gemini 3.1 Live API** with re
 - [⚠️ Disclaimer](#️-disclaimer)
 - [👨‍💻 Architect](#-architect)
 - [📜 License](#-license)
+- [📱 Download Android APK](#-download-android-apk)
 
 ---
 
@@ -1099,6 +1100,53 @@ AI Systems Engineer & Creator
 2. **Sponsors & Enterprise:** Custom Commercial License
 
 See [LICENSE](LICENSE) file for details.
+
+---
+
+# 📱 Download Android APK
+
+Get the standalone **IRIS AI Android Application** (`.apk`) directly for your mobile device or tablet.
+
+<div align="center">
+
+[![Download IRIS APK](https://img.shields.io/badge/Download-IRIS--AI.apk-10b981?style=for-the-badge&logo=android&logoColor=white)](https://iirisx.netlify.app/downloads/iris.apk)
+[![Web Preview & PWA](https://img.shields.io/badge/Web%20App-iirisx.netlify.app-06b6d4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://iirisx.netlify.app)
+[![GitHub Actions Artifact](https://img.shields.io/badge/CI%20Artifact-Iris--debug--apk-6366f1?style=for-the-badge&logo=github&logoColor=white)](https://github.com/rajeevranjan4348-arch/Earbuds-/actions)
+
+</div>
+
+### ⬇️ Direct Download Options
+
+| Build Type | File / Destination | Description | Direct Link |
+| :--- | :--- | :--- | :--- |
+| **Release APK** | `IRIS-AI.apk` (~15.8 MB) | Optimized standalone package with full voice, camera OCR, & background service | [📥 Download IRIS-AI.apk](https://iirisx.netlify.app/downloads/iris.apk) |
+| **Debug APK** | `app-debug.apk` | Unsigned development build for testing and ADB debugging | [📥 Download Debug APK](https://github.com/rajeevranjan4348-arch/Earbuds-/actions) |
+| **Mobile Web / PWA** | `https://iirisx.netlify.app` | Install directly from Chrome/Edge with zero APK download | [🌐 Open & Install PWA](https://iirisx.netlify.app) |
+| **In-App Direct** | Header Toolbar ➔ **Install App** | Built-in zero-auth blob download inside the IRIS desktop/web app | In-app |
+
+---
+
+### 📦 Package Specifications
+
+| Property | Value |
+| :--- | :--- |
+| **Package ID** | `com.example.iris` |
+| **Version** | `1.0.0` (Build 1) |
+| **Architecture** | Universal (`arm64-v8a`, `armeabi-v7a`, `x86_64`) |
+| **Compatibility** | Android 7.0+ (API Level 24 – 36) |
+| **Included Features** | Real-time Voice Loop, ML Kit Camera OCR, IrisBackgroundService, Phone Controller |
+
+---
+
+### 📲 How to Install the APK on Your Android Device
+
+1. **Download:** Tap [Download IRIS-AI.apk](https://iirisx.netlify.app/downloads/iris.apk) on your Android device (or download to computer and transfer via USB/Drive).
+2. **Open:** Tap the completed download in your notifications bar or open your **Files** / **Downloads** app.
+3. **Allow Installation:** If prompted with *"For your security, your phone is not allowed to install unknown apps from this source"*:
+   - Tap **Settings** in the popup.
+   - Enable **Allow from this source**.
+4. **Install:** Tap **Install** and wait a few seconds.
+5. **Launch:** Tap **Open** to launch IRIS AI. Grant Microphone and Camera permissions when prompted for full voice-first capabilities.
 
 ---
 
