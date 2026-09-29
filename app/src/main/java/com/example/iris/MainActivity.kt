@@ -36,13 +36,17 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.view.KeyEvent
+import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -146,46 +150,102 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
     // ============================================================
+    // WEBVIEW FILE CHOOSER (Images, Documents, PDFs)
+    // ============================================================
+
+    private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+
+    private val fileChooserLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                val uris: Array<Uri>? = when {
+                    data?.data != null -> arrayOf(data.data!!)
+                    data?.clipData != null -> {
+                        val clip = data.clipData!!
+                        Array(clip.itemCount) { i -> clip.getItemAt(i).uri }
+                    }
+                    else -> null
+                }
+                fileUploadCallback?.onReceiveValue(uris)
+            } else {
+                fileUploadCallback?.onReceiveValue(null)
+            }
+            fileUploadCallback = null
+        }
+
+    // ============================================================
     // ACTIVITY LIFECYCLE
     // ============================================================
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        configureAudio()
 
         // Initialize Text-To-Speech engine for voice feedback
         tts = TextToSpeech(this, this)
 
-        // IRIS is one web app with a native Android capability layer.
-        // The browser/PWA runs the same UI, while this shell exposes only
-        // explicitly implemented native capabilities to the web layer.
+        // Setup IRIS web application container
         setupIrisWebApp()
 
-        /*
-         * KEEP YOUR EXISTING UI.
-         *
-         * Connect your existing buttons or voice commands to:
-         *
-         * openGalleryOCR()
-         * openCameraOCR()
-         *
-         * Example:
-         * ocrButton.setOnClickListener { openGalleryOCR() }
-         * cameraButton.setOnClickListener { openCameraOCR() }
-         */
+        // Proactively request runtime audio and camera permissions on startup
+        ensurePermissionsOnStartup()
+    }
+
+    private fun configureAudio() {
+        try {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+            audioManager?.mode = AudioManager.MODE_NORMAL
+        } catch (_: Exception) {}
+    }
+
+    private fun ensurePermissionsOnStartup() {
+        val permissions = mutableListOf(
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.CAMERA
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions += android.Manifest.permission.POST_NOTIFICATIONS
+            permissions += android.Manifest.permission.READ_MEDIA_IMAGES
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+            permissions += android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        val missing = permissions.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                it
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missing.isNotEmpty()) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                missing.toTypedArray(),
+                100
+            )
+        }
     }
 
     private fun setupIrisWebApp() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.databaseEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
-            settings.allowFileAccess = false
+            settings.allowFileAccess = true
             settings.allowContentAccess = true
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     return false
                 }
             }
+
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: android.webkit.PermissionRequest) {
                     runOnUiThread {
@@ -222,6 +282,27 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
                     }
                 }
+
+                override fun onShowFileChooser(
+                    webView: WebView?,
+                    filePathCallback: ValueCallback<Array<Uri>>?,
+                    fileChooserParams: FileChooserParams?
+                ): Boolean {
+                    fileUploadCallback?.onReceiveValue(null)
+                    fileUploadCallback = filePathCallback
+                    val intent = fileChooserParams?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).apply {
+                        type = "*/*"
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                    }
+                    return try {
+                        fileChooserLauncher.launch(intent)
+                        true
+                    } catch (e: Exception) {
+                        fileUploadCallback?.onReceiveValue(null)
+                        fileUploadCallback = null
+                        false
+                    }
+                }
             }
 
             addJavascriptInterface(IrisWebBridge(this@MainActivity), "IrisAndroid")
@@ -230,12 +311,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         setContentView(webView ?: return)
 
         val requestedUrl = intent.getStringExtra("iris_web_url")
-        val webUrl = if (requestedUrl != null && isAllowedWebAppUrl(requestedUrl)) {
-            requestedUrl
-        } else {
-            DEFAULT_WEB_APP_URL
+        val webUrl = when {
+            requestedUrl != null && isAllowedWebAppUrl(requestedUrl) -> requestedUrl
+            hasLocalWebAssets() -> "file:///android_asset/web/index.html"
+            else -> DEFAULT_WEB_APP_URL
         }
         webView?.loadUrl(webUrl)
+    }
+
+    private fun hasLocalWebAssets(): Boolean {
+        return try {
+            assets.open("web/index.html").close()
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun isAllowedWebAppUrl(rawUrl: String): Boolean {
@@ -243,11 +333,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             val uri = Uri.parse(rawUrl)
             val scheme = uri.scheme?.lowercase()
             val host = uri.host?.lowercase()
-            scheme == "https" && (host == "iirisx.netlify.app" || host == "main--iirisx.netlify.app") ||
-                scheme == "http" && host == "10.0.2.2"
+            scheme == "file" ||
+                (scheme == "https" && (host?.endsWith("netlify.app") == true || host?.endsWith("run.app") == true)) ||
+                (scheme == "http" && (host == "10.0.2.2" || host == "localhost" || host == "127.0.0.1"))
         } catch (_: Exception) {
             false
         }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && webView?.canGoBack() == true) {
+            webView?.goBack()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     private var pendingWebPermissionRequest: android.webkit.PermissionRequest? = null
@@ -347,6 +446,42 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         @android.webkit.JavascriptInterface
         fun shareTextToWhatsApp(message: String): Boolean =
             AppController.shareTextToWhatsApp(activity, message)
+
+        @android.webkit.JavascriptInterface
+        fun requestMicrophonePermission(): Boolean {
+            activity.runOnUiThread {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        activity,
+                        android.Manifest.permission.RECORD_AUDIO
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    androidx.core.app.ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                        101
+                    )
+                }
+            }
+            return true
+        }
+
+        @android.webkit.JavascriptInterface
+        fun requestCameraPermission(): Boolean {
+            activity.runOnUiThread {
+                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                        activity,
+                        android.Manifest.permission.CAMERA
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    androidx.core.app.ActivityCompat.requestPermissions(
+                        activity,
+                        arrayOf(android.Manifest.permission.CAMERA),
+                        102
+                    )
+                }
+            }
+            return true
+        }
     }
 
     override fun onDestroy() {

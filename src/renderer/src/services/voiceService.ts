@@ -1323,6 +1323,18 @@ class VoiceService {
       const cleaned = cleanTextForSpeech(text)
       if (!cleaned) return
 
+      if (typeof window !== 'undefined' && (window as any).IrisAndroid?.speak) {
+        try {
+          ;(window as any).IrisAndroid.speak(cleaned)
+          if (notifyState) {
+            this.isSpeaking = true
+            this.setStatus('speaking', 'IRIS is responding...')
+            this.handlers.onSpeakingChange?.(true)
+          }
+          return
+        } catch (_e) {}
+      }
+
       console.log(
         '[TTS] response received:',
         cleaned.substring(0, 80) + (cleaned.length > 80 ? '...' : '')

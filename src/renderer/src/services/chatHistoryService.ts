@@ -185,6 +185,14 @@ class ChatHistoryService {
   }
 
   /**
+   * Retrieves a specific session by ID
+   */
+  public getSession(sessionId: string, userId?: string): ChatSession | undefined {
+    const sessions = this.getSessions(userId)
+    return sessions.find((s) => s.id === sessionId)
+  }
+
+  /**
    * Saves sessions list to local storage and notifies listeners
    */
   public saveSessions(sessions: ChatSession[], userId?: string) {

@@ -8,7 +8,7 @@
  * Required manifest declaration is shown at the bottom of this file.
  */
 
-package com.iris.ai
+package com.example.iris
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription

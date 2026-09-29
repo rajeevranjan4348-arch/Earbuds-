@@ -118,6 +118,12 @@ export class MicrophoneManager implements AudioLifecycleComponent {
    */
   public async requestPermission(): Promise<boolean> {
     try {
+      if (typeof window !== 'undefined' && (window as any).IrisAndroid?.requestMicrophonePermission) {
+        try {
+          ;(window as any).IrisAndroid.requestMicrophonePermission()
+        } catch (_e) {}
+      }
+
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         throw new Error('Microphone API is not supported in this browser.')
       }
@@ -158,6 +164,12 @@ export class MicrophoneManager implements AudioLifecycleComponent {
       try {
         if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
           throw new Error('Microphone access is not supported in this browser environment.')
+        }
+
+        if (typeof window !== 'undefined' && (window as any).IrisAndroid?.requestMicrophonePermission) {
+          try {
+            ;(window as any).IrisAndroid.requestMicrophonePermission()
+          } catch (_e) {}
         }
 
         this.releaseStream()
