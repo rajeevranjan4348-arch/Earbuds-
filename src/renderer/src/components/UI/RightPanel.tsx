@@ -54,6 +54,7 @@ import { VoiceCommandLogSidePanel } from './VoiceCommandLogSidePanel'
 import { IntentResolver, launchManager } from '../../launcher'
 import { voiceCommandProcessor } from '../../services/voiceCommandProcessor'
 import { normalizeAIResponse } from '../../services/aiResponseNormalizer'
+import { getAiInstance } from '../../services/gemini'
 import { smoothScrollEngine } from '../../services/smoothScrollEngine'
 import { PromptInputBox } from '@/components/ui/ai-prompt-box'
 import { Plan } from '@/components/ui/agent-plan'
@@ -96,6 +97,48 @@ function diffDayCalc(hours: number): number {
  * Normalizes accidental duplicate adjacent tokens and sentences
  * caused by multiple listeners or duplicate stream chunk processing.
  */
+async function requestDirectGeminiFallback(prompt: string, history: Message[]): Promise<string> {
+  try {
+    const ai = getAiInstance()
+    const contents = [
+      ...history.slice(-8).map((m) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text || m.content || '' }]
+      })),
+      { role: 'user', parts: [{ text: prompt }] }
+    ]
+
+    for (const model of ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction:
+              'You are IRIS, a helpful conversational AI assistant. Answer the user directly and clearly. Do not mention internal fallback systems.'
+          }
+        })
+        const text =
+          typeof response.text === 'string'
+            ? response.text.trim()
+            : typeof response.text === 'function'
+              ? String(response.text()).trim()
+              : response.candidates?.[0]?.content?.parts
+                  ?.map((p: any) => (typeof p === 'string' ? p : p.text || ''))
+                  .filter(Boolean)
+                  .join('\n')
+                  .trim() || ''
+        if (text) return text
+      } catch (modelErr) {
+        console.warn('[IRIS][DIRECT_GEMINI_FALLBACK]', model, modelErr)
+      }
+    }
+  } catch (err) {
+    console.warn('[IRIS][DIRECT_GEMINI_FALLBACK_INIT]', err)
+  }
+  return ''
+}
+
 function normalizeDuplicateTokens(text: string): string {
   if (!text) return ''
   const trimmed = text.trim()
@@ -1995,13 +2038,30 @@ export default function RightPanel({
           })
 
           const data = await response.json().catch(() => null)
-          const normalized = normalizeAIResponse(data, {
+          let normalized = normalizeAIResponse(data, {
             prompt: trimmed,
             requestId: reqId,
             conversationId: activeSessionId,
             provider: 'gemini',
             model: 'gemini-3.8-flash'
           })
+
+          if (!response.ok || !data || !normalized.success) {
+            const directText = await requestDirectGeminiFallback(trimmed, chatHistory)
+            if (directText) {
+              normalized = normalizeAIResponse(
+                { text: directText, provider: 'gemini', model: 'gemini-2.5-flash' },
+                {
+                  prompt: trimmed,
+                  requestId: reqId,
+                  conversationId: activeSessionId,
+                  provider: 'gemini',
+                  model: 'gemini-2.5-flash'
+                }
+              )
+            }
+          }
+
           const returnedText = normalized.text
 
           setChatHistory((prev) => {
