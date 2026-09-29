@@ -75,6 +75,19 @@ export interface TaskMemoryData {
 
 type AgentTaskListener = (task: TaskMemoryData) => void
 
+function getLocalIrisUserId(): string {
+  const key = 'iris_local_user_id'
+  try {
+    const existing = window.localStorage.getItem(key)
+    if (existing) return existing
+    const id = `local_${crypto.randomUUID()}`
+    window.localStorage.setItem(key, id)
+    return id
+  } catch {
+    return 'local_guest'
+  }
+}
+
 class AgentClientService {
   private activeTask: TaskMemoryData | null = null
   private listeners: Set<AgentTaskListener> = new Set()
@@ -120,7 +133,7 @@ class AgentClientService {
         body: JSON.stringify({
           input,
           inputType,
-          userId: 'usr_iris_primary',
+          userId: getLocalIrisUserId(),
           context: contextMemory
         })
       })
@@ -153,7 +166,7 @@ class AgentClientService {
       console.error('[AgentClientService] Execution error:', err)
       const errorTask: TaskMemoryData = {
         taskId: `err_${Date.now()}`,
-        userId: 'usr_iris_primary',
+        userId: getLocalIrisUserId(),
         rawInput: input,
         cleanedInput: input,
         inputType,
@@ -247,7 +260,7 @@ class AgentClientService {
    */
   public async executeBrainTask(
     prompt: string,
-    userId: string = 'default_user',
+    userId: string = getLocalIrisUserId(),
     context?: Record<string, any>
   ): Promise<any> {
     try {
