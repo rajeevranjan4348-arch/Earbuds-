@@ -267,7 +267,7 @@ export async function handleSafeRoute(
     sendJson(res, 200, result)
   } catch (err: any) {
     console.warn(`[API Route Recovery] Graceful recovery for "${routeName}":`, err?.message || err)
-    sendJson(res, 200, {
+    sendJson(res, 500, {
       success: false,
       error: err?.message || 'The requested operation failed gracefully.',
       fallback: true,
