@@ -8,8 +8,6 @@ on:
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
-      - "package.json"
-      - "package-lock.json"
       - ".github/workflows/build-apk.yml"
   pull_request:
     branches: ["main"]
@@ -18,8 +16,6 @@ on:
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
-      - "package.json"
-      - "package-lock.json"
       - ".github/workflows/build-apk.yml"
   workflow_dispatch:
 
@@ -34,19 +30,14 @@ jobs:
     steps:
       - name: Checkout Iris repository
         uses: actions/checkout@v6
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v7
-        with:
-          node-version: "20.19.0"
-          cache: npm
-      - name: Install project dependencies
-        run: npm ci --ignore-scripts
+
       - name: Setup Java 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
+
       - name: Configure Android SDK
         run: |
           export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
@@ -57,16 +48,20 @@ jobs:
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+
       - name: Setup Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.13"
+
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
+
       - name: Verify APK
         run: |
           test -f app/build/outputs/apk/debug/app-debug.apk
           ls -lh app/build/outputs/apk/debug/app-debug.apk
+
       - name: Upload Iris-debug-apk
         uses: actions/upload-artifact@v4
         with:
