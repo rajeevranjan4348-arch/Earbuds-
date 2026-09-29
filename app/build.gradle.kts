@@ -69,3 +69,5 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.0")
     implementation("com.google.mlkit:text-recognition:16.0.1")
 }
+
+// Iris APK CI: keep the native Android build independent from the web build.
