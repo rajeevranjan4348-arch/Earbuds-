@@ -56,7 +56,7 @@ interface RuntimeKeyCacheSchema {
 }
 
 // Encryption secret for electron-store secure caching layer
-const ENCRYPTION_SECRET = process.env.IRIS_VAULT_SECRET || 'iris-runtime-key-vault-encryption-secret-2026'
+const ENCRYPTION_SECRET = process.env.IRIS_VAULT_SECRET?.trim() || ''
 
 let cacheStoreInstance: Store<RuntimeKeyCacheSchema> | null = null
 let inMemoryCache: RuntimeKeyPayload | null = null
@@ -95,6 +95,9 @@ export function computeKeysHash(keys: RuntimeKeyPayload): string {
 }
 
 function readPersisted(): RuntimeKeyPayload {
+  // Never read or write the plaintext runtime-key file unless an explicit
+  // installation-specific vault secret is configured.
+  if (!ENCRYPTION_SECRET) return {}
   try {
     if (!existsSync(KEY_FILE)) return {}
 
@@ -136,6 +139,8 @@ function readPersisted(): RuntimeKeyPayload {
 }
 
 function persist(payload: RuntimeKeyPayload): void {
+  // Runtime credentials must not silently fall back to plaintext persistence.
+  if (!ENCRYPTION_SECRET) return
   try {
     writeFileSync(KEY_FILE, JSON.stringify(payload, null, 2), { mode: 0o600 })
     try {
