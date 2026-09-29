@@ -167,14 +167,38 @@ function handleMem0Error(operation: string, err: any): void {
 }
 
 let geminiClient: GoogleGenAI | null = null
+let geminiClientKey = ''
+
+function normalizeGeminiApiKey(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  return value
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .trim()
+}
+
 function getGemini(): GoogleGenAI | null {
-  if (geminiClient) return geminiClient
-  const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY
-  if (!key) return null
+  const key = normalizeGeminiApiKey(
+    process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY
+  )
+
+  if (!key) {
+    geminiClient = null
+    geminiClientKey = ''
+    return null
+  }
+
+  // Recreate the SDK client whenever the runtime key changes. This is important
+  // for the Iris Settings/runtime-key flow and prevents stale invalid keys.
+  if (geminiClient && geminiClientKey === key) return geminiClient
+
   try {
     geminiClient = new GoogleGenAI({ apiKey: key })
+    geminiClientKey = key
     return geminiClient
   } catch (err) {
+    geminiClient = null
+    geminiClientKey = ''
     console.warn('[Server] Gemini SDK initialization warning:', err)
     return null
   }
