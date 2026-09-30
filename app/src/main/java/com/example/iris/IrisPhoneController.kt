@@ -58,6 +58,14 @@ sealed class IrisAction {
 
     data object Home : IrisAction()
 
+    data object Recents : IrisAction()
+
+    data object Notifications : IrisAction()
+
+    data object QuickSettings : IrisAction()
+
+    data object Screenshot : IrisAction()
+
     data object Play : IrisAction()
 
     data object Pause : IrisAction()
@@ -174,6 +182,26 @@ object IrisActionEngine {
 
             IrisAction.Home -> {
                 IrisAccessibilityService.instance?.performHome()
+                nextDelayed()
+            }
+
+            IrisAction.Recents -> {
+                IrisAccessibilityService.instance?.performRecents()
+                nextDelayed()
+            }
+
+            IrisAction.Notifications -> {
+                IrisAccessibilityService.instance?.performNotifications()
+                nextDelayed()
+            }
+
+            IrisAction.QuickSettings -> {
+                IrisAccessibilityService.instance?.performQuickSettings()
+                nextDelayed()
+            }
+
+            IrisAction.Screenshot -> {
+                IrisAccessibilityService.instance?.takeSystemScreenshot()
                 nextDelayed()
             }
 
@@ -330,6 +358,23 @@ object IrisCommandParser {
 
             cmd == "go home" || cmd == "home" -> {
                 actions.add(IrisAction.Home)
+            }
+
+            // Jarvis system controls
+            cmd == "recent apps" || cmd == "open recents" || cmd == "show recent apps" -> {
+                actions.add(IrisAction.Recents)
+            }
+
+            cmd == "show notifications" || cmd == "open notifications" || cmd == "notifications" -> {
+                actions.add(IrisAction.Notifications)
+            }
+
+            cmd == "quick settings" || cmd == "open quick settings" || cmd == "show quick settings" -> {
+                actions.add(IrisAction.QuickSettings)
+            }
+
+            cmd == "take screenshot" || cmd == "screenshot" || cmd == "capture screen" -> {
+                actions.add(IrisAction.Screenshot)
             }
 
             // Scrolling
