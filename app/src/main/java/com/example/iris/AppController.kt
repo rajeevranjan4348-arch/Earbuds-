@@ -87,6 +87,37 @@ object AppController {
         }
     }
 
+
+    /** Jarvis-style safe system shortcuts. These open Android settings; they do not silently change protected settings. */
+    fun openSystemSettings(context: Context, action: String): Boolean = try {
+        val intent = Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    fun openWifiSettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_WIFI_SETTINGS)
+
+    fun openBluetoothSettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_BLUETOOTH_SETTINGS)
+
+    fun openDisplaySettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_DISPLAY_SETTINGS)
+
+    fun openNotificationSettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_NOTIFICATION_SETTINGS)
+
+    fun openSoundSettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_SOUND_SETTINGS)
+
+    fun openBatterySettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_BATTERY_SAVER_SETTINGS)
+
+    fun openDateTimeSettings(context: Context): Boolean =
+        openSystemSettings(context, Settings.ACTION_DATE_SETTINGS)
+
     fun isInstalled(context: Context, packageName: String): Boolean =
         try {
             context.packageManager.getApplicationInfo(packageName, 0)
