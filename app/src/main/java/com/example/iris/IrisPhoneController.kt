@@ -38,6 +38,10 @@ sealed class IrisAction {
         val url: String
     ) : IrisAction()
 
+    data class OpenSystemSetting(
+        val action: String
+    ) : IrisAction()
+
     data class TapText(
         val text: String
     ) : IrisAction()
@@ -140,6 +144,14 @@ object IrisActionEngine {
                 IrisAccessibilityService.instance
                     ?.openUrl(action.url)
 
+                nextDelayed()
+            }
+
+            is IrisAction.OpenSystemSetting -> {
+                val context = IrisAccessibilityService.instance
+                if (context != null) {
+                    AppController.openSystemSettings(context, action.action)
+                }
                 nextDelayed()
             }
 
@@ -340,6 +352,31 @@ object IrisCommandParser {
                     url = "https://$url"
                 }
                 actions.add(IrisAction.OpenUrl(url))
+            }
+
+            // Jarvis system settings
+            cmd == "open wifi settings" || cmd == "wifi settings" || cmd == "open wifi" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_WIFI_SETTINGS))
+            }
+
+            cmd == "open bluetooth settings" || cmd == "bluetooth settings" || cmd == "open bluetooth" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+            }
+
+            cmd == "open display settings" || cmd == "display settings" || cmd == "brightness settings" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
+            }
+
+            cmd == "open sound settings" || cmd == "sound settings" || cmd == "volume settings" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_SOUND_SETTINGS))
+            }
+
+            cmd == "open notification settings" || cmd == "notification settings" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_NOTIFICATION_SETTINGS))
+            }
+
+            cmd == "open battery settings" || cmd == "battery settings" -> {
+                actions.add(IrisAction.OpenSystemSetting(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS))
             }
 
             // Media Controls
