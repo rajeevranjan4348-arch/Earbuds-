@@ -22,6 +22,7 @@ import { fluxImageEngine, imageStore, getImageApiKey } from './image'
 import { androidPackageResolver } from './android'
 import { googleMapsService } from './maps/googleMapsService'
 import { bookingAgent } from './services/bookingAgent'
+import { omniAstraRuntime } from './services/omniAstraRuntime'
 import { gstackRouter, gstackRedactEngine } from './gstack'
 import {
   multiAgentOrchestrator,
@@ -314,6 +315,19 @@ export async function handleApiRequest(
   const pathname = parsedUrl.pathname
 
   try {
+    // Omni/Astra system runtime: orchestration only; existing Iris UI is untouched.
+    if (pathname === '/api/omni/astra' && req.method === 'POST') {
+      const body = await parseBody(req)
+      const result = await omniAstraRuntime.run({
+        request: typeof body?.request === 'string' ? body.request : '',
+        conversationHistory: Array.isArray(body?.conversationHistory) ? body.conversationHistory : undefined,
+        memories: Array.isArray(body?.memories) ? body.memories : undefined,
+        forceRealtime: Boolean(body?.forceRealtime),
+        selectedModel: typeof body?.selectedModel === 'string' ? body.selectedModel : undefined
+      })
+      return sendJson(res, 200, { success: true, ...result })
+    }
+
     // 1. Health check
     if (pathname === '/api/health') {
       return sendJson(res, 200, {
