@@ -52,7 +52,7 @@ body {
   width: 100%;
   background-color: var(--iris-bg-main);
   color: var(--iris-text-primary);
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -256,3 +256,76 @@ body {
   }
 }
 
+
+
+/* Ultra-smooth interaction polish — intentionally visual-only, with no layout changes. */
+a,
+button,
+[role='button'],
+input,
+select,
+textarea,
+label {
+  transition:
+    color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 250ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 250ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+button:active,
+[role='button']:active {
+  transform: scale(0.98);
+  transition: transform 120ms ease-out;
+}
+
+/* Opt-in reveal utility: never hide existing UI unless a component opts in. */
+[data-reveal] {
+  opacity: 1;
+}
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition:
+    opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.js [data-reveal='left'] {
+  transform: translate3d(-24px, 0, 0);
+}
+
+.js [data-reveal='right'] {
+  transform: translate3d(24px, 0, 0);
+}
+
+.js [data-reveal='zoom'] {
+  transform: scale(0.96);
+}
+
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal],
+  .js [data-reveal='left'],
+  .js [data-reveal='right'],
+  .js [data-reveal='zoom'] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
