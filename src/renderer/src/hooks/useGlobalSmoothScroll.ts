@@ -70,8 +70,12 @@ export function useGlobalSmoothScroll(enabled: boolean = true): void {
     }
 
     const onWheel = (e: WheelEvent) => {
-      // Let modifier-key zoom/native gestures pass through untouched
-      if (e.ctrlKey || e.metaKey) return
+      // Preserve zoom, horizontal gestures, and wheel events already handled by a component.
+      if (e.ctrlKey || e.metaKey || e.defaultPrevented) return
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
+
+      const eventElement = e.target instanceof Element ? e.target : null
+      if (eventElement?.closest('[data-smooth-prevent="true"], textarea, [contenteditable="true"]')) return
 
       const target = findScrollableAncestor(e.target)
       if (!target) return
@@ -83,6 +87,10 @@ export function useGlobalSmoothScroll(enabled: boolean = true): void {
 
       const maxScroll = target.scrollHeight - target.clientHeight
       let state = states.get(target)
+      if (state && state.raf == null) {
+        // Keep the animation target aligned after scrollbar drags or native scrolling.
+        state.current = state.target = target.scrollTop
+      }
       if (!state) {
         state = { target: target.scrollTop, current: target.scrollTop, raf: null, lastTime: performance.now() }
         states.set(target, state)
